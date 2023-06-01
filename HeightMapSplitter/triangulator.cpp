@@ -265,7 +265,7 @@ std::vector<Triangulator::PackedMesh> Triangulator::RunLod(MaxHeap errors)
         //    vb[i].MorphPosY = target.PosY;
         //}
 
-        //SideStitcher::Stitch(mesh, m_Heightmap->Width());
+        SideStitcher::Stitch(mesh, m_Heightmap->Width());
         lods.emplace_back(mesh);
     }
     std::reverse(lods.begin(), lods.end());

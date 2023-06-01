@@ -29,7 +29,7 @@ TerrainSystem::TerrainSystem(const std::filesystem::path& path, ID3D11Device* de
     m_Height->CreateViews(device);
     m_Normal = std::make_unique<DirectX::Texture2D>(device, path.string() + "/normal.dds");
     m_Normal->CreateViews(device);
-    m_Albedo = std::make_unique<DirectX::Texture2D>(device, path.string() + "/albedo.png");
+    m_Albedo = std::make_unique<DirectX::Texture2D>(device, path.string() + "/albedo.dds");
     m_Albedo->CreateViews(device);
 }
 

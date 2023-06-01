@@ -112,7 +112,7 @@ int main(int argc, char** argv)
     // auto level heightmap
     hm->AutoLevel();
 
-    //hm->SaveDds(L"asset", 2000);
+    hm->SaveDds(L"asset", 2000);
     //return 0;
     const auto patches = hm->SplitIntoPatches(256);
 

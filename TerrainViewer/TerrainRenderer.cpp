@@ -57,11 +57,11 @@ void TerrainRenderer::Render(
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     const auto cb0 = m_Cb0.GetBuffer();
     context->VSSetConstantBuffers(0, 1, &cb0);
-    const auto point = s_CommonStates->PointClamp();
-    context->VSSetSamplers(0, 1, &point);
+    const auto pt = s_CommonStates->PointClamp();
+    context->VSSetSamplers(0, 1, &pt);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
-    const auto linear = s_CommonStates->LinearClamp();
-    context->PSSetSamplers(0, 1, &linear);
+    const auto ani = s_CommonStates->AnisotropicClamp();
+    context->PSSetSamplers(0, 1, &ani);
     context->PSSetConstantBuffers(0, 1, &cb0);
     context->OMSetBlendState(s_CommonStates->Opaque(), nullptr, 0xffffffff);
     context->OMSetDepthStencilState(s_CommonStates->DepthDefault(), 0);

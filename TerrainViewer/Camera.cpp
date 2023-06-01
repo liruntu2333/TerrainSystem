@@ -51,7 +51,7 @@ void Camera::Update(const ImGuiIO& io)
         dir = right;
     m_Position += dir * dt * spd;
 
-    m_Fov = io.KeyShift ? XM_PIDIV4 / 4.0f : XM_PIDIV4;
+    m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Q)] ? XM_PIDIV4 / 4.0f : XM_PIDIV4;
 
     if (io.MouseDown[ImGuiMouseButton_Right])
     {

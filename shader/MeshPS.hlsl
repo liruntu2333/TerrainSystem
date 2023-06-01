@@ -6,11 +6,14 @@ Texture2D g_Albedo : register(t1);
 
 float4 main(VertexOut i) : SV_TARGET
 {
-	const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, i.TexCoord).xyz;
-	float3 norm = g_Normal.Sample(g_AnisotropicClamp, i.TexCoord).xyz;
-    norm = normalize(norm * 2.0f - 1.0f);
+    const float4 sample = g_Normal.Sample(g_AnisotropicClamp, i.TexCoord);
 
-	float3 col = Shade(norm, g_SunDir, LIGHT_INTENSITY) * albedo /** LoadColor(g_PatchColor).rgb*/;
-	col = GammaCorrect(col);
-    return float4(col, 1.0f);
+    const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, i.TexCoord).rgb;
+    float3 norm = sample.rbg;
+    norm = normalize(norm * 2.0f - 1.0f);
+	norm.z = -norm.z;
+
+    float3 col = Shade(norm, g_SunDir, g_SunIntensity, sample.a) * albedo /** LoadColor(g_PatchColor).rgb*/;
+    col = GammaCorrect(col);
+	return float4(col, 1.0f);
 }

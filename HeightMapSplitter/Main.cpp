@@ -93,7 +93,7 @@ int main(int argc, char** argv)
 {
     const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    if (argc < 2) return 1;
+    if (argc < 3) return 1;
     std::string inFile = argv[1];
 
     // load heightmap
@@ -112,8 +112,9 @@ int main(int argc, char** argv)
     // auto level heightmap
     hm->AutoLevel();
 
-    hm->SaveDds(L"asset", 2000);
-    //return 0;
+    const float zScale = std::stof(argv[2]);
+    hm->SaveDds(L"asset", zScale);
+    // return 0;
     const auto patches = hm->SplitIntoPatches(256);
 
     std::cout << "patches generated" << std::endl;
@@ -145,7 +146,7 @@ int main(int argc, char** argv)
                 errors.emplace(0.0f);
 
 #if GENERATE_STL
-                auto meshes = tri.RunLod(std::move(errors), 2000);
+                auto meshes = tri.RunLod(std::move(errors), zScale);
                 const auto stlPath = path.u8string() + "/lod" + std::to_string(lod) + ".stl";
                 for (int lod = 0; lod < meshes.size(); ++lod)
                 {

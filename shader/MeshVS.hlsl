@@ -13,7 +13,7 @@ VertexOut main(VertexIn i)
 	const uint2 xy = g_PatchXY + 255 * i.PositionL;
     const float2 uv = (float2)xy / texSz + uvOffset;
 
-	float h = g_Height.SampleLevel(g_PointClamp, uv, 0) * 2000.0f;
+	float h = g_Height.SampleLevel(g_PointClamp, uv, 0) * HEIGHTMAP_SCALE;
     const float3 posLow = float3(
         (i.PositionL.x + (float)g_PatchOffset.x) * PATCH_SIZE,
         h,

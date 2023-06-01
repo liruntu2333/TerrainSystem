@@ -92,7 +92,8 @@ int main(int, char**)
     bool done = false;
     bool wireFramed = false;
     float sunPhi = DirectX::XM_PIDIV2;
-    float sunTheta = DirectX::XM_PIDIV4;
+    float sunTheta = 1.2f;
+    float sunIntensity = 0.5f;
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -118,17 +119,19 @@ int main(int, char**)
         Vector3 camPosL; // View based rendering : camera position relative to patch.
         const auto& resources = g_System->GetPatchResources(camPos, camPosL);
         g_Constants->ViewProjection = g_Camera->GetViewProjectionRelativeToPatch(camPosL).Transpose();
-        Vector3 sunDir(std::cos(sunPhi) * std::sin(sunTheta), std::sin(sunPhi) * std::sin(sunTheta),
-            std::cos(sunTheta));
+        Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
+            std::sin(sunTheta) * std::sin(sunPhi));
         sunDir.Normalize();
         g_Constants->LightDir = sunDir;
+        g_Constants->LightIntensity = sunIntensity;
 
         ImGui::Begin("Terrain System");
-        ImGui::Text("Camera World : %f, %f, %f", camPos.x, camPos.y, camPos.z);
-        ImGui::Text("Camera Local : %f, ..., %f", camPosL.x, camPosL.z);
+        ImGui::Text("Camera World : %.0f, %.0f, %.0f", camPos.x, camPos.y, camPos.z);
+        ImGui::Text("Camera Local : %.0f, ..., %.0f", camPosL.x, camPosL.z);
         ImGui::Text("Frame Rate : %f", io.Framerate);
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
+        ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
         ImGui::Checkbox("Wire Frame", &wireFramed);
         ImGui::End();
 

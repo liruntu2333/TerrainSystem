@@ -2,9 +2,8 @@
 #define SHADER_UTIL
 
 static const float PATCH_SIZE = 255.0f;
-static const float3 LIGHT_DIR = float3(0.0f, 0.8660254f, 0.5f);
-// static const float3 LIGHT_DIR = float3(0.0f, 1.f, 0.0f);
-static const float LIGHT_INTENSITY = 1.0f;
+static const float LIGHT_INTENSITY = 0.6f;
+static const float HEIGHTMAP_SCALE = 2000.0f;
 
 cbuffer PassConstants : register(b0)
 {
@@ -13,6 +12,7 @@ cbuffer PassConstants : register(b0)
     uint2 g_PatchXY;
     uint g_PatchColor;
 	float3 g_SunDir;
+    float g_SunIntensity;
 }
 
 struct VertexIn
@@ -81,19 +81,14 @@ float3 EvalSh(float3 _dir)
     return rgb;
 }
 
-float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity)
+float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion)
 {
-    return saturate(dot(normal, lightDir) * lightIntensity);
+	return saturate(dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal));
 }
 
 float3 GammaCorrect(const float3 color)
 {
     return pow(color, 1.0f / 2.2f);
-}
-
-float3 CalculateNormal(float2 uv, Texture2D<float> heightMap, SamplerState linearClamp)
-{
-    return float3(0, 1, 0);
 }
 
 #endif

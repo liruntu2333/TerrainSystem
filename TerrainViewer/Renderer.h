@@ -10,6 +10,8 @@ struct PassConstants
 	DirectX::XMUINT2 PatchXY;
 	uint32_t Color;
 	DirectX::SimpleMath::Vector3 LightDir;
+	float LightIntensity;
+	int Pad[3];
 };
 
 class Renderer

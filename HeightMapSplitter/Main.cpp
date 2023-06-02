@@ -14,6 +14,7 @@
 #include "Triangulator.h"
 
 #include <meshoptimizer.h>
+#include "BoundTree.h"
 
 #define GENERATE_STL 0
 
@@ -114,10 +115,17 @@ int main(int argc, char** argv)
 
     const float zScale = std::stof(argv[2]);
     hm->SaveDds(L"asset", zScale);
+    std::cout << "dds generated" << std::endl;
     // return 0;
     const auto patches = hm->SplitIntoPatches(256);
-
     std::cout << "patches generated" << std::endl;
+    std::vector<std::pair<float, float>> bounds;
+    for (const auto& row : patches)
+        for (const auto& patch : row)
+            bounds.emplace_back(patch->GetBound());
+    const BoundTree tree(bounds, patches.front().size());
+    tree.SaveJson("asset/bounds.json");
+    std::cout << "bounds generated" << std::endl;
     const auto nx = patches.front().size();
     const auto ny = patches.size();
 

@@ -2,12 +2,12 @@
 
 #include <array>
 #include <d3d11.h>
-#include <memory>
+#include <filesystem>
 #include <directxtk/SimpleMath.h>
 #include <wrl/client.h>
-#include "Texture2D.h"
 
 constexpr float PATCH_SIZE = 255.0f;
+constexpr float PATCH_HEIGHT_RANGE = 2000.0f;
 
 class Patch
 {
@@ -26,10 +26,17 @@ public:
         bool Idx16Bit;
     };
 
-    [[nodiscard]] RenderResource GetResource(const DirectX::SimpleMath::Vector3& camera, const DirectX::XMINT2& cameraOffset) const;
+    [[nodiscard]] RenderResource GetResource(
+        const DirectX::SimpleMath::Vector3& camera, const DirectX::XMINT2& cameraOffset) const;
+
+    [[nodiscard]] DirectX::SimpleMath::Vector3 GetLocalPosition(const DirectX::XMINT2& cameraOffset) const
+    {
+        return { (m_X - cameraOffset.x) * PATCH_SIZE, 0.0f, (-m_Y - cameraOffset.y) * PATCH_SIZE };
+    }
+
+    friend class TerrainSystem;
 
 private:
-
     int m_X;
     int m_Y;
 

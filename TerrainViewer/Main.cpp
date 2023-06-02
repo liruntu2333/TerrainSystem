@@ -2,15 +2,15 @@
 // If you are new to Dear ImGui, read documentation from the docs/ dir + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
+#define NOMINMAX
+
 #include <chrono>
-#include <iostream>
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include "TerrainRenderer.h"
 #include "Camera.h"
 
 #include "Texture2D.h"
-#include "TerrainRenderer.h"
 #include "TerrainSystem.h"
 #include "../HeightMapSplitter/ThreadPool.h"
 
@@ -117,7 +117,8 @@ int main(int, char**)
         g_Camera->Update(io);
         const auto camPos = g_Camera->GetPosition();
         Vector3 camPosL; // View based rendering : camera position relative to patch.
-        const auto& resources = g_System->GetPatchResources(camPos, camPosL);
+        const auto& resources = g_System->GetPatchResources(
+            camPos, camPosL, g_Camera->GetFrustum());
         g_Constants->ViewProjection = g_Camera->GetViewProjectionRelativeToPatch(camPosL).Transpose();
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -129,6 +130,7 @@ int main(int, char**)
         ImGui::Text("Camera World : %.0f, %.0f, %.0f", camPos.x, camPos.y, camPos.z);
         ImGui::Text("Camera Local : %.0f, ..., %.0f", camPosL.x, camPosL.z);
         ImGui::Text("Frame Rate : %f", io.Framerate);
+        ImGui::Text("Visible Patch : %d", resources.Patches.size());
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);

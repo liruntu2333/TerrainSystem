@@ -342,3 +342,15 @@ std::pair<glm::ivec2, float> Heightmap::FindCandidate(
 
     return std::make_pair(maxPoint, maxError);
 }
+
+std::pair<float, float> Heightmap::GetBound() const
+{
+    float min = std::numeric_limits<float>::max();
+    float max = std::numeric_limits<float>::min();
+    for (float h : m_Data)
+    {
+        min = std::min(min, h);
+        max = std::max(max, h);
+    }
+    return { min, max };
+}

@@ -65,6 +65,8 @@ public:
         const glm::ivec2 p1,
         const glm::ivec2 p2) const;
 
+    std::pair<float, float> GetBound() const;
+
 private:
     int m_Width;
     int m_Height;

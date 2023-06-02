@@ -1,7 +1,6 @@
 #pragma once
 
 #include <directxtk/BufferHelpers.h>
-#include <directxtk/VertexTypes.h>
 #include "TerrainVertex.h"
 #include "Renderer.h"
 #include "Patch.h"

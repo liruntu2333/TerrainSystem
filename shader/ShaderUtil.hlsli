@@ -3,6 +3,7 @@
 
 static const float PATCH_SIZE = 255.0f;
 static const float LIGHT_INTENSITY = 0.6f;
+static const float AMBIENT_INTENSITY = 0.1f;
 static const float HEIGHTMAP_SCALE = 2000.0f;
 
 cbuffer PassConstants : register(b0)
@@ -81,9 +82,10 @@ float3 EvalSh(float3 _dir)
     return rgb;
 }
 
-float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion)
+float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion, const float
+             ambientIntensity)
 {
-	return saturate(dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal));
+	return saturate(dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity);
 }
 
 float3 GammaCorrect(const float3 color)

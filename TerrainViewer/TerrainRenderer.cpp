@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include "TerrainRenderer.h"
 #include <d3dcompiler.h>
 #include "D3DHelper.h"

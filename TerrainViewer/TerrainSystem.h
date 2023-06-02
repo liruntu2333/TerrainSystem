@@ -1,6 +1,10 @@
 #pragma once
 
+#include <map>
 #include "Patch.h"
+
+#include "Texture2D.h"
+#include "../HeightMapSplitter/BoundTree.h"
 
 class TerrainSystem
 {
@@ -20,10 +24,14 @@ public:
     ~TerrainSystem() = default;
 
     [[nodiscard]] RenderResource GetPatchResources(
-        const DirectX::SimpleMath::Vector3& worldPos, DirectX::SimpleMath::Vector3& localPos) const;
+        const DirectX::SimpleMath::Vector3& worldPos, 
+        DirectX::SimpleMath::Vector3& localPos, 
+        const DirectX::BoundingFrustum& frustum) const;
 
-private:
-    std::vector<std::shared_ptr<Patch>> m_Patches {};
+protected:
+
+    std::map<int, std::shared_ptr<Patch>> m_Patches {};
+    std::unique_ptr<BoundTree> m_BoundTree = nullptr;
 
     std::unique_ptr<DirectX::Texture2D> m_Height {};
     std::unique_ptr<DirectX::Texture2D> m_Normal {};

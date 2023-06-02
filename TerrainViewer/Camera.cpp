@@ -1,6 +1,7 @@
 #include "Camera.h"
 
 #include <algorithm>
+#include "Patch.h"
 
 using namespace DirectX;
 using namespace SimpleMath;
@@ -15,6 +16,13 @@ Matrix Camera::GetViewProjectionRelativeToPatch(const Vector3& pos) const
 {
     return XMMatrixLookToLH(pos, m_Forward, Vector3::Up) *
         XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+}
+
+BoundingFrustum Camera::GetFrustum() const
+{
+    BoundingFrustum f(XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane));
+    f.Transform(f, Matrix::CreateFromYawPitchRoll(m_Rotation) * Matrix::CreateTranslation(m_Position));
+    return f;
 }
 
 void Camera::SetViewPort(ID3D11DeviceContext* context) const

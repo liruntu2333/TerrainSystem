@@ -65,8 +65,8 @@ Patch::Patch(const std::filesystem::path& path, ID3D11Device* device)
 Patch::RenderResource Patch::GetResource(const Vector3& camera, const XMINT2& cameraOffset) const
 {
     //return m_RenderResources[0];
-    const auto offset = XMINT2(m_X - cameraOffset.x, -m_Y - cameraOffset.y);
-    const auto center = Vector3((offset.x + 0.5f) * PATCH_SIZE, 1200, (offset.y - 0.5f) * PATCH_SIZE);
+    const auto offset = XMINT2(m_X - cameraOffset.x, m_Y - cameraOffset.y);
+    const auto center = Vector3((offset.x + 0.5f) * PATCH_SIZE, 1200, (offset.y + 0.5f) * PATCH_SIZE);
     const auto dist = (camera - center).Length();
     const auto upper = G_DISTANCES.upper_bound(dist);
     const int lod = upper == G_DISTANCES.end() ? 4 : std::distance(G_DISTANCES.begin(), upper);

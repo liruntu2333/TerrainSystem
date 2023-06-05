@@ -8,8 +8,17 @@ using namespace SimpleMath;
 
 Matrix Camera::GetViewProjectionMatrix() const
 {
-    return XMMatrixLookToLH(m_Position, m_Forward, Vector3::Up) *
-        XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+    return GetViewMatrix() * GetProjectionMatrix();
+}
+
+Matrix Camera::GetViewMatrix() const
+{
+    return XMMatrixLookToLH(m_Position, m_Forward, Vector3::Up);
+}
+
+Matrix Camera::GetProjectionMatrix() const
+{
+    return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
 }
 
 Matrix Camera::GetViewProjectionRelativeToPatch(const Vector3& pos) const

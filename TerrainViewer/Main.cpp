@@ -13,6 +13,7 @@
 #include "Texture2D.h"
 #include "TerrainSystem.h"
 #include "../HeightMapSplitter/ThreadPool.h"
+#include <directxtk/GeometricPrimitive.h>
 
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
@@ -31,6 +32,7 @@ namespace
     std::shared_ptr<PassConstants> g_Constants = nullptr;
     std::unique_ptr<Camera> g_Camera = nullptr;
     std::unique_ptr<TerrainSystem> g_System = nullptr;
+    std::unique_ptr<DirectX::GeometricPrimitive> g_Box = nullptr;
 }
 
 // Forward declarations of helper functions
@@ -94,6 +96,9 @@ int main(int, char**)
     float sunPhi = DirectX::XM_PIDIV2;
     float sunTheta = 1.2f;
     float sunIntensity = 0.5f;
+    bool freezeFrustum = false;
+    bool drawBB = false;
+    DirectX::BoundingFrustum frustum;
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -116,9 +121,10 @@ int main(int, char**)
 
         g_Camera->Update(io);
         const auto camPos = g_Camera->GetPosition();
+        if (!freezeFrustum) frustum = g_Camera->GetFrustum();
         Vector3 camPosL; // View based rendering : camera position relative to patch.
-        const auto& resources = g_System->GetPatchResources(
-            camPos, camPosL, g_Camera->GetFrustum());
+        std::vector<DirectX::BoundingBox> bbs;
+        const auto& resources = g_System->GetPatchResources(camPos, camPosL, frustum, bbs);
         g_Constants->ViewProjection = g_Camera->GetViewProjectionRelativeToPatch(camPosL).Transpose();
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -135,6 +141,8 @@ int main(int, char**)
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
         ImGui::Checkbox("Wire Frame", &wireFramed);
+        ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
+        ImGui::Checkbox("Draw Bounding Box", &drawBB);
         ImGui::End();
 
         // Rendering
@@ -148,8 +156,18 @@ int main(int, char**)
 
         g_Camera->SetViewPort(g_pd3dDeviceContext);
 
-        // g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
         g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
+
+        if (drawBB)
+            for (const auto& bb : bbs)
+                g_Box->Draw(
+                    Matrix::CreateScale(bb.Extents) *
+                    Matrix::CreateTranslation(bb.Center),
+                    g_Camera->GetViewMatrix(),
+                    g_Camera->GetProjectionMatrix(),
+                    DirectX::Colors::White,
+                    nullptr,
+                    true);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -260,6 +278,7 @@ void CreateSystem()
     g_MeshRenderer->Initialize(g_pd3dDeviceContext);
     g_Camera = std::make_unique<Camera>();
     g_System = std::make_unique<TerrainSystem>("asset", g_pd3dDevice);
+    g_Box = DirectX::GeometricPrimitive::CreateCube(g_pd3dDeviceContext);
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

@@ -78,7 +78,7 @@ void TerrainRenderer::Render(
     }
     else
     {
-        context->RSSetState(s_CommonStates->CullClockwise());
+        context->RSSetState(s_CommonStates->CullCounterClockwise());
         context->PSSetShader(m_Ps.Get(), nullptr, 0);
     }
 

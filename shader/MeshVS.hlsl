@@ -17,7 +17,7 @@ VertexOut main(VertexIn i)
     const float3 posLow = float3(
         (i.PositionL.x + (float)g_PatchOffset.x) * PATCH_SIZE,
         h,
-        (-i.PositionL.y + (float)g_PatchOffset.y) * PATCH_SIZE);
+        (i.PositionL.y + (float)g_PatchOffset.y) * PATCH_SIZE);
 
     // Deprecated code for morphing between low and high detail, topology changes while iterating.
     // To preserve topology need to set restraint on TIN construction process.

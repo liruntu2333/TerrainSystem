@@ -16,8 +16,9 @@ using namespace SimpleMath;
 TerrainSystem::TerrainSystem(const std::filesystem::path& path, ID3D11Device* device)
 {
     std::vector<std::future<std::shared_ptr<Patch>>> results;
-    for (int x = 0; x < PATCH_NX; ++x)
-        for (int y = 0; y < PATCH_NY; ++y)
+    for (int y = 0; y < PATCH_NY; ++y)
+        for (int x = 0; x < PATCH_NX; ++x)
+
             results.emplace_back(g_ThreadPool.enqueue([&path, device, this, x, y]
             {
                 std::filesystem::path patchPath = path.u8string() + '/' +
@@ -46,9 +47,8 @@ TerrainSystem::TerrainSystem(const std::filesystem::path& path, ID3D11Device* de
 }
 
 TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
-    const Vector3& worldPos,
-    Vector3& localPos,
-    const BoundingFrustum& frustum) const
+    const Vector3& worldPos, Vector3& localPos,
+    const BoundingFrustum& frustum, std::vector<BoundingBox>& bbs) const
 {
     const XMINT2 cameraPatchXy =
     {
@@ -59,25 +59,28 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
     localPos = worldPos - Vector3(cameraPatchXy.x * PATCH_SIZE, 0.0f, cameraPatchXy.y * PATCH_SIZE);
 
     std::vector<int> visible;
-    std::function<void(BoundTree::Node* node)> recursiveCull = [&](BoundTree::Node* node)
+    std::function<void(const BoundTree::Node* node)> recursiveCull = [&](const BoundTree::Node* node)
     {
         if (node == nullptr) return;
 
         const auto& [minH, maxH, h, w, x, y, id] = node->m_Bound;
         const auto extents = Vector3(
-            w * PATCH_SIZE * 0.5f,
-            (maxH - minH) * 0.5f * PATCH_HEIGHT_RANGE,
-            h * PATCH_SIZE * 0.5f);
+            w,
+            (maxH - minH) * PATCH_HEIGHT_RANGE,
+            h);
         const auto center = Vector3(
-            x * PATCH_SIZE + extents.x,
+            x * PATCH_SIZE + extents.x * 0.5f,
             (minH + maxH) * 0.5f * PATCH_HEIGHT_RANGE,
-            y * PATCH_SIZE - extents.z);
-
+            y * PATCH_SIZE + extents.z * 0.5f);
         const BoundingBox bb(center, extents);
-        if (frustum.Contains(bb) == DISJOINT) return;
 
+        if (frustum.Contains(bb) == DISJOINT)
+        {
+            return;
+        }
         if (id != -1)
         {
+            bbs.emplace_back(bb);
             visible.emplace_back(id);
             return;
         }
@@ -86,20 +89,20 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
             recursiveCull(child.get());
     };
 
-    //recursiveCull(m_BoundTree->m_Root.get());
+    recursiveCull(m_BoundTree->m_Root.get());
 
     RenderResource r;
     r.Height = m_Height->GetSrv();
     r.Normal = m_Normal->GetSrv();
     r.Albedo = m_Albedo->GetSrv();
-    //for (int id : visible)
-    //{
-    //    r.Patches.emplace_back(m_Patches.at(id)->GetResource(localPos, cameraPatchXy));
-    //}
-    for (const auto & patch : m_Patches)
+    for (int id : visible)
     {
-        r.Patches.emplace_back(patch.second->GetResource(localPos, cameraPatchXy));
+        r.Patches.emplace_back(m_Patches.at(id)->GetResource(localPos, cameraPatchXy));
     }
+    // for (const auto& patch : m_Patches)
+    // {
+    //     r.Patches.emplace_back(patch.second->GetResource(localPos, cameraPatchXy));
+    // }
 
     return r;
 }

@@ -24,9 +24,9 @@ public:
     ~TerrainSystem() = default;
 
     [[nodiscard]] RenderResource GetPatchResources(
-        const DirectX::SimpleMath::Vector3& worldPos, 
-        DirectX::SimpleMath::Vector3& localPos, 
-        const DirectX::BoundingFrustum& frustum) const;
+        const DirectX::SimpleMath::Vector3& worldPos,
+        DirectX::SimpleMath::Vector3& localPos,
+        const DirectX::BoundingFrustum& frustum, std::vector<DirectX::BoundingBox>& bbs) const;
 
 protected:
 

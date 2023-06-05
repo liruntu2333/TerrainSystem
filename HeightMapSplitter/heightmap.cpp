@@ -240,7 +240,7 @@ std::vector<std::vector<std::shared_ptr<Heightmap>>> Heightmap::SplitIntoPatches
                 const int y = k / patchSize + j * (patchSize - 1);
                 data[k] = At(x, y);
             }
-            patches[i][j] = std::make_shared<Heightmap>(patchSize, patchSize, data);
+            patches[j][i] = std::make_shared<Heightmap>(patchSize, patchSize, data);
         }
     }
     return patches;

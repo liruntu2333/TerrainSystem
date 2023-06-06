@@ -8,16 +8,16 @@ VertexOut main(VertexIn i)
     VertexOut o;
 
     float2 texSz;
-	g_Height.GetDimensions(texSz.x, texSz.y);
-	const float2 uvOffset = 0.5f / texSz;
-	const uint2 xy = g_PatchXY + 255 * i.PositionL;
+    g_Height.GetDimensions(texSz.x, texSz.y);
+    const float2 uvOffset = 0.5f / texSz;
+    const uint2 xy = (g_PatchXy + i.PositionL) * PATCH_SIZE;
     const float2 uv = (float2)xy / texSz + uvOffset;
 
-	float h = g_Height.SampleLevel(g_PointClamp, uv, 0) * HEIGHTMAP_SCALE;
+    float h = g_Height.SampleLevel(g_PointClamp, uv, 0) * HEIGHTMAP_SCALE;
     const float3 posLow = float3(
-        (i.PositionL.x + (float)g_PatchOffset.x) * PATCH_SIZE,
+        (i.PositionL.x + (int)g_PatchXy.x - g_CameraXy.x) * PATCH_SIZE,
         h,
-        (i.PositionL.y + (float)g_PatchOffset.y) * PATCH_SIZE);
+        (i.PositionL.y + (int)g_PatchXy.y - g_CameraXy.y) * PATCH_SIZE);
 
     // Deprecated code for morphing between low and high detail, topology changes while iterating.
     // To preserve topology need to set restraint on TIN construction process.
@@ -30,7 +30,7 @@ VertexOut main(VertexIn i)
     //const float3 posW = lerp(posLow, posHigh, t);
 
     o.PositionH = mul(float4(posLow, 1.0f), g_ViewProjection);
-	o.TexCoord = uv;
+    o.TexCoord = uv;
 
     return o;
 }

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <array>
 #include <d3d11.h>
 #include <filesystem>
+#include <future>
 #include <directxtk/SimpleMath.h>
 #include <wrl/client.h>
 
@@ -12,7 +12,7 @@ constexpr float PATCH_HEIGHT_RANGE = 2000.0f;
 class Patch
 {
 public:
-    Patch(const std::filesystem::path& path, ID3D11Device* device);
+    Patch(const std::filesystem::path& path, int x, int y, ID3D11Device* device);
     ~Patch() = default;
 
     struct RenderResource
@@ -21,25 +21,20 @@ public:
         ID3D11Buffer* Ib;
         uint32_t IdxCnt;
         uint32_t Color;
-        DirectX::XMINT2 Offset;
-        DirectX::XMUINT2 PatchXY; // Left bottom corner of the patch in global texture.
+        DirectX::XMUINT2 PatchXy; // Left bottom corner of the patch in global texture.
         bool Idx16Bit;
     };
 
-    [[nodiscard]] RenderResource GetResource(
-        const DirectX::SimpleMath::Vector3& camera, const DirectX::XMINT2& cameraOffset) const;
+    [[nodiscard]] RenderResource GetResource(const std::filesystem::path& path, int lod, ID3D11Device* device);
 
     [[nodiscard]] DirectX::SimpleMath::Vector3 GetLocalPosition(const DirectX::XMINT2& cameraOffset) const
     {
-        return { (m_X - cameraOffset.x) * PATCH_SIZE, 0.0f, (-m_Y - cameraOffset.y) * PATCH_SIZE };
+        return { (m_X - cameraOffset.x) * PATCH_SIZE, 0.0f, (m_Y - cameraOffset.y) * PATCH_SIZE };
     }
 
     friend class TerrainSystem;
 
 private:
-    int m_X;
-    int m_Y;
-
     struct LodResource
     {
         Microsoft::WRL::ComPtr<ID3D11Buffer> Vb {};
@@ -48,5 +43,13 @@ private:
         bool Idx16Bit {};
     };
 
-    std::array<LodResource, 5> m_Lods;
+    std::shared_ptr<LodResource> LoadResource(const std::filesystem::path& path, int lod, ID3D11Device* device) const;
+
+    const int m_X;
+    const int m_Y;
+    static constexpr int LOWEST_LOD = 4;
+    int m_Lod = LOWEST_LOD;
+
+    std::shared_ptr<LodResource> m_Resource {};
+    std::future<std::shared_ptr<LodResource>> m_Stream {};
 };

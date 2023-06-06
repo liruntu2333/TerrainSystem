@@ -6,12 +6,17 @@
 struct PassConstants
 {
 	DirectX::SimpleMath::Matrix ViewProjection;
-	DirectX::XMINT2 PatchOffset;
-	DirectX::XMUINT2 PatchXY;
-	uint32_t Color;
 	DirectX::SimpleMath::Vector3 LightDir;
 	float LightIntensity;
-	int Pad[3];
+	DirectX::XMINT2 CameraXy;
+	int Padding[2];
+};
+
+struct ObjectConstants
+{
+	DirectX::XMUINT2 PatchXy;
+	uint32_t Color;
+	int Padding;
 };
 
 class Renderer

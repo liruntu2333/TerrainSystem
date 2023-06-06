@@ -113,7 +113,6 @@ public:
     }
 
 private:
-
     static bool ShouldSplit(Triangulator::PackedPoint p0, Triangulator::PackedPoint p1, unsigned int gridSize)
     {
         return ShouldSplitX(p0, p1, gridSize) || ShouldSplitY(p0, p1, gridSize);
@@ -183,7 +182,7 @@ void Triangulator::RunStep()
     }
 }
 
-std::vector<Triangulator::Mesh> Triangulator::RunLod(MaxHeap errors, float zScale)
+std::vector<Triangulator::Mesh> Triangulator::RunLod(ErrorHeap errors, float zScale)
 {
     std::vector<Mesh> lods;
     while (!errors.empty())
@@ -215,7 +214,48 @@ std::vector<Triangulator::Mesh> Triangulator::RunLod(MaxHeap errors, float zScal
     return lods;
 }
 
-std::vector<Triangulator::PackedMesh> Triangulator::RunLod(MaxHeap errors)
+std::vector<Triangulator::PackedMesh> Triangulator::RunLod(TriangleCountHeap triangleMax)
+{
+    std::vector<PackedMesh> lods;
+    while (!triangleMax.empty())
+    {
+        const float triangleCount = triangleMax.top();
+        triangleMax.pop();
+
+        // helper function to check if triangulation is complete
+        const auto done = [this, triangleCount]()
+        {
+            if (NumTriangles() >= triangleCount)
+            {
+                return true;
+            }
+            return Error() == 0;
+        };
+
+        while (!done())
+        {
+            Step();
+        }
+
+        PackedMesh mesh;
+        auto& [vb, ib] = mesh;
+        vb.reserve(m_Points.size());
+        for (const auto& p : m_Points)
+            vb.emplace_back(p.x, p.y);
+
+        ib.reserve(m_Queue.size() * 3);
+        for (const int i : m_Queue)
+            for (int j = 0; j < 3; ++j)
+                ib.emplace_back(static_cast<uint32_t>(m_Triangles[i * 3 + j]));
+
+        SideStitcher::Stitch(mesh, m_Heightmap->Width());
+        lods.emplace_back(mesh);
+    }
+    std::reverse(lods.begin(), lods.end());
+    return lods;
+}
+
+std::vector<Triangulator::PackedMesh> Triangulator::RunLod(ErrorHeap errors)
 {
     std::vector<PackedMesh> lods;
     while (!errors.empty())

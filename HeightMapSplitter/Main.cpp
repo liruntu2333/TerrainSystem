@@ -27,7 +27,7 @@ void SaveBin(const std::filesystem::path& path, const std::vector<T>& data)
     for (const auto& v : data)
         ofs.write(reinterpret_cast<const char*>(&v), sizeof(T));
     ofs.close();
-    std::cout << path << " generated" << std::endl;
+    std::printf("%s generated\n", path.u8string().c_str());
 }
 
 auto OptimizeMeshCache(std::vector<Triangulator::PackedPoint>& vertices, std::vector<uint32_t>& indices)
@@ -144,14 +144,22 @@ int main(int argc, char** argv)
 
                 create_directories(path);
                 // triangulate
-                Triangulator tri(heightMap, 0, 0, 0);
+                Triangulator tri(heightMap, 0, 131072, 65536);
                 tri.Initialize();
-                Triangulator::MaxHeap errors;
+                Triangulator::ErrorHeap errors;
                 errors.emplace(0.001f);
                 errors.emplace(0.0005f);
                 errors.emplace(0.0002f);
                 errors.emplace(0.0001f);
                 errors.emplace(0.0f);
+                auto packedMeshes = tri.RunLod(std::move(errors));
+                // Triangulator::TriangleCountHeap triangleCounts;
+                // triangleCounts.emplace(131072);
+                // triangleCounts.emplace(32768);
+                // triangleCounts.emplace(8192);
+                // triangleCounts.emplace(2048);
+                // triangleCounts.emplace(512);
+                // auto packedMeshes = tri.RunLod(std::move(triangleCounts));
 
 #if GENERATE_STL
                 auto meshes = tri.RunLod(std::move(errors), zScale);
@@ -164,7 +172,6 @@ int main(int argc, char** argv)
                 }
 #endif
 
-                auto packedMeshes = tri.RunLod(std::move(errors));
                 for (int lod = 0; lod < packedMeshes.size(); ++lod)
                 {
                     auto& [vb, ib] = packedMeshes[lod];

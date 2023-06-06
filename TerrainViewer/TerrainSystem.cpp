@@ -3,7 +3,7 @@
 
 #include <fstream>
 #include <iostream>
-#include <string>
+#include <set>
 
 #include "../HeightMapSplitter/ThreadPool.h"
 
@@ -13,32 +13,52 @@ constexpr size_t PATCH_NX = 32;
 using namespace DirectX;
 using namespace SimpleMath;
 
-TerrainSystem::TerrainSystem(const std::filesystem::path& path, ID3D11Device* device)
+namespace
+{
+    const PackedVector::XMCOLOR G_COLORS[] =
+    {
+        { 1.000000000f, 0.000000000f, 0.000000000f, 1.000000000f },
+        { 0.000000000f, 0.501960814f, 0.000000000f, 1.000000000f },
+        { 0.000000000f, 0.000000000f, 1.000000000f, 1.000000000f },
+        { 1.000000000f, 1.000000000f, 0.000000000f, 1.000000000f },
+        { 0.000000000f, 1.000000000f, 1.000000000f, 1.000000000f },
+    };
+
+    const std::set G_DISTANCES =
+    {
+        500.0f,
+        1000.0f,
+        1500.0f,
+        2000.0f,
+        2500.0f,
+    };
+}
+
+TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
 {
     std::vector<std::future<std::shared_ptr<Patch>>> results;
     for (int y = 0; y < PATCH_NY; ++y)
         for (int x = 0; x < PATCH_NX; ++x)
-
-            results.emplace_back(g_ThreadPool.enqueue([&path, device, this, x, y]
+            results.emplace_back(g_ThreadPool.enqueue([this, device, x, y]
             {
-                std::filesystem::path patchPath = path.u8string() + '/' +
-                    std::to_string(x) + "_" + std::to_string(y);
-                auto patch = std::make_shared<Patch>(patchPath, device);
-                std::cout << "Loaded patch " << x << ", " << y << std::endl;
-                return patch;
+                return std::make_shared<Patch>(m_Path, x, y, device);
             }));
 
-    for (int i = 0; i < results.size(); ++i)
-        m_Patches.emplace(i, results[i].get());
+    for (auto& result : results)
+    {
+        auto p = result.get();
+        int id = p->m_X + p->m_Y * PATCH_NX;
+        m_Patches.emplace(id, std::move(p));
+    }
 
-    m_Height = std::make_unique<Texture2D>(device, path.string() + "/height.dds");
+    m_Height = std::make_unique<Texture2D>(device, m_Path.string() + "/height.dds");
     m_Height->CreateViews(device);
-    m_Normal = std::make_unique<Texture2D>(device, path.string() + "/normal.dds");
+    m_Normal = std::make_unique<Texture2D>(device, m_Path.string() + "/normal.dds");
     m_Normal->CreateViews(device);
-    m_Albedo = std::make_unique<Texture2D>(device, path.string() + "/albedo.dds");
+    m_Albedo = std::make_unique<Texture2D>(device, m_Path.string() + "/albedo.dds");
     m_Albedo->CreateViews(device);
 
-    std::ifstream boundsFile(path.u8string() + "/bounds.json");
+    std::ifstream boundsFile(m_Path.u8string() + "/bounds.json");
     if (!boundsFile.is_open())
         throw std::runtime_error("Failed to open \"bounds.json\".");
     nlohmann::json j;
@@ -47,41 +67,38 @@ TerrainSystem::TerrainSystem(const std::filesystem::path& path, ID3D11Device* de
 }
 
 TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
-    const Vector3& worldPos, Vector3& localPos,
-    const BoundingFrustum& frustum, std::vector<BoundingBox>& bbs) const
+    const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
+    std::vector<BoundingBox>& bbs, ID3D11Device* device) const
 {
-    const XMINT2 cameraPatchXy =
-    {
-        static_cast<int>(worldPos.x / PATCH_SIZE),
-        static_cast<int>(worldPos.z / PATCH_SIZE)
-    };
-
-    localPos = worldPos - Vector3(cameraPatchXy.x * PATCH_SIZE, 0.0f, cameraPatchXy.y * PATCH_SIZE);
-
     std::vector<int> visible;
+    std::vector<int> lods;
     std::function<void(const BoundTree::Node* node)> recursiveCull = [&](const BoundTree::Node* node)
     {
         if (node == nullptr) return;
 
         const auto& [minH, maxH, h, w, x, y, id] = node->m_Bound;
         const auto extents = Vector3(
-            w,
+            w * 0.5f,
             (maxH - minH) * PATCH_HEIGHT_RANGE,
-            h);
+            h * 0.5f);
         const auto center = Vector3(
-            x * PATCH_SIZE + extents.x * 0.5f,
+            (x - camXyForCull.x) * PATCH_SIZE + extents.x,
             (minH + maxH) * 0.5f * PATCH_HEIGHT_RANGE,
-            y * PATCH_SIZE + extents.z * 0.5f);
+            (y - camXyForCull.y) * PATCH_SIZE + extents.z);
         const BoundingBox bb(center, extents);
 
-        if (frustum.Contains(bb) == DISJOINT)
-        {
-            return;
-        }
+        if (frustumLocal.Contains(bb) == DISJOINT) return;
+
         if (id != -1)
         {
             bbs.emplace_back(bb);
             visible.emplace_back(id);
+
+            const auto dist = (frustumLocal.Origin - center).Length();
+            const auto upper = G_DISTANCES.upper_bound(dist);
+            const int lod = upper == G_DISTANCES.end() ? 4 : std::distance(G_DISTANCES.begin(), upper);
+            lods.emplace_back(lod);
+
             return;
         }
 
@@ -95,14 +112,16 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
     r.Height = m_Height->GetSrv();
     r.Normal = m_Normal->GetSrv();
     r.Albedo = m_Albedo->GetSrv();
-    for (int id : visible)
+    for (int i = 0; i < visible.size(); ++i)
     {
-        r.Patches.emplace_back(m_Patches.at(id)->GetResource(localPos, cameraPatchXy));
+        const auto id = visible[i];
+        const auto lod = lods[i];
+        if (m_Patches.find(id) != m_Patches.end())
+        {
+            auto rr = m_Patches.at(id)->GetResource(m_Path, lod, device);
+            rr.Color = G_COLORS[lod];
+            r.Patches.emplace_back(rr);
+        }
     }
-    // for (const auto& patch : m_Patches)
-    // {
-    //     r.Patches.emplace_back(patch.second->GetResource(localPos, cameraPatchXy));
-    // }
-
     return r;
 }

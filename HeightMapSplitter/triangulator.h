@@ -33,12 +33,13 @@ public:
     void Initialize();
     void RunStep();
 
-    using MaxHeap = std::priority_queue<float, std::vector<float>, std::less<>>;
+    using ErrorHeap = std::priority_queue<float, std::vector<float>, std::less<>>;
+    using TriangleCountHeap = std::priority_queue<int, std::vector<int>, std::greater<>>;
     using Mesh = std::pair<std::vector<glm::vec3>, std::vector<glm::ivec3>>;
-    using PackedMesh = std::pair<std::vector<PackedPoint>, std::vector<uint32_t>>
-    ;//std::tuple<std::vector<PackedPoint>, std::vector<std::byte>, bool>; // ib may be uint16_t
-    std::vector<Mesh> RunLod(MaxHeap errors, float zScale);
-    std::vector<PackedMesh> RunLod(MaxHeap errors);
+    using PackedMesh = std::pair<std::vector<PackedPoint>, std::vector<uint32_t>>;
+    std::vector<Mesh> RunLod(ErrorHeap errors, float zScale);
+    std::vector<PackedMesh> RunLod(TriangleCountHeap triangleMax);
+    std::vector<PackedMesh> RunLod(ErrorHeap errors);
 
     void Run();
     void Morph(float target);

@@ -201,27 +201,27 @@ void Heightmap::SaveDds(const std::wstring& path, float zScale) const
 
     SaveToDDSFile(img, DirectX::DDS_FLAGS_NONE, (path + L"/height.dds").c_str());
 
-    const std::vector<glm::vec3> nm = Normalmap(zScale);
-    // save nm
-    std::vector<uint8_t> data(nm.size() * 4);
-    int i = 0;
-    for (glm::vec3 n : nm)
-    {
-        n = (n + 1.f) / 2.f;
-        data[i++] = uint8_t(n.x * 255);
-        data[i++] = uint8_t(n.y * 255);
-        data[i++] = uint8_t(n.z * 255);
-        data[i++] = 255;
-    }
+    //const std::vector<glm::vec3> nm = Normalmap(zScale);
+    //// save nm
+    //std::vector<uint8_t> data(nm.size() * 4);
+    //int i = 0;
+    //for (glm::vec3 n : nm)
+    //{
+    //    n = (n + 1.f) / 2.f;
+    //    data[i++] = uint8_t(n.x * 255);
+    //    data[i++] = uint8_t(n.y * 255);
+    //    data[i++] = uint8_t(n.z * 255);
+    //    data[i++] = 255;
+    //}
 
-    img.width = m_Width - 1;
-    img.height = m_Height - 1;
-    img.format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    img.rowPitch = img.width * 4;
-    img.slicePitch = data.size();
-    img.pixels = data.data();
+    //img.width = m_Width - 1;
+    //img.height = m_Height - 1;
+    //img.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    //img.rowPitch = img.width * 4;
+    //img.slicePitch = data.size();
+    //img.pixels = data.data();
 
-    SaveToDDSFile(img, DirectX::DDS_FLAGS_NONE, (path + L"/normal.dds").c_str());
+    //SaveToDDSFile(img, DirectX::DDS_FLAGS_NONE, (path + L"/normal.dds").c_str());
 }
 
 std::vector<std::vector<std::shared_ptr<Heightmap>>> Heightmap::SplitIntoPatches(int patchSize) const

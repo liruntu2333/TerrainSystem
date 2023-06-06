@@ -1,7 +1,7 @@
 #ifndef SHADER_UTIL
 #define SHADER_UTIL
 
-static const float PATCH_SIZE = 255.0f;
+static const uint PATCH_SIZE = 255;
 static const float LIGHT_INTENSITY = 0.6f;
 static const float AMBIENT_INTENSITY = 0.1f;
 static const float HEIGHTMAP_SCALE = 2000.0f;
@@ -9,11 +9,17 @@ static const float HEIGHTMAP_SCALE = 2000.0f;
 cbuffer PassConstants : register(b0)
 {
     float4x4 g_ViewProjection;
-    int2 g_PatchOffset;
-    uint2 g_PatchXY;
-    uint g_PatchColor;
 	float3 g_SunDir;
     float g_SunIntensity;
+	int2 g_CameraXy;
+	int g_Pad0[2];
+}
+
+cbuffer ObjectConstants : register(b1)
+{
+	uint2 g_PatchXy;
+	uint g_PatchColor;
+    int g_Pad1[1];
 }
 
 struct VertexIn

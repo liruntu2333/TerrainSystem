@@ -97,8 +97,10 @@ int main(int, char**)
     float sunTheta = 1.2f;
     float sunIntensity = 0.5f;
     bool freezeFrustum = false;
-    bool drawBB = false;
-    DirectX::BoundingFrustum frustum;
+    DirectX::XMINT2 camCullingXy {};
+    bool drawBb = false;
+    DirectX::BoundingFrustum frustumLocal;
+    float spd = 300.0f;
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -119,30 +121,35 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        g_Camera->Update(io);
-        const auto camPos = g_Camera->GetPosition();
-        if (!freezeFrustum) frustum = g_Camera->GetFrustum();
-        Vector3 camPosL; // View based rendering : camera position relative to patch.
-        std::vector<DirectX::BoundingBox> bbs;
-        const auto& resources = g_System->GetPatchResources(camPos, camPosL, frustum, bbs);
-        g_Constants->ViewProjection = g_Camera->GetViewProjectionRelativeToPatch(camPosL).Transpose();
+        g_Camera->Update(io, spd);
+        const auto camXy = g_Camera->GetPatch();
+        if (!freezeFrustum)
+        {
+            frustumLocal = g_Camera->GetFrustumLocal();
+            camCullingXy = camXy;
+        }
+        std::vector<DirectX::BoundingBox> bounding;
+        const auto& resources = g_System->GetPatchResources(
+            camCullingXy, frustumLocal, bounding, g_pd3dDevice);
+
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
         sunDir.Normalize();
+        g_Constants->ViewProjection = g_Camera->GetViewProjectionLocal().Transpose();
         g_Constants->LightDir = sunDir;
         g_Constants->LightIntensity = sunIntensity;
+        g_Constants->CameraXy = camXy;
 
         ImGui::Begin("Terrain System");
-        ImGui::Text("Camera World : %.0f, %.0f, %.0f", camPos.x, camPos.y, camPos.z);
-        ImGui::Text("Camera Local : %.0f, ..., %.0f", camPosL.x, camPosL.z);
         ImGui::Text("Frame Rate : %f", io.Framerate);
         ImGui::Text("Visible Patch : %d", resources.Patches.size());
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
+        ImGui::DragFloat("Camera Speed", &spd, 1.0f, 0.0f, 5000.0f);
         ImGui::Checkbox("Wire Frame", &wireFramed);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-        ImGui::Checkbox("Draw Bounding Box", &drawBB);
+        ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::End();
 
         // Rendering
@@ -158,13 +165,13 @@ int main(int, char**)
 
         g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
 
-        if (drawBB)
-            for (const auto& bb : bbs)
+        if (drawBb)
+            for (const auto& bb : bounding)
                 g_Box->Draw(
-                    Matrix::CreateScale(bb.Extents) *
+                    Matrix::CreateScale(bb.Extents * 2) *
                     Matrix::CreateTranslation(bb.Center),
-                    g_Camera->GetViewMatrix(),
-                    g_Camera->GetProjectionMatrix(),
+                    g_Camera->GetViewMatrixLocal(),
+                    g_Camera->GetProjectionMatrixLocal(),
                     DirectX::Colors::White,
                     nullptr,
                     true);

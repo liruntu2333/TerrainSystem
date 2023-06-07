@@ -135,6 +135,7 @@
     <ClInclude Include="blur.h" />
     <ClInclude Include="heightmap.h" />
     <ClInclude Include="BoundTree.h" />
+    <ClInclude Include="SideFitter.h" />
     <ClInclude Include="stb_image.h" />
     <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="stl.h" />

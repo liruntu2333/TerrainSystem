@@ -17,17 +17,24 @@ public:
         uint8_t PosX {};
         uint8_t PosY {};
 
-        //uint8_t MorphPosX{}; // higher lod
-        //uint8_t MorphPosY{};
-
         PackedPoint() = default;
 
-        PackedPoint(uint8_t px, uint8_t py/*, uint8_t mpx, uint8_t mpy*/) :
-            PosX(px), PosY(py)/*, MorphPosX(mpx), MorphPosY(mpy)*/ {}
+        PackedPoint(uint8_t px, uint8_t py) :
+            PosX(px), PosY(py) {}
+
+        bool operator<(const PackedPoint& other) const
+        {
+            return PosX < other.PosX || (PosX == other.PosX && PosY < other.PosY);
+        }
+
+        bool operator==(const PackedPoint& other) const
+        {
+            return PosX == other.PosX && PosY == other.PosY;
+        }
     };
 
     Triangulator(
-        const std::shared_ptr<Heightmap>& heightmap,
+        std::shared_ptr<Heightmap> heightmap,
         float error, int nTri, int nVert);
 
     void Initialize();
@@ -42,7 +49,6 @@ public:
     std::vector<PackedMesh> RunLod(ErrorHeap errors);
 
     void Run();
-    void Morph(float target);
 
     int NumPoints() const
     {
@@ -59,7 +65,6 @@ public:
     std::vector<glm::ivec3> Triangles() const;
 
 private:
-
     void Flush();
 
     void Step();
@@ -100,3 +105,19 @@ private:
     const int m_MaxTriangles;
     const int m_MaxPoints;
 };
+
+namespace std
+{
+    template <>
+    struct hash<Triangulator::PackedPoint>
+    {
+        size_t operator()(const Triangulator::PackedPoint& pp) const noexcept
+        {
+            size_t h = 0;
+            // Use bitwise XOR on the position values to generate the hash
+            h ^= std::hash<uint8_t>()(pp.PosX) + 0x9E3779B9 + (h << 6) + (h >> 2);
+            h ^= std::hash<uint8_t>()(pp.PosY) + 0x9E3779B9 + (h << 6) + (h >> 2);
+            return h;
+        }
+    };
+}

@@ -79,7 +79,7 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
         const auto& [minH, maxH, h, w, x, y, id] = node->m_Bound;
         const auto extents = Vector3(
             w * 0.5f,
-            (maxH - minH) * PATCH_HEIGHT_RANGE,
+            (maxH - minH) * PATCH_HEIGHT_RANGE * 0.5f,
             h * 0.5f);
         const auto center = Vector3(
             (x - camXyForCull.x) * PATCH_SIZE + extents.x,

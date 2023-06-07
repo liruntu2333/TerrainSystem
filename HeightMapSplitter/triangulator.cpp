@@ -5,153 +5,12 @@
 #include <map>
 #include <set>
 #include <unordered_set>
-
-struct SideStitcher
-{
-public:
-    static void Stitch(Triangulator::PackedMesh& mesh, unsigned int gridSize)
-    {
-        std::vector<uint32_t> outTriangles {};
-        auto& [points, triangles] = mesh;
-        outTriangles.reserve(triangles.size());
-        std::deque<uint32_t> triangleQueue { triangles.begin(), triangles.end() };
-
-        while (!triangleQueue.empty())
-        {
-            uint32_t i0 = triangleQueue[0];
-            uint32_t i1 = triangleQueue[1];
-            uint32_t i2 = triangleQueue[2];
-            const auto p0 = points[i0];
-            const auto p1 = points[i1];
-            const auto p2 = points[i2];
-            triangleQueue.pop_front();
-            triangleQueue.pop_front();
-            triangleQueue.pop_front();
-
-            if (ShouldSplitX(p0, p1, gridSize))
-            {
-                //  1---0           2
-                //  |  /           /|
-                //  | /     OR    / |
-                //  |/           /  |
-                //  2           0---1
-                const bool p0OnRight = p0.PosX > p1.PosX;
-                uint32_t prev = p0OnRight ? i1 : i0;
-                const int from = p0OnRight ? p1.PosX + 1 : p0.PosX + 1;
-                const int to = p0OnRight ? p0.PosX : p1.PosX;
-                for (int j = from; j < to; ++j)
-                {
-                    const uint32_t ip = points.size();
-                    points.emplace_back(j, p0.PosY);
-                    if (j == from) // corner case : rectangular triangle
-                    {
-                        AddTriangle(triangleQueue,
-                            prev,
-                            p0OnRight ? i2 : ip,
-                            p0OnRight ? ip : i2);
-                    }
-                    else
-                    {
-                        AddTriangle(outTriangles,
-                            prev,
-                            p0OnRight ? i2 : ip,
-                            p0OnRight ? ip : i2);
-                    }
-                    prev = ip;
-                }
-                // corner case : rectangular triangle
-                AddTriangle(triangleQueue,
-                    prev,
-                    p0OnRight ? i2 : i1,
-                    p0OnRight ? i0 : i2);
-            }
-            else if (ShouldSplitY(p0, p1, gridSize))
-            {
-                //    1             0
-                //   /|             |\
-                //  2 |     OR      | 2
-                //   \|             |/
-                //    0             1
-                const bool p0OnBottom = p0.PosY > p1.PosY;
-                uint32_t prev = p0OnBottom ? i1 : i0;
-                const int from = p0OnBottom ? p1.PosY + 1 : p0.PosY + 1;
-                const int to = p0OnBottom ? p0.PosY : p1.PosY;
-                for (int j = from; j < to; ++j)
-                {
-                    uint32_t newPoint = points.size();
-                    points.emplace_back(p0.PosX, j);
-                    if (j == from)  // corner case : rectangular triangle
-                    {
-                        AddTriangle(triangleQueue,
-                            prev,
-                            p0OnBottom ? i2 : newPoint,
-                            p0OnBottom ? newPoint : i2);
-                    }
-                    else
-                    {
-                        AddTriangle(outTriangles,
-                            prev,
-                            p0OnBottom ? i2 : newPoint,
-                            p0OnBottom ? newPoint : i2);
-                    }
-                    prev = newPoint;
-                }
-                // corner case : rectangular triangle
-                AddTriangle(triangleQueue,
-                    prev,
-                    p0OnBottom ? i2 : i1,
-                    p0OnBottom ? i0 : i2);
-            }
-            else if (ShouldSplit(p1, p2, gridSize))
-                AddTriangle(triangleQueue, i1, i2, i0);
-            else if (ShouldSplit(p2, p0, gridSize))
-                AddTriangle(triangleQueue, i2, i0, i1);
-            else AddTriangle(outTriangles, i0, i1, i2);
-        }
-
-        triangles = std::move(outTriangles);
-    }
-
-private:
-    static bool ShouldSplit(Triangulator::PackedPoint p0, Triangulator::PackedPoint p1, unsigned int gridSize)
-    {
-        return ShouldSplitX(p0, p1, gridSize) || ShouldSplitY(p0, p1, gridSize);
-    }
-
-    static bool ShouldSplitX(Triangulator::PackedPoint p0, Triangulator::PackedPoint p1, unsigned int gridSize)
-    {
-        if (const bool onSameSide =
-            (p0.PosY == 0 && p1.PosY == 0) ||
-            (p0.PosY == gridSize - 1 && p1.PosY == gridSize - 1); !onSameSide)
-            return false;
-        const bool spaceBetweenX = std::abs(p0.PosX - p1.PosX) > 1;
-        return spaceBetweenX;
-    }
-
-    static bool ShouldSplitY(Triangulator::PackedPoint p0, Triangulator::PackedPoint p1, unsigned int gridSize)
-    {
-        if (const bool onSameSide =
-            (p0.PosX == 0 && p1.PosX == 0) ||
-            (p0.PosX == gridSize - 1 && p1.PosX == gridSize - 1); !onSameSide)
-            return false;
-        const bool spaceBetweenY = std::abs(p0.PosY - p1.PosY) > 1;
-        return spaceBetweenY;
-    }
-
-    template <typename T>
-    static void AddTriangle(T& triangles, uint32_t i0, uint32_t i1, uint32_t i2)
-    {
-        triangles.emplace_back(i0);
-        triangles.emplace_back(i1);
-        triangles.emplace_back(i2);
-    }
-};
-
+#include "SideFitter.h"
 
 Triangulator::Triangulator(
-    const std::shared_ptr<Heightmap>& heightmap,
+    std::shared_ptr<Heightmap> heightmap,
     float error, int nTri, int nVert) :
-    m_Heightmap(heightmap), m_MaxError(error), m_MaxTriangles(nTri), m_MaxPoints(nVert) {}
+    m_Heightmap(std::move(heightmap)), m_MaxError(error), m_MaxTriangles(nTri), m_MaxPoints(nVert) {}
 
 void Triangulator::RunStep()
 {
@@ -248,7 +107,7 @@ std::vector<Triangulator::PackedMesh> Triangulator::RunLod(TriangleCountHeap tri
             for (int j = 0; j < 3; ++j)
                 ib.emplace_back(static_cast<uint32_t>(m_Triangles[i * 3 + j]));
 
-        SideStitcher::Stitch(mesh, m_Heightmap->Width());
+        //SideFitter::Fit(mesh, m_Heightmap->Width(), [](const PackedPoint& p) { return true; });
         lods.emplace_back(mesh);
     }
     std::reverse(lods.begin(), lods.end());
@@ -292,20 +151,7 @@ std::vector<Triangulator::PackedMesh> Triangulator::RunLod(ErrorHeap errors)
             for (int j = 0; j < 3; ++j)
                 ib.emplace_back(static_cast<uint32_t>(m_Triangles[i * 3 + j]));
 
-        // Deprecated code for recording morph target between low and high detail.
-        // Topology changes while iterating.
-        // To preserve topology, need to set triangle restraint on TIN construction process.
-        //for (int i = morphStart; i >= vb.size() - 1; ++i)
-        //{
-        //    if (vb[i].PosX == m_Heightmap->Width() - 1 || vb[i].PosY == m_Heightmap->Height() - 1 ||
-        //        vb[i].PosX == 0 || vb[i].PosY == 0)
-        //        continue;
-        //    const auto& target = vb[m_MorphTarget[i]];
-        //    vb[i].MorphPosX = target.PosX;
-        //    vb[i].MorphPosY = target.PosY;
-        //}
-
-        SideStitcher::Stitch(mesh, m_Heightmap->Width());
+        //SideFitter::Fit(mesh, m_Heightmap->Width(), [](const PackedPoint& p) { return true; });
         lods.emplace_back(mesh);
     }
     std::reverse(lods.begin(), lods.end());
@@ -341,16 +187,6 @@ void Triangulator::Run()
     }
 }
 
-void Triangulator::Morph(float target)
-{
-    //const int start = static_cast<float>(m_Points.size()) * target;
-    //for (int i = start; i < m_Points.size(); ++i)
-    //{
-    //    if (m_MorphTarget[i] < 0) continue;
-    //    m_Points[i] = m_Points[m_MorphTarget[i]];
-    //}
-}
-
 void Triangulator::Initialize()
 {
     m_Points.clear();
@@ -361,7 +197,6 @@ void Triangulator::Initialize()
     m_QueueIndexes.clear();
     m_Queue.clear();
     m_Pending.clear();
-    //m_MorphTarget.clear();
 
     // add points at all four corners
     const int x0 = 0;
@@ -372,12 +207,6 @@ void Triangulator::Initialize()
     const int p1 = AddPoint(glm::ivec2(x1, y0));
     const int p2 = AddPoint(glm::ivec2(x0, y1));
     const int p3 = AddPoint(glm::ivec2(x1, y1));
-
-    //m_MorphTarget.resize(4);
-    //m_MorphTarget[0] = -1;
-    //m_MorphTarget[1] = -1;
-    //m_MorphTarget[2] = -1;
-    //m_MorphTarget[3] = -1;
 
     // add initial two triangles
     const int t0 = AddTriangle(p3, p0, p2, -1, -1, -1, -1);

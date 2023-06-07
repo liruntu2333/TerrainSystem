@@ -39,6 +39,9 @@
     <ClInclude Include="BoundTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SideFitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="heightmap.cpp">

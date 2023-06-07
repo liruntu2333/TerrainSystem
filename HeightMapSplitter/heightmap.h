@@ -56,7 +56,7 @@ public:
         const std::string& path, const float zScale,
         const float altitude, const float azimuth) const;
 
-    void SaveDds(const std::wstring& path, float zScale) const;
+    void SaveDds(const std::wstring& path) const;
 
     std::vector<std::vector<std::shared_ptr<Heightmap>>> SplitIntoPatches(int patchSize) const;
 

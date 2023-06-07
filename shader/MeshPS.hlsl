@@ -11,10 +11,9 @@ float4 main(VertexOut i) : SV_TARGET
     const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, i.TexCoord).rgb;
     float3 norm = sample.rbg;
     norm = normalize(norm * 2.0f - 1.0f);
-    norm.z = -norm.z;
 
     float3 col = Shade(norm, g_SunDir, g_SunIntensity, sample.a, AMBIENT_INTENSITY)
         * albedo /** LoadColor(g_PatchColor).rgb*/;
-    col = GammaCorrect(col);
+    //col = GammaCorrect(col);
     return float4(col, 1.0f);
 }

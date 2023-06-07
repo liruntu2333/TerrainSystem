@@ -93,9 +93,9 @@ int main(int, char**)
     // Main loop
     bool done = false;
     bool wireFramed = false;
-    float sunPhi = DirectX::XM_PIDIV2;
+    float sunPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
     float sunTheta = 1.2f;
-    float sunIntensity = 0.5f;
+    float sunIntensity = 0.8f;
     bool freezeFrustum = false;
     DirectX::XMINT2 camCullingXy {};
     bool drawBb = false;
@@ -150,6 +150,7 @@ int main(int, char**)
         ImGui::Checkbox("Wire Frame", &wireFramed);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::Checkbox("Draw Bounding Box", &drawBb);
+        if (freezeFrustum) drawBb = false;
         ImGui::End();
 
         // Rendering
@@ -202,7 +203,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferCount = 2;
     sd.BufferDesc.Width = 0;
     sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     sd.BufferDesc.RefreshRate.Numerator = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;

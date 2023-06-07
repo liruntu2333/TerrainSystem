@@ -14,9 +14,14 @@
 #include "Triangulator.h"
 
 #include <meshoptimizer.h>
+#include <unordered_set>
+
 #include "BoundTree.h"
+#include "SideFitter.h"
 
 #define GENERATE_STL 0
+
+ThreadPool g_ThreadPool(std::thread::hardware_concurrency());
 
 template <typename T>
 void SaveBin(const std::filesystem::path& path, const std::vector<T>& data)
@@ -94,9 +99,9 @@ int main(int argc, char** argv)
 {
     const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-    if (argc < 3) return 1;
+    if (argc < 2) return 1;
     std::string inFile = argv[1];
-
+    const std::wstring parent = std::filesystem::path(inFile).parent_path().wstring();
     // load heightmap
     const auto hm = std::make_shared<Heightmap>(inFile);
 
@@ -112,10 +117,9 @@ int main(int argc, char** argv)
 
     // auto level heightmap
     hm->AutoLevel();
-
-    const float zScale = std::stof(argv[2]);
-    hm->SaveDds(L"asset", zScale);
+    hm->SaveDds(parent);
     std::cout << "dds generated" << std::endl;
+
     // return 0;
     const auto patches = hm->SplitIntoPatches(256);
     std::cout << "patches generated" << std::endl;
@@ -129,30 +133,26 @@ int main(int argc, char** argv)
     const auto nx = patches.front().size();
     const auto ny = patches.size();
 
-    ThreadPool pool(std::thread::hardware_concurrency());
+    std::vector meshes(ny, std::vector<std::vector<Triangulator::PackedMesh>>(nx));
     std::vector<std::future<void>> results;
 
-    for (int i = 0; i < nx; ++i)
+    for (int x = 0; x < nx; ++x)
     {
-        for (int j = 0; j < ny; ++j)
+        for (int y = 0; y < ny; ++y)
         {
-            results.emplace_back(pool.enqueue([&patches, i, j]
+            results.emplace_back(g_ThreadPool.enqueue([&patches, x, y, &meshes]
             {
-                const auto& heightMap = patches[i][j];
-                const std::string patchName = "asset/" + std::to_string(i) + "_" + std::to_string(j);
-                const std::filesystem::path path = patchName;
-
-                create_directories(path);
+                const auto& heightMap = patches[x][y];
                 // triangulate
                 Triangulator tri(heightMap, 0, 131072, 65536);
                 tri.Initialize();
                 Triangulator::ErrorHeap errors;
+                errors.emplace(0.005f);
+                errors.emplace(0.004f);
+                errors.emplace(0.003f);
+                errors.emplace(0.002f);
                 errors.emplace(0.001f);
-                errors.emplace(0.0005f);
-                errors.emplace(0.0002f);
-                errors.emplace(0.0001f);
-                errors.emplace(0.0f);
-                auto packedMeshes = tri.RunLod(std::move(errors));
+                meshes[y][x] = tri.RunLod(std::move(errors));
                 // Triangulator::TriangleCountHeap triangleCounts;
                 // triangleCounts.emplace(131072);
                 // triangleCounts.emplace(32768);
@@ -160,21 +160,73 @@ int main(int argc, char** argv)
                 // triangleCounts.emplace(2048);
                 // triangleCounts.emplace(512);
                 // auto packedMeshes = tri.RunLod(std::move(triangleCounts));
+            }));
+        }
+    }
 
-#if GENERATE_STL
-                auto meshes = tri.RunLod(std::move(errors), zScale);
-                const auto stlPath = path.u8string() + "/lod" + std::to_string(lod) + ".stl";
-                for (int lod = 0; lod < meshes.size(); ++lod)
-                {
-                    const auto& [p, t] = meshes[lod];
-                    SaveBinarySTL(stlPath.u8string() + ".stl", p, t);
-                    std::cout << path << " lod " << lod << " generated" << std::endl;
-                }
-#endif
+    for (auto& result : results) result.get();
+    results.clear();
 
-                for (int lod = 0; lod < packedMeshes.size(); ++lod)
+    std::printf("Meshes generated.\n");
+
+    std::vector rivetSets(ny, std::vector<std::unordered_set<Triangulator::PackedPoint>>(nx));
+    for (int x = 0; x < nx; ++x)
+    {
+        for (int y = 0; y < ny; ++y)
+        {
+            results.emplace_back(g_ThreadPool.enqueue([x, y, nx, ny, &meshes, &rivetSets]()
+            {
+                auto& rivetSet = rivetSets[y][x];
+
+                for (const auto & v : meshes[y][x][0].first)
+                    rivetSet.emplace(v);
+
+                if (x > 0)
+                    for (const auto& v : meshes[y][x - 1][0].first)
+                        if (v.PosX == 255) rivetSet.emplace(0, v.PosY);
+
+                if (x < nx - 1)
+                    for (const auto& v : meshes[y][x + 1][0].first)
+                        if (v.PosX == 0) rivetSet.emplace(255, v.PosY);
+
+                if (y > 0)
+                    for (const auto& v : meshes[y - 1][x][0].first)
+                        if (v.PosY == 255) rivetSet.emplace(v.PosX, 0);
+
+                if (y < ny - 1)
+                    for (const auto& v : meshes[y + 1][x][0].first)
+                        if (v.PosY == 0) rivetSet.emplace(v.PosX, 255);
+            }));
+        }
+    }
+
+    for (auto& result : results) result.get();
+    results.clear();
+
+    std::printf("Neighbors generated.\n");
+
+    for (int x = 0; x < nx; ++x)
+    {
+        for (int y = 0; y < ny; ++y)
+        {
+            results.emplace_back(g_ThreadPool.enqueue([x, y, &meshes, &rivetSets]()
+            {
+                const auto& rivetSet = rivetSets[y][x];
+                auto& meshLods = meshes[y][x];
+
+                for (auto& lod : meshLods)
+                    SideFitter::Fit(lod, 256,
+                        [&rivetSet](Triangulator::PackedPoint p)
+                        {
+                            return rivetSet.count(p) > 0;
+                        });
+
+                const std::filesystem::path path = "asset/" + std::to_string(x) + "_" + std::to_string(y);
+                create_directories(path);
+
+                for (int lod = 0; lod < meshLods.size(); ++lod)
                 {
-                    auto& [vb, ib] = packedMeshes[lod];
+                    auto& [vb, ib] = meshLods[lod];
                     const auto vbPath = path.u8string() + "/lod" + std::to_string(lod) + ".vtx";
                     const auto ibPath = path.u8string() + "/lod" + std::to_string(lod) + ".idx";
 
@@ -182,20 +234,15 @@ int main(int argc, char** argv)
                     OptimizeMeshCache(vb, ib);
                     SaveBin(vbPath, vb);
                     if (vb.size() > std::numeric_limits<std::uint16_t>::max())
-                    {
                         SaveBin(ibPath, ib);
-                    }
                     else
-                    {
                         SaveBin(ibPath, std::vector<std::uint16_t>(ib.begin(), ib.end()));
-                    }
                 }
             }));
         }
     }
 
-    for (auto& result : results)
-        result.get();
+    for (auto& result : results) result.get();
 
     const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
     std::cout << "Elapsed time in seconds : "

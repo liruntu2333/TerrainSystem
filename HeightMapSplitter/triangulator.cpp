@@ -5,7 +5,7 @@
 #include <map>
 #include <set>
 #include <unordered_set>
-#include "SideFitter.h"
+#include "SideCutter.h"
 
 Triangulator::Triangulator(
     std::shared_ptr<Heightmap> heightmap,
@@ -107,7 +107,7 @@ std::vector<Triangulator::PackedMesh> Triangulator::RunLod(TriangleCountHeap tri
             for (int j = 0; j < 3; ++j)
                 ib.emplace_back(static_cast<uint32_t>(m_Triangles[i * 3 + j]));
 
-        //SideFitter::Fit(mesh, m_Heightmap->Width(), [](const PackedPoint& p) { return true; });
+        //SideCutter::Cut(mesh, m_Heightmap->Width(), [](const PackedPoint& p) { return true; });
         lods.emplace_back(mesh);
     }
     std::reverse(lods.begin(), lods.end());
@@ -151,7 +151,7 @@ std::vector<Triangulator::PackedMesh> Triangulator::RunLod(ErrorHeap errors)
             for (int j = 0; j < 3; ++j)
                 ib.emplace_back(static_cast<uint32_t>(m_Triangles[i * 3 + j]));
 
-        //SideFitter::Fit(mesh, m_Heightmap->Width(), [](const PackedPoint& p) { return true; });
+        //SideCutter::Cut(mesh, m_Heightmap->Width(), [](const PackedPoint& p) { return true; });
         lods.emplace_back(mesh);
     }
     std::reverse(lods.begin(), lods.end());
@@ -208,9 +208,19 @@ void Triangulator::Initialize()
     const int p2 = AddPoint(glm::ivec2(x0, y1));
     const int p3 = AddPoint(glm::ivec2(x1, y1));
 
+    // const int xHalf = (x0 + x1) / 2;
+    // const int yHalf = (y0 + y1) / 2;
+    // const int p4 = AddPoint(glm::ivec2(xHalf, yHalf));
+
     // add initial two triangles
     const int t0 = AddTriangle(p3, p0, p2, -1, -1, -1, -1);
     AddTriangle(p0, p3, p1, t0, -1, -1, -1);
+
+    // // add initial four triangles
+    // const int t0 = AddTriangle(p2, p4, p0, -1, -1, -1, -1);
+    // const int t1 = AddTriangle(p3, p4, p2, -1, t0, -1, -1);
+    // const int t2 = AddTriangle(p1, p4, p3, -1, t1, -1, -1);
+    // const int t3 = AddTriangle(p0, p4, p1, t0, t2, -1, -1);
     Flush();
 }
 
@@ -331,22 +341,6 @@ void Triangulator::Step()
         Legalize(t2);
         Legalize(t3);
     };
-
-
-    //auto iDot = [](glm::ivec2 v) { return v.x * v.x + v.y * v.y; };
-    //int minDis = iDot(p - a);
-    //int target = p0;
-    //if (const int pbSqr = iDot(p - b); pbSqr <= minDis)
-    //{
-    //    target = p1;
-    //    minDis = pbSqr;
-    //}
-    //if (const int pcSqr = iDot(p - c); pcSqr <= minDis)
-    //{
-    //    target = p2;
-    //    minDis = pcSqr;
-    //}
-    //m_MorphTarget.emplace_back(target);
 
     if (collinear(a, b, p))
     {

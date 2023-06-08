@@ -14,10 +14,12 @@ VertexOut main(VertexIn i)
     const float2 uv = (float2)xy / texSz + uvOffset;
 
     float h = g_Height.SampleLevel(g_PointClamp, uv, 0) * HEIGHTMAP_SCALE;
+
+    const int2 localXy = g_PatchXy - g_CameraXy;
     const float3 posLow = float3(
-        (i.PositionL.x + (int)g_PatchXy.x - g_CameraXy.x) * PATCH_SIZE,
+        (i.PositionL.x + localXy.x) * PATCH_SIZE,
         h,
-        (i.PositionL.y + (int)g_PatchXy.y - g_CameraXy.y) * PATCH_SIZE);
+        (i.PositionL.y + localXy.y) * PATCH_SIZE);
 
     // Deprecated code for morphing between low and high detail, topology changes while iterating.
     // To preserve topology need to set restraint on TIN construction process.

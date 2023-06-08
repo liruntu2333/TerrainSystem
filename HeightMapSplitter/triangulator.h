@@ -33,6 +33,11 @@ public:
         }
     };
 
+    using ErrorHeap = std::priority_queue<float, std::vector<float>, std::less<>>;
+    using TriangleCountHeap = std::priority_queue<int, std::vector<int>, std::greater<>>;
+    using Mesh = std::pair<std::vector<glm::vec3>, std::vector<glm::ivec3>>;
+    using PackedMesh = std::pair<std::vector<PackedPoint>, std::vector<uint32_t>>;
+
     Triangulator(
         std::shared_ptr<Heightmap> heightmap,
         float error, int nTri, int nVert);
@@ -40,10 +45,6 @@ public:
     void Initialize();
     void RunStep();
 
-    using ErrorHeap = std::priority_queue<float, std::vector<float>, std::less<>>;
-    using TriangleCountHeap = std::priority_queue<int, std::vector<int>, std::greater<>>;
-    using Mesh = std::pair<std::vector<glm::vec3>, std::vector<glm::ivec3>>;
-    using PackedMesh = std::pair<std::vector<PackedPoint>, std::vector<uint32_t>>;
     std::vector<Mesh> RunLod(ErrorHeap errors, float zScale);
     std::vector<PackedMesh> RunLod(TriangleCountHeap triangleMax);
     std::vector<PackedMesh> RunLod(ErrorHeap errors);

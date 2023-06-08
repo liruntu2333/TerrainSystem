@@ -164,7 +164,9 @@ int main(int, char**)
 
         g_Camera->SetViewPort(g_pd3dDeviceContext);
 
-        g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
+        g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
+        if (wireFramed)
+            g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
 
         if (drawBb)
             for (const auto& bb : bounding)

@@ -26,7 +26,6 @@ public:
     void Render(ID3D11DeviceContext* context, const TerrainSystem::RenderResource& r, bool wireFrame = false);
 
 protected:
-    void UpdateBuffer(ID3D11DeviceContext* context);
 
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs = nullptr;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps = nullptr;

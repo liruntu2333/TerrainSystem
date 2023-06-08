@@ -47,7 +47,7 @@ private:
 
     const int m_X;
     const int m_Y;
-    static constexpr int LOWEST_LOD = 4;
+    static constexpr int LOWEST_LOD = 2;
     int m_Lod = LOWEST_LOD;
 
     std::shared_ptr<LodResource> m_Resource {};

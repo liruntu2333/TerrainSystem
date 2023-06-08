@@ -17,7 +17,7 @@
 #include <unordered_set>
 
 #include "BoundTree.h"
-#include "SideFitter.h"
+#include "SideCutter.h"
 
 #define GENERATE_STL 0
 
@@ -136,23 +136,22 @@ int main(int argc, char** argv)
     std::vector meshes(ny, std::vector<std::vector<Triangulator::PackedMesh>>(nx));
     std::vector<std::future<void>> results;
 
+    Triangulator::ErrorHeap errors;
+    errors.emplace(0.003f);
+    errors.emplace(0.002f);
+    errors.emplace(0.001f);
+
     for (int x = 0; x < nx; ++x)
     {
         for (int y = 0; y < ny; ++y)
         {
-            results.emplace_back(g_ThreadPool.enqueue([&patches, x, y, &meshes]
+            results.emplace_back(g_ThreadPool.enqueue([&patches, x, y, &meshes, &errors]
             {
-                const auto& heightMap = patches[x][y];
+                const auto& heightMap = patches[y][x];
                 // triangulate
                 Triangulator tri(heightMap, 0, 131072, 65536);
                 tri.Initialize();
-                Triangulator::ErrorHeap errors;
-                errors.emplace(0.005f);
-                errors.emplace(0.004f);
-                errors.emplace(0.003f);
-                errors.emplace(0.002f);
-                errors.emplace(0.001f);
-                meshes[y][x] = tri.RunLod(std::move(errors));
+                meshes[y][x] = tri.RunLod(errors);
                 // Triangulator::TriangleCountHeap triangleCounts;
                 // triangleCounts.emplace(131072);
                 // triangleCounts.emplace(32768);
@@ -174,12 +173,12 @@ int main(int argc, char** argv)
     {
         for (int y = 0; y < ny; ++y)
         {
-            results.emplace_back(g_ThreadPool.enqueue([x, y, nx, ny, &meshes, &rivetSets]()
+            auto& rivetSet = rivetSets[y][x];
+            results.emplace_back(g_ThreadPool.enqueue([x, y, nx, ny, &meshes, &rivetSet]
             {
-                auto& rivetSet = rivetSets[y][x];
-
-                for (const auto & v : meshes[y][x][0].first)
-                    rivetSet.emplace(v);
+                for (const auto& v : meshes[y][x][0].first)
+                    if (v.PosX == 0 || v.PosX == 255 || v.PosY == 0 || v.PosY == 255)
+                        rivetSet.emplace(v);
 
                 if (x > 0)
                     for (const auto& v : meshes[y][x - 1][0].first)
@@ -209,17 +208,18 @@ int main(int argc, char** argv)
     {
         for (int y = 0; y < ny; ++y)
         {
-            results.emplace_back(g_ThreadPool.enqueue([x, y, &meshes, &rivetSets]()
+            results.emplace_back(g_ThreadPool.enqueue([x, y, &meshes, &rivetSets]
             {
                 const auto& rivetSet = rivetSets[y][x];
                 auto& meshLods = meshes[y][x];
 
                 for (auto& lod : meshLods)
-                    SideFitter::Fit(lod, 256,
+                    SideCutter::Cut(lod, 256,
                         [&rivetSet](Triangulator::PackedPoint p)
                         {
                             return rivetSet.count(p) > 0;
                         });
+
 
                 const std::filesystem::path path = "asset/" + std::to_string(x) + "_" + std::to_string(y);
                 create_directories(path);

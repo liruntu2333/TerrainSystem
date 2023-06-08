@@ -99,6 +99,3 @@ void TerrainRenderer::Render(
     }
 }
 
-void TerrainRenderer::UpdateBuffer(ID3D11DeviceContext* context)
-{
-}

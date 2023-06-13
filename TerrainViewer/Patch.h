@@ -49,6 +49,7 @@ private:
     const int m_Y;
     static constexpr int LOWEST_LOD = 2;
     int m_Lod = LOWEST_LOD;
+    int m_LodStreaming = LOWEST_LOD;
 
     std::shared_ptr<LodResource> m_Resource {};
     std::future<std::shared_ptr<LodResource>> m_Stream {};

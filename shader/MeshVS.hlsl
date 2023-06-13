@@ -9,27 +9,22 @@ VertexOut main(VertexIn i)
 
     float2 texSz;
     g_Height.GetDimensions(texSz.x, texSz.y);
-    const float2 uvOffset = 0.5f / texSz;
-    const uint2 xy = (g_PatchXy + i.PositionL) * PATCH_SIZE;
-    const float2 uv = (float2)xy / texSz + uvOffset;
-
-    float h = g_Height.SampleLevel(g_PointClamp, uv, 0) * HEIGHTMAP_SCALE;
-
+    texSz = 1.0f / texSz;
+    const uint2 xy = (g_PatchXy + i.PositionL) * PATCH_SCALE;
+    const float2 uv = ((float2)xy + 0.5f) * texSz;
+    const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
     const int2 localXy = g_PatchXy - g_CameraXy;
-    const float3 posLow = float3(
-        (i.PositionL.x + localXy.x) * PATCH_SIZE,
-        h,
-        (i.PositionL.y + localXy.y) * PATCH_SIZE);
+    float3 posLow = float3((i.PositionL.x + localXy.x), h, (i.PositionL.y + localXy.y));
+	posLow *= float3(PATCH_SCALE, HEIGHTMAP_SCALE, PATCH_SCALE);
 
-    // Deprecated code for morphing between low and high detail, topology changes while iterating.
-    // To preserve topology need to set restraint on TIN construction process.
-    //
-    //const float t = saturate((length(g_CameraPosition - posLow) - 20.0f) / 30.0f);
-    //const float2 xy = lerp(i.PositionL.xy, i.PositionL.zw, t);
-
-    //float h2 = g_Height.SampleLevel(g_PointClamp, xy, 0.0f) * 2000.0f;
-    //const float3 posHigh = float3(i.PositionL.z * 255.0f, h2, i.PositionL.w * 255.0f);
-    //const float3 posW = lerp(posLow, posHigh, t);
+    // float z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(-1, 0) * texSz, 0);
+    // float z2 = g_Height.SampleLevel(g_PointClamp, uv + float2(+1, 0) * texSz, 0);
+    // const float zx = z2 - z1;
+    // z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(0, -1) * texSz, 0);
+    // z2 = g_Height.SampleLevel(g_PointClamp, uv + float2(0, +1) * texSz, 0);
+    // const float zy = z2 - z1;
+    // float3 normal = float3(-0.5f * HEIGHTMAP_SCALE * zx, 1.0f, -0.5f * HEIGHTMAP_SCALE * zy);
+    // normal = normalize(normal);
 
     o.PositionH = mul(float4(posLow, 1.0f), g_ViewProjection);
     o.TexCoord = uv;

@@ -26,9 +26,9 @@ namespace
 
     const std::set G_DISTANCES =
     {
-        800.0f,
-        2400.0f,
-        4800.0f,
+        1020.0f,
+        2040.0f,
+        3060.0f,
     };
 }
 
@@ -94,7 +94,9 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
 
             const auto dist = (frustumLocal.Origin - center).Length();
             const auto upper = G_DISTANCES.upper_bound(dist);
-            const int lod = upper == G_DISTANCES.end() ? G_DISTANCES.size() - 1 : std::distance(G_DISTANCES.begin(), upper);
+            const int lod = upper == G_DISTANCES.end()
+                                ? G_DISTANCES.size() - 1
+                                : std::distance(G_DISTANCES.begin(), upper);
             lods.emplace_back(lod);
 
             return;

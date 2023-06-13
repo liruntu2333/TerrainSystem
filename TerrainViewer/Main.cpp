@@ -94,8 +94,8 @@ int main(int, char**)
     bool done = false;
     bool wireFramed = false;
     float sunPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
-    float sunTheta = 1.2f;
-    float sunIntensity = 0.8f;
+    float sunTheta = 0.6f;
+    float sunIntensity = 1.0f;
     bool freezeFrustum = false;
     DirectX::XMINT2 camCullingXy {};
     bool drawBb = false;

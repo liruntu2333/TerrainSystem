@@ -94,6 +94,22 @@ auto OptimizeMeshRedundant(std::vector<Triangulator::PackedPoint>& vertices, std
     indices = std::move(oi);
 }
 
+void SaveErrorStatics(const std::map<float, int>& m)
+{
+    nlohmann::json jArray;
+    for (const auto& [error, triangle] : m)
+    {
+        nlohmann::json j;
+        j["geometry error"] = error;
+        j["triangle"] = triangle;
+        jArray.push_back(j);
+    }
+    std::ofstream ofs("asset/error.json");
+    ofs << std::setw(4) << jArray;
+    ofs.close();
+    std::cout << "error.json generated" << std::endl;
+}
+
 // Main code
 int main(int argc, char** argv)
 {
@@ -137,28 +153,25 @@ int main(int argc, char** argv)
     std::vector<std::future<void>> results;
 
     Triangulator::ErrorHeap errors;
-    errors.emplace(0.003f);
-    errors.emplace(0.002f);
-    errors.emplace(0.001f);
+    errors.emplace(0.0006998777389526367f);
+    errors.emplace(0.00047141313552856445f);
+    errors.emplace(0.0003293752670288086f);
 
     for (int x = 0; x < nx; ++x)
     {
         for (int y = 0; y < ny; ++y)
         {
-            results.emplace_back(g_ThreadPool.enqueue([&patches, x, y, &meshes, &errors]
+            auto& mesh = meshes[y][x];
+            const auto& heightMap = patches[y][x];
+            results.emplace_back(g_ThreadPool.enqueue([&heightMap, x, y, &mesh, &errors]
             {
-                const auto& heightMap = patches[y][x];
                 // triangulate
                 Triangulator tri(heightMap, 0, 131072, 65536);
                 tri.Initialize();
-                meshes[y][x] = tri.RunLod(errors);
-                // Triangulator::TriangleCountHeap triangleCounts;
-                // triangleCounts.emplace(131072);
-                // triangleCounts.emplace(32768);
-                // triangleCounts.emplace(8192);
-                // triangleCounts.emplace(2048);
-                // triangleCounts.emplace(512);
-                // auto packedMeshes = tri.RunLod(std::move(triangleCounts));
+                mesh = tri.RunLod(errors);
+                // SaveErrorStatics(tri.AnalyzeLod());
+
+                // auto mesh = tri.RunLod(triangleCounts);
             }));
         }
     }
@@ -208,11 +221,10 @@ int main(int argc, char** argv)
     {
         for (int y = 0; y < ny; ++y)
         {
-            results.emplace_back(g_ThreadPool.enqueue([x, y, &meshes, &rivetSets]
+            auto& meshLods = meshes[y][x];
+            auto& rivetSet = rivetSets[y][x];
+            results.emplace_back(g_ThreadPool.enqueue([x, y, &meshLods, &rivetSet]
             {
-                const auto& rivetSet = rivetSets[y][x];
-                auto& meshLods = meshes[y][x];
-
                 for (auto& lod : meshLods)
                     SideCutter::Cut(lod, 256,
                         [&rivetSet](Triangulator::PackedPoint p)

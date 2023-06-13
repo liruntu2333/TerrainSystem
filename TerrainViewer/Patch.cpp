@@ -21,7 +21,11 @@ Patch::RenderResource Patch::GetResource(const std::filesystem::path& path, int 
 {
     using namespace std::chrono_literals;
     if (m_Stream.valid() && m_Stream.wait_for(0s) == std::future_status::ready)
+    {
         m_Resource = m_Stream.get();
+        m_Lod = m_LodStreaming;
+        m_LodStreaming = -1;
+    }
 
     if (lod != m_Lod && !m_Stream.valid())
     {
@@ -29,7 +33,7 @@ Patch::RenderResource Patch::GetResource(const std::filesystem::path& path, int 
         {
             return LoadResource(path, lod, device);
         });
-        m_Lod = lod;
+        m_LodStreaming = lod;
     }
 
     return {

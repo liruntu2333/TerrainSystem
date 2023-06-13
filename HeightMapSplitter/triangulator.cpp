@@ -158,6 +158,32 @@ std::vector<Triangulator::PackedMesh> Triangulator::RunLod(ErrorHeap errors)
     return lods;
 }
 
+std::map<float, int> Triangulator::AnalyzeLod()
+{
+    std::map<float, int> result;
+
+    for (float error = 1.0f; error >= 0; error = Error() - 0.0000001f)
+    {
+        // helper function to check if triangulation is complete
+        const auto done = [this, error]()
+        {
+            const float e = Error();
+            if (e <= error)
+            {
+                return true;
+            }
+            return e == 0;
+        };
+        while (!done())
+        {
+            Step();
+        }
+        result.emplace(Error(), m_Queue.size());
+    }
+
+    return result;
+}
+
 void Triangulator::Run()
 {
     //Snapshot();

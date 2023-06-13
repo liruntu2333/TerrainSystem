@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <vector>
 #include <glm/glm.hpp>
@@ -48,6 +49,7 @@ public:
     std::vector<Mesh> RunLod(ErrorHeap errors, float zScale);
     std::vector<PackedMesh> RunLod(TriangleCountHeap triangleMax);
     std::vector<PackedMesh> RunLod(ErrorHeap errors);
+    std::map<float, int> AnalyzeLod();
 
     void Run();
 

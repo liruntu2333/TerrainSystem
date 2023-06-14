@@ -1,21 +1,29 @@
 #include "ShaderUtil.hlsli"
 
+cbuffer ObjectConstants : register(b1)
+{
+uint2 g_PatchXy;
+uint g_PatchColor;
+int g_Pad1[1];
+}
+
 SamplerState g_PointClamp : register(s0);
 Texture2D<float> g_Height : register(t0);
 
-VertexOut main(VertexIn i)
+void main(
+    in float2 positionL : SV_Position,
+    out float4 positionH : SV_Position,
+    out float2 texCoord : TEXCOORD)
 {
-    VertexOut o;
-
     float2 texSz;
     g_Height.GetDimensions(texSz.x, texSz.y);
     texSz = 1.0f / texSz;
-    const uint2 xy = (g_PatchXy + i.PositionL) * PATCH_SCALE;
+    const uint2 xy = (g_PatchXy + positionL) * PATCH_SCALE;
     const float2 uv = ((float2)xy + 0.5f) * texSz;
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
     const int2 localXy = g_PatchXy - g_CameraXy;
-    float3 posLow = float3((i.PositionL.x + localXy.x), h, (i.PositionL.y + localXy.y));
-	posLow *= float3(PATCH_SCALE, HEIGHTMAP_SCALE, PATCH_SCALE);
+    float3 positionW = float3((positionL.x + localXy.x), h, (positionL.y + localXy.y));
+    positionW *= float3(PATCH_SCALE, HEIGHTMAP_SCALE, PATCH_SCALE);
 
     // float z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(-1, 0) * texSz, 0);
     // float z2 = g_Height.SampleLevel(g_PointClamp, uv + float2(+1, 0) * texSz, 0);
@@ -26,8 +34,6 @@ VertexOut main(VertexIn i)
     // float3 normal = float3(-0.5f * HEIGHTMAP_SCALE * zx, 1.0f, -0.5f * HEIGHTMAP_SCALE * zy);
     // normal = normalize(normal);
 
-    o.PositionH = mul(float4(posLow, 1.0f), g_ViewProjection);
-    o.TexCoord = uv;
-
-    return o;
+	positionH = mul(float4(positionW, 1.0f), g_ViewProjectionLocal);
+	texCoord = uv;
 }

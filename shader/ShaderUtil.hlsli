@@ -8,30 +8,13 @@ static const float HEIGHTMAP_SCALE = 2000.0f;
 
 cbuffer PassConstants : register(b0)
 {
+    float4x4 g_ViewProjectionLocal;
     float4x4 g_ViewProjection;
 	float3 g_SunDir;
     float g_SunIntensity;
 	int2 g_CameraXy;
 	int g_Pad0[2];
 }
-
-cbuffer ObjectConstants : register(b1)
-{
-	uint2 g_PatchXy;
-	uint g_PatchColor;
-    int g_Pad1[1];
-}
-
-struct VertexIn
-{
-    float2 PositionL : SV_Position;
-};
-
-struct VertexOut
-{
-    float4 PositionH : SV_Position;
-    float2 TexCoord : TEXCOORD;
-};
 
 float4 LoadColor(uint col)
 {

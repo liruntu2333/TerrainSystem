@@ -4,7 +4,7 @@
 #include <string>
 #include <directxtk/BufferHelpers.h>
 #include "D3DHelper.h"
-#include "TerrainVertex.h"
+#include "MeshVertex.h"
 #include <DirectXColors.h>
 
 #include "../HeightMapSplitter/ThreadPool.h"
@@ -49,7 +49,7 @@ Patch::RenderResource Patch::GetResource(const std::filesystem::path& path, int 
 std::shared_ptr<Patch::LodResource> Patch::LoadResource(
     const std::filesystem::path& path, int lod, ID3D11Device* device) const
 {
-    const auto vtx = LoadBinary<TerrainVertex>(path.string() + "/" +
+    const auto vtx = LoadBinary<MeshVertex>(path.string() + "/" +
         std::to_string(m_X) + "_" + std::to_string(m_Y) + "/lod" + std::to_string(lod) + ".vtx");
     const auto idx = LoadBinary<std::byte>(path.string() + "/" +
         std::to_string(m_X) + "_" + std::to_string(m_Y) + "/lod" + std::to_string(lod) + ".idx");

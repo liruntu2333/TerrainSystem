@@ -1,18 +1,18 @@
 #define NOMINMAX
 
-#include "TerrainRenderer.h"
+#include "TINRenderer.h"
 #include <d3dcompiler.h>
 #include "D3DHelper.h"
 
 using namespace DirectX;
+using Vertex = MeshVertex;
 
-TerrainRenderer::TerrainRenderer(
+TINRenderer::TINRenderer(
     ID3D11Device* device,
-    const std::shared_ptr<PassConstants>& passConst) :
-    Renderer(device), m_Cb0(device), m_Cb1(device), m_PassConst(passConst),
-    m_ObjConst(std::make_unique<ObjectConstants>()) {}
+    const std::shared_ptr<ConstantBuffer<PassConstants>>& passConst) :
+    Renderer(device), m_Cb1(device), m_Cb0(passConst) {}
 
-void TerrainRenderer::Initialize(ID3D11DeviceContext* context)
+void TINRenderer::Initialize(ID3D11DeviceContext* context)
 {
     Microsoft::WRL::ComPtr<ID3DBlob> blob;
     ThrowIfFailed(D3DReadFileToBlob(L"./shader/MeshVS.cso", &blob));
@@ -53,16 +53,14 @@ void TerrainRenderer::Initialize(ID3D11DeviceContext* context)
         );
 }
 
-void TerrainRenderer::Render(
+void TINRenderer::Render(
     ID3D11DeviceContext* context, const TerrainSystem::RenderResource& r, bool wireFrame)
 {
-    m_Cb0.SetData(context, *m_PassConst);
-
     constexpr UINT stride = sizeof(Vertex);
     constexpr UINT offset = 0;
     context->IASetInputLayout(m_InputLayout.Get());
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    ID3D11Buffer* cbs[] = { m_Cb0.GetBuffer(), m_Cb1.GetBuffer() };
+    ID3D11Buffer* cbs[] = { m_Cb0->GetBuffer(), m_Cb1.GetBuffer() };
     context->VSSetConstantBuffers(0, 2, &cbs[0]);
     const auto pt = s_CommonStates->PointClamp();
     context->VSSetSamplers(0, 1, &pt);
@@ -89,13 +87,13 @@ void TerrainRenderer::Render(
 
     for (const auto& patch : r.Patches)
     {
-        m_ObjConst->Color = patch.Color;
-        m_ObjConst->PatchXy = patch.PatchXy;
-        m_Cb1.SetData(context, *m_ObjConst);
+        ObjectConstants object;
+        object.Color = patch.Color;
+        object.PatchXy = patch.PatchXy;
+        m_Cb1.SetData(context, object);
 
         context->IASetVertexBuffers(0, 1, &patch.Vb, &stride, &offset);
         context->IASetIndexBuffer(patch.Ib, patch.Idx16Bit ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT, 0);
         context->DrawIndexed(patch.IdxCnt, 0, 0);
     }
 }
-

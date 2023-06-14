@@ -110,6 +110,119 @@ void SaveErrorStatics(const std::map<float, int>& m)
     std::cout << "error.json generated" << std::endl;
 }
 
+template <typename T>
+void MergeMesh(T& mesh, const T& other)
+{
+    auto& [vtx, idx] = mesh;
+    const auto& [vtx2, idx2] = other;
+    const auto offset = vtx.size();
+    vtx.insert(vtx.end(), vtx2.begin(), vtx2.end());
+    std::vector<typename decltype(idx)::value_type> modifiedIndices(idx2.size());
+    std::transform(idx2.begin(), idx2.end(), modifiedIndices.begin(),
+        [offset](const auto index) { return index + offset; });
+    idx.insert(idx.end(), modifiedIndices.begin(), modifiedIndices.end());
+}
+
+template <typename T, typename... Ts>
+void MergeMesh(T& mesh, const T& other, const Ts&... others)
+{
+    MergeMesh(mesh, other);
+    MergeMesh(mesh, others...);
+}
+
+void GenerateClipmapFootPrints(const std::filesystem::path& path, const int n = 255)
+{
+    using Mesh = std::pair<std::vector<Triangulator::PackedPoint>, std::vector<unsigned>>;
+
+    //Because the outer perimeter of each level must lie on the grid of the next-coarser level,
+    //the grid size n must be odd. Hardware may be optimized for texture sizes that are powers of 2,
+    //so we choose n = 2^k - 1, leaving 1 row and 1 column of the textures unused.
+    if (n > std::numeric_limits<uint8_t>::max() || (n & (n + 1)) != 0)
+        throw std::runtime_error("too large grid size");
+
+    const int m = (n + 1) / 4;
+    auto generateGrid = [](const int x, const int y, const int xOffset, const int yOffset)
+    {
+        std::vector<Triangulator::PackedPoint> vtx;
+        vtx.reserve(x * y);
+        for (int j = 0; j < y; ++j)
+        {
+            for (int i = 0; i < x; ++i)
+            {
+                vtx.emplace_back(i + xOffset, j + yOffset);
+            }
+        }
+
+        std::vector<uint32_t> idx;
+        idx.reserve((x - 1) * (y - 1) * 6);
+        for (int j = 0; j < y - 1; ++j)
+        {
+            for (int i = 0; i < x - 1; ++i)
+            {
+                const auto a = i + j * x;
+                const auto b = a + x;
+                const auto c = a + 1;
+                const auto d = b + 1;
+                idx.emplace_back(a);
+                idx.emplace_back(b);
+                idx.emplace_back(c);
+                idx.emplace_back(c);
+                idx.emplace_back(b);
+                idx.emplace_back(d);
+            }
+        }
+
+        return std::make_pair(std::move(vtx), std::move(idx));
+    };
+
+    Mesh center = generateGrid((n - 1) / 2 + 1, (n - 1) / 2 + 1, 0, 0);
+    OptimizeMeshCache(center.first, center.second);
+    SaveBin(path / "center.vtx", center.first);
+    SaveBin(path / "center.idx", std::vector<uint16_t>(center.second.begin(), center.second.end()));
+
+    Mesh block = generateGrid(m, m, 0, 0);
+    OptimizeMeshCache(block.first, block.second);
+    SaveBin(path / "block.vtx", block.first);
+    SaveBin(path / "block.idx", std::vector<uint16_t>(block.second.begin(), block.second.end()));
+
+    Mesh ring;
+    MergeMesh(ring,
+        generateGrid(3, m, 2 * (m - 1), 0),
+        generateGrid(m, 3, 3 * (m - 1) + 2, 2 * (m - 1)),
+        generateGrid(3, m, 2 * (m - 1), 3 * (m - 1) + 2),
+        generateGrid(m, 3, 0, 2 * (m - 1)));
+    OptimizeMeshCache(ring.first, ring.second);
+    SaveBin(path / "ring.vtx", ring.first);
+    SaveBin(path / "ring.idx", std::vector<uint16_t>(ring.second.begin(), ring.second.end()));
+
+    const auto top = generateGrid(2 * m + 1, 2, m - 1, m - 1);
+    const auto rht = generateGrid(2, 2 * m + 1, 3 * (m - 1) + 1, m - 1);
+    const auto btm = generateGrid(2 * m + 1, 2, m - 1, 3 * (m - 1) + 1);
+    const auto lft = generateGrid(2, 2 * m + 1, m - 1, m - 1);
+
+    auto saveTrim = [](const std::filesystem::path& trimPath, const Mesh& perimeter0, const Mesh& perimeter1)
+    {
+        Mesh trim;
+        MergeMesh(trim, perimeter0, perimeter1);
+        OptimizeMeshCache(trim.first, trim.second);
+        SaveBin(trimPath.u8string() + ".vtx", trim.first);
+        SaveBin(trimPath.u8string() + ".idx", std::vector<uint16_t>(trim.second.begin(), trim.second.end()));
+    };
+
+    saveTrim(path.u8string() + "/lt",
+        generateGrid(2, 2 * m + 1, m - 1, m - 1),
+        generateGrid(2 * m, 2, m, m - 1));
+    saveTrim(path.u8string() + "/rt",
+        generateGrid(2 * m + 1, 2, m - 1, m - 1),
+        generateGrid(2, 2 * m, 3 * (m - 1) + 1, m));
+    saveTrim(path.u8string() + "/lb",
+        generateGrid(2 * m + 1, 2, m - 1, 3 * (m - 1) + 1),
+        generateGrid(2, 2 * m, m - 1, m - 1));
+    saveTrim(path.u8string() + "/rb",
+        generateGrid(2, 2 * m + 1, 3 * (m - 1) + 1, m - 1),
+        generateGrid(2 * m, 2, m - 1, 3 * (m - 1) + 1));
+}
+
 // Main code
 int main(int argc, char** argv)
 {
@@ -118,6 +231,13 @@ int main(int argc, char** argv)
     if (argc < 2) return 1;
     std::string inFile = argv[1];
     const std::wstring parent = std::filesystem::path(inFile).parent_path().wstring();
+
+    const auto clipmapPath = parent + L"/clipmap";
+    std::filesystem::create_directories(clipmapPath);
+    GenerateClipmapFootPrints(clipmapPath);
+
+    return 0;
+
     // load heightmap
     const auto hm = std::make_shared<Heightmap>(inFile);
 

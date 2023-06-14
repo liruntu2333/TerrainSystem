@@ -7,7 +7,8 @@
 #include <chrono>
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
-#include "TerrainRenderer.h"
+#include "TINRenderer.h"
+#include "ClipMapRenderer.h"
 #include "Camera.h"
 
 #include "Texture2D.h"
@@ -28,8 +29,10 @@ ThreadPool g_ThreadPool(std::thread::hardware_concurrency());
 namespace
 {
     std::unique_ptr<DirectX::Texture2D> g_depthStencil = nullptr;
-    std::unique_ptr<TerrainRenderer> g_MeshRenderer = nullptr;
+    std::unique_ptr<TINRenderer> g_MeshRenderer = nullptr;
+    std::unique_ptr<ClipMapRenderer> g_GridRenderer = nullptr;
     std::shared_ptr<PassConstants> g_Constants = nullptr;
+    std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera = nullptr;
     std::unique_ptr<TerrainSystem> g_System = nullptr;
     std::unique_ptr<DirectX::GeometricPrimitive> g_Box = nullptr;
@@ -135,7 +138,8 @@ int main(int, char**)
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
         sunDir.Normalize();
-        g_Constants->ViewProjection = g_Camera->GetViewProjectionLocal().Transpose();
+        g_Constants->ViewProjectionLocal = g_Camera->GetViewProjectionLocal().Transpose();
+        g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
         g_Constants->LightDir = sunDir;
         g_Constants->LightIntensity = sunIntensity;
         g_Constants->CameraXy = camXy;
@@ -158,26 +162,29 @@ int main(int, char**)
         const float clear_color_with_alpha[4] = {
             clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w
         };
+
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, g_depthStencil->GetDsv());
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-
         g_Camera->SetViewPort(g_pd3dDeviceContext);
+        g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
-        g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
-        if (wireFramed)
-            g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
+         g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
+         if (wireFramed)
+             g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
+        
+         if (drawBb)
+             for (const auto& bb : bounding)
+                 g_Box->Draw(
+                     Matrix::CreateScale(bb.Extents * 2) *
+                     Matrix::CreateTranslation(bb.Center),
+                     g_Camera->GetViewLocal(),
+                     g_Camera->GetProjectionLocal(),
+                     DirectX::Colors::White,
+                     nullptr,
+                     true);
 
-        if (drawBb)
-            for (const auto& bb : bounding)
-                g_Box->Draw(
-                    Matrix::CreateScale(bb.Extents * 2) *
-                    Matrix::CreateTranslation(bb.Center),
-                    g_Camera->GetViewMatrixLocal(),
-                    g_Camera->GetProjectionMatrixLocal(),
-                    DirectX::Colors::White,
-                    nullptr,
-                    true);
+        g_GridRenderer->Render(g_pd3dDeviceContext);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -284,8 +291,11 @@ void CleanupRenderTarget()
 void CreateSystem()
 {
     g_Constants = std::make_unique<PassConstants>();
-    g_MeshRenderer = std::make_unique<TerrainRenderer>(g_pd3dDevice, g_Constants);
+    g_Cb0 = std::make_unique<DirectX::ConstantBuffer<PassConstants>>(g_pd3dDevice);
+    g_MeshRenderer = std::make_unique<TINRenderer>(g_pd3dDevice, g_Cb0);
     g_MeshRenderer->Initialize(g_pd3dDeviceContext);
+    g_GridRenderer = std::make_unique<ClipMapRenderer>(g_pd3dDevice, g_Cb0);
+    g_GridRenderer->Initialize(g_pd3dDeviceContext, "./asset/clipmap");
     g_Camera = std::make_unique<Camera>();
     g_System = std::make_unique<TerrainSystem>("asset", g_pd3dDevice);
     g_Box = DirectX::GeometricPrimitive::CreateCube(g_pd3dDeviceContext);

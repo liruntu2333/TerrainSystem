@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)bin</OutDir>
+    <OutDir>$(SolutionDir)bin\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\</OutDir>
@@ -149,33 +149,47 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="ClipMapRenderer.cpp" />
     <ClCompile Include="imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui_impl_win32.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="TerrainRenderer.cpp" />
+    <ClCompile Include="TINRenderer.cpp" />
     <ClCompile Include="Patch.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="TerrainSystem.cpp" />
-    <ClCompile Include="TerrainVertex.cpp" />
+    <ClCompile Include="MeshVertex.cpp" />
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\HeightMapSplitter\ThreadPool.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="ClipMapRenderer.h" />
     <ClInclude Include="CullingSoa.h" />
     <ClInclude Include="D3DHelper.h" />
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />
-    <ClInclude Include="TerrainRenderer.h" />
+    <ClInclude Include="TINRenderer.h" />
     <ClInclude Include="Patch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="StructuredBuffer.h" />
     <ClInclude Include="TerrainSystem.h" />
-    <ClInclude Include="TerrainVertex.h" />
+    <ClInclude Include="MeshVertex.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\shader\GridPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="..\shader\GridVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="..\shader\MeshPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>

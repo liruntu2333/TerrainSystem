@@ -1,11 +1,14 @@
 #include "ShaderUtil.hlsli"
 
-SamplerState g_AnistropyClamp : register(s0);
-Texture2D g_Normal : register(t0);
-
-float4 main(VertexOut i) : SV_TARGET
+cbuffer ObjectConstants : register(b1)
 {
-	//const float3 normal = normalize(g_Normal.SampleLevel(g_AnistropyClamp, i.TexCoord, 0));
-	float3 col = LoadColor(g_PatchColor).rgb;
-	return float4(col, 1.0f);
+uint2 g_PatchXy;
+uint g_PatchColor;
+int g_Pad1[1];
+}
+
+void main(out float4 color : SV_TARGET)
+{
+    float3 col = LoadColor(g_PatchColor).rgb;
+    color = float4(col, 1.0f);
 }

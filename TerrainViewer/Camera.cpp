@@ -6,27 +6,27 @@
 using namespace DirectX;
 using namespace SimpleMath;
 
-Matrix Camera::GetViewProjectionMatrix() const
+Matrix Camera::GetViewProjection() const
 {
-    return GetViewMatrix() * GetProjectionMatrix();
+    return GetView() * GetProjection();
 }
 
-Matrix Camera::GetViewMatrix() const
+Matrix Camera::GetView() const
 {
     return XMMatrixLookToLH(m_Position, m_Forward, Vector3::Up);
 }
 
-Matrix Camera::GetViewMatrixLocal() const
+Matrix Camera::GetViewLocal() const
 {
     return XMMatrixLookToLH(m_LocalPosition, m_Forward, Vector3::Up);
 }
 
-Matrix Camera::GetProjectionMatrix() const
+Matrix Camera::GetProjection() const
 {
     return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
 }
 
-Matrix Camera::GetProjectionMatrixLocal() const
+Matrix Camera::GetProjectionLocal() const
 {
     return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
 }

@@ -3,7 +3,6 @@
 #include <directxtk/SimpleMath.h>
 #include <d3d11.h>
 #include "imgui.h"
-#include "Patch.h"
 
 class Camera
 {
@@ -23,7 +22,7 @@ public:
     void Update(const ImGuiIO& io, float spd);
 
 private:
-    DirectX::SimpleMath::Vector3 m_Position { 0, 10, 0 };
+    DirectX::SimpleMath::Vector3 m_Position { 0, 2000, 0 };
     DirectX::SimpleMath::Vector3 m_Rotation { 0.0f, 0, 0.0f }; // row pitch yaw
     DirectX::SimpleMath::Vector3 m_Forward;
     DirectX::SimpleMath::Vector3 m_Right;
@@ -31,9 +30,9 @@ private:
     float m_Fov = DirectX::XM_PIDIV4;
     float m_AspectRatio = 0;
     float m_NearPlane = 0.01f;
-    float m_FarPlane = 20000.0f;
+    float m_FarPlane = 100000.0f;
 
     int m_PatchX = 0;
     int m_PatchY = 0;
-    DirectX::SimpleMath::Vector3 m_LocalPosition { 0, 10, 0 };
+    DirectX::SimpleMath::Vector3 m_LocalPosition { 0, 2000, 0 };
 };

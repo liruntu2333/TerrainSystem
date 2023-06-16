@@ -28,6 +28,16 @@ struct GridVertex
 
     GridVertex(const DirectX::SimpleMath::Vector2& Position)
         : Position(Position) { }
+};
 
-    GridVertex();
+struct GridInstance
+{
+    DirectX::SimpleMath::Vector2 GridScale;
+    DirectX::SimpleMath::Vector2 GridOffset;
+    DirectX::SimpleMath::Vector2 TexelScale;
+    DirectX::SimpleMath::Vector2 TextureOffset;
+    DirectX::SimpleMath::Vector4 Color;
+
+    static constexpr unsigned int InputElementCount = 5;
+    static const D3D11_INPUT_ELEMENT_DESC InputElements[InputElementCount];
 };

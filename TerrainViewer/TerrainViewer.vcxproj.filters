@@ -48,7 +48,10 @@
     <ClCompile Include="TerrainSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ClipMapRenderer.cpp">
+    <ClCompile Include="ClipmapRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ClipmapLevel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -95,7 +98,10 @@
     <ClInclude Include="..\HeightMapSplitter\ThreadPool.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ClipMapRenderer.h">
+    <ClInclude Include="ClipmapRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ClipmapLevel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

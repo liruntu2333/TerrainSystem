@@ -1,6 +1,8 @@
 #pragma once
 
 #include <map>
+
+#include "ClipmapLevel.h"
 #include "Patch.h"
 
 #include "Texture2D.h"
@@ -9,22 +11,52 @@
 class TerrainSystem
 {
 public:
-    struct RenderResource
+    struct PatchRenderResource
     {
         ID3D11ShaderResourceView* Height {};
         ID3D11ShaderResourceView* Normal {};
         ID3D11ShaderResourceView* Albedo {};
         std::vector<Patch::RenderResource> Patches {};
 
-        RenderResource() = default;
+        PatchRenderResource() = default;
+    };
+
+    struct ClipmapRenderResource
+    {
+        ID3D11ShaderResourceView* Height {};
+        ID3D11ShaderResourceView* Normal {};
+        ID3D11ShaderResourceView* Albedo {};
+
+        ID3D11Buffer* BlockVb = nullptr;
+        ID3D11Buffer* BlockIb = nullptr;
+        ID3D11Buffer* RingVb = nullptr;
+        ID3D11Buffer* RingIb = nullptr;
+        ID3D11Buffer* TrimVb[4] { nullptr };
+        ID3D11Buffer* TrimIb[4] = { nullptr };
+
+        int BlockIdxCnt = 0;
+        int RingIdxCnt = 0;
+        int TrimIdxCnt = 0;
+
+        std::vector<GridInstance> Grids {};
+        int BlockInstanceStart = 0;
+        int RingInstanceStart = 0;
+        int TrimInstanceStart[4] {};
+
+        ClipmapRenderResource() = default;
     };
 
     TerrainSystem(std::filesystem::path path, ID3D11Device* device);
     ~TerrainSystem() = default;
 
-    [[nodiscard]] RenderResource GetPatchResources(
+    [[nodiscard]] PatchRenderResource GetPatchResources(
         const DirectX::XMINT2& camXyForCull,
-        const DirectX::BoundingFrustum& frustumLocal, std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
+        const DirectX::BoundingFrustum& frustumLocal, std::vector<DirectX::BoundingBox>& bbs,
+        ID3D11Device* device) const;
+
+    [[nodiscard]] ClipmapRenderResource GetClipmapResources();
+
+    static constexpr int LevelCount = 6;
 
 protected:
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
@@ -35,4 +67,6 @@ protected:
     std::unique_ptr<DirectX::Texture2D> m_Albedo {};
 
     const std::filesystem::path m_Path;
+
+    std::array<ClipmapLevel, LevelCount> m_Levels;
 };

@@ -54,7 +54,7 @@ void TINRenderer::Initialize(ID3D11DeviceContext* context)
 }
 
 void TINRenderer::Render(
-    ID3D11DeviceContext* context, const TerrainSystem::RenderResource& r, bool wireFrame)
+    ID3D11DeviceContext* context, const TerrainSystem::PatchRenderResource& r, bool wireFrame)
 {
     constexpr UINT stride = sizeof(Vertex);
     constexpr UINT offset = 0;

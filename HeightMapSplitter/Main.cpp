@@ -175,11 +175,6 @@ void GenerateClipmapFootPrints(const std::filesystem::path& path, const int n = 
         return std::make_pair(std::move(vtx), std::move(idx));
     };
 
-    Mesh center = generateGrid((n - 1) / 2 + 1, (n - 1) / 2 + 1, 0, 0);
-    OptimizeMeshCache(center.first, center.second);
-    SaveBin(path / "center.vtx", center.first);
-    SaveBin(path / "center.idx", std::vector<uint16_t>(center.second.begin(), center.second.end()));
-
     Mesh block = generateGrid(m, m, 0, 0);
     OptimizeMeshCache(block.first, block.second);
     SaveBin(path / "block.vtx", block.first);
@@ -192,8 +187,8 @@ void GenerateClipmapFootPrints(const std::filesystem::path& path, const int n = 
         generateGrid(3, m, 2 * (m - 1), 3 * (m - 1) + 2),
         generateGrid(m, 3, 0, 2 * (m - 1)));
     OptimizeMeshCache(ring.first, ring.second);
-    SaveBin(path / "ring.vtx", ring.first);
-    SaveBin(path / "ring.idx", std::vector<uint16_t>(ring.second.begin(), ring.second.end()));
+    SaveBin(path / "ring_fix_up.vtx", ring.first);
+    SaveBin(path / "ring_fix_up.idx", std::vector<uint16_t>(ring.second.begin(), ring.second.end()));
 
     const auto top = generateGrid(2 * m + 1, 2, m - 1, m - 1);
     const auto rht = generateGrid(2, 2 * m + 1, 3 * (m - 1) + 1, m - 1);
@@ -209,16 +204,16 @@ void GenerateClipmapFootPrints(const std::filesystem::path& path, const int n = 
         SaveBin(trimPath.u8string() + ".idx", std::vector<uint16_t>(trim.second.begin(), trim.second.end()));
     };
 
-    saveTrim(path.u8string() + "/lt",
+    saveTrim(path / "trim_lt",
         generateGrid(2, 2 * m + 1, m - 1, m - 1),
         generateGrid(2 * m, 2, m, m - 1));
-    saveTrim(path.u8string() + "/rt",
+    saveTrim(path / "trim_rt",
         generateGrid(2 * m + 1, 2, m - 1, m - 1),
         generateGrid(2, 2 * m, 3 * (m - 1) + 1, m));
-    saveTrim(path.u8string() + "/lb",
+    saveTrim(path / "trim_lb",
         generateGrid(2 * m + 1, 2, m - 1, 3 * (m - 1) + 1),
         generateGrid(2, 2 * m, m - 1, m - 1));
-    saveTrim(path.u8string() + "/rb",
+    saveTrim(path / "trim_rb",
         generateGrid(2, 2 * m + 1, 3 * (m - 1) + 1, m - 1),
         generateGrid(2 * m, 2, m - 1, 3 * (m - 1) + 1));
 }

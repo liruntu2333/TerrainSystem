@@ -1,12 +1,8 @@
-#include "ShaderUtil.hlsli"
-
-cbuffer ObjectConstants : register(b1)
+void main(
+    in float4 positionL : SV_POSITION,
+    in float4 color : COLOR0,
+    out float4 colorOut : SV_TARGET
+    )
 {
-float4 g_ScaleFactor;
-float4 g_Color;
-}
-
-float4 main(in float4 positionL : SV_POSITION) : SV_TARGET
-{
-    return g_Color;
+    colorOut = color;
 }

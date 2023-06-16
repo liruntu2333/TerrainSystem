@@ -8,7 +8,7 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include "TINRenderer.h"
-#include "ClipMapRenderer.h"
+#include "ClipmapRenderer.h"
 #include "Camera.h"
 
 #include "Texture2D.h"
@@ -30,7 +30,7 @@ namespace
 {
     std::unique_ptr<DirectX::Texture2D> g_depthStencil = nullptr;
     std::unique_ptr<TINRenderer> g_MeshRenderer = nullptr;
-    std::unique_ptr<ClipMapRenderer> g_GridRenderer = nullptr;
+    std::unique_ptr<ClipmapRenderer> g_GridRenderer = nullptr;
     std::shared_ptr<PassConstants> g_Constants = nullptr;
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera = nullptr;
@@ -132,8 +132,9 @@ int main(int, char**)
             camCullingXy = camXy;
         }
         std::vector<DirectX::BoundingBox> bounding;
-        const auto& resources = g_System->GetPatchResources(
+        const auto& pr = g_System->GetPatchResources(
             camCullingXy, frustumLocal, bounding, g_pd3dDevice);
+        const auto& cr = g_System->GetClipmapResources();
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -146,7 +147,7 @@ int main(int, char**)
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::Text("Visible Patch : %d", resources.Patches.size());
+        ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
@@ -169,22 +170,22 @@ int main(int, char**)
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
-         g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
-         if (wireFramed)
-             g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
-        
-         if (drawBb)
-             for (const auto& bb : bounding)
-                 g_Box->Draw(
-                     Matrix::CreateScale(bb.Extents * 2) *
-                     Matrix::CreateTranslation(bb.Center),
-                     g_Camera->GetViewLocal(),
-                     g_Camera->GetProjectionLocal(),
-                     DirectX::Colors::White,
-                     nullptr,
-                     true);
+         // g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
+         // if (wireFramed)
+         //     g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
+         //
+         // if (drawBb)
+         //     for (const auto& bb : bounding)
+         //         g_Box->Draw(
+         //             Matrix::CreateScale(bb.Extents * 2) *
+         //             Matrix::CreateTranslation(bb.Center),
+         //             g_Camera->GetViewLocal(),
+         //             g_Camera->GetProjectionLocal(),
+         //             DirectX::Colors::White,
+         //             nullptr,
+         //             true);
 
-        g_GridRenderer->Render(g_pd3dDeviceContext);
+        g_GridRenderer->Render(g_pd3dDeviceContext, cr);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -270,7 +271,7 @@ void CreateRenderTarget()
 
     D3D11_TEXTURE2D_DESC texDesc;
     pBackBuffer->GetDesc(&texDesc);
-    CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D24_UNORM_S8_UINT,
+    CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D32_FLOAT,
         texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL,
         D3D11_USAGE_DEFAULT);
     g_depthStencil = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, dsDesc);
@@ -294,8 +295,8 @@ void CreateSystem()
     g_Cb0 = std::make_unique<DirectX::ConstantBuffer<PassConstants>>(g_pd3dDevice);
     g_MeshRenderer = std::make_unique<TINRenderer>(g_pd3dDevice, g_Cb0);
     g_MeshRenderer->Initialize(g_pd3dDeviceContext);
-    g_GridRenderer = std::make_unique<ClipMapRenderer>(g_pd3dDevice, g_Cb0);
-    g_GridRenderer->Initialize(g_pd3dDeviceContext, "./asset/clipmap");
+    g_GridRenderer = std::make_unique<ClipmapRenderer>(g_pd3dDevice, g_Cb0);
+    g_GridRenderer->Initialize();
     g_Camera = std::make_unique<Camera>();
     g_System = std::make_unique<TerrainSystem>("asset", g_pd3dDevice);
     g_Box = DirectX::GeometricPrimitive::CreateCube(g_pd3dDeviceContext);

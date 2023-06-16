@@ -8,12 +8,12 @@ static const float HEIGHTMAP_SCALE = 2000.0f;
 
 cbuffer PassConstants : register(b0)
 {
-    float4x4 g_ViewProjectionLocal;
-    float4x4 g_ViewProjection;
-	float3 g_SunDir;
-    float g_SunIntensity;
-	int2 g_CameraXy;
-	int g_Pad0[2];
+float4x4 g_ViewProjectionLocal;
+float4x4 g_ViewProjection;
+float3 g_SunDir;
+float g_SunIntensity;
+int2 g_CameraXy;
+int g_Pad0[2];
 }
 
 float4 LoadColor(uint col)
@@ -71,15 +71,21 @@ float3 EvalSh(float3 _dir)
     return rgb;
 }
 
-float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion, const float
-             ambientIntensity)
+float3 Shade(
+    const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion, const float
+    ambientIntensity)
 {
-	return saturate(dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity);
+    return saturate(dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity);
 }
 
 float3 GammaCorrect(const float3 color)
 {
     return pow(color, 1.0f / 2.2f);
+}
+
+float Luminance(float3 color)
+{
+    return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
 }
 
 #endif

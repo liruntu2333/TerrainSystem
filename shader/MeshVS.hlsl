@@ -21,10 +21,11 @@ void main(
     const uint2 xy = (g_PatchXy + positionL) * PATCH_SCALE;
     const float2 uv = ((float2)xy + 0.5f) * texSz;
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
-    const int2 localXy = g_PatchXy - g_CameraXy;
-    float3 positionW = float3((positionL.x + localXy.x), h, (positionL.y + localXy.y));
+    const int2 xyL = g_PatchXy - g_CameraXy;
+    float3 positionW = float3((positionL.x + xyL.x), h, (positionL.y + xyL.y));
     positionW *= float3(PATCH_SCALE, HEIGHTMAP_SCALE, PATCH_SCALE);
 
+    // compute normal
     // float z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(-1, 0) * texSz, 0);
     // float z2 = g_Height.SampleLevel(g_PointClamp, uv + float2(+1, 0) * texSz, 0);
     // const float zx = z2 - z1;

@@ -21,7 +21,7 @@ public:
     TINRenderer& operator=(TINRenderer&&) = delete;
 
     void Initialize(ID3D11DeviceContext* context);
-    void Render(ID3D11DeviceContext* context, const TerrainSystem::RenderResource& r, bool wireFrame = false);
+    void Render(ID3D11DeviceContext* context, const TerrainSystem::PatchRenderResource& r, bool wireFrame = false);
 
 protected:
     struct ObjectConstants

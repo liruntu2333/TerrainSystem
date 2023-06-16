@@ -38,7 +38,7 @@ namespace DirectX
 		m_Capacity(elementCount), m_Desc(desc)
 	{
 		m_Desc.ByteWidth = m_Capacity * sizeof(T);
-		ThrowIfFailed(device->CreateBuffer(&desc, nullptr, &m_Buffer));
+		ThrowIfFailed(device->CreateBuffer(&m_Desc, nullptr, &m_Buffer));
 	}
 
 	template <typename T>

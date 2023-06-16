@@ -32,7 +32,8 @@ namespace
     };
 }
 
-TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
+TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path)),
+    m_Levels({ 0, 1, 2, 3, 4, 5 })
 {
     std::vector<std::future<std::shared_ptr<Patch>>> results;
     for (int y = 0; y < PATCH_NY; ++y)
@@ -49,22 +50,24 @@ TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) :
         m_Patches.emplace(id, std::move(p));
     }
 
-    m_Height = std::make_unique<Texture2D>(device, m_Path.string() + "/height.dds");
+    m_Height = std::make_unique<Texture2D>(device, m_Path / "height.dds");
     m_Height->CreateViews(device);
-    m_Normal = std::make_unique<Texture2D>(device, m_Path.string() + "/normal.dds");
+    m_Normal = std::make_unique<Texture2D>(device, m_Path / "normal.dds");
     m_Normal->CreateViews(device);
-    m_Albedo = std::make_unique<Texture2D>(device, m_Path.string() + "/albedo.dds");
+    m_Albedo = std::make_unique<Texture2D>(device, m_Path / "albedo.dds");
     m_Albedo->CreateViews(device);
 
-    std::ifstream boundsFile(m_Path.u8string() + "/bounds.json");
+    std::ifstream boundsFile(m_Path / "bounds.json");
     if (!boundsFile.is_open())
         throw std::runtime_error("Failed to open \"bounds.json\".");
     nlohmann::json j;
     boundsFile >> j;
     m_BoundTree = std::make_unique<BoundTree>(j);
+
+    ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
 }
 
-TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
+TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
     const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
     std::vector<BoundingBox>& bbs, ID3D11Device* device) const
 {
@@ -108,7 +111,7 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
 
     recursiveCull(m_BoundTree->m_Root.get());
 
-    RenderResource r;
+    PatchRenderResource r;
     r.Height = m_Height->GetSrv();
     r.Normal = m_Normal->GetSrv();
     r.Albedo = m_Albedo->GetSrv();
@@ -123,5 +126,67 @@ TerrainSystem::RenderResource TerrainSystem::GetPatchResources(
             r.Patches.emplace_back(rr);
         }
     }
-    return r;
+    return std::move(r);
+}
+
+TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
+{
+    ClipmapRenderResource r;
+    r.Height = m_Height->GetSrv();
+    r.Normal = m_Normal->GetSrv();
+    r.Albedo = m_Albedo->GetSrv();
+
+    r.BlockVb = ClipmapLevelBase::BlockVb.Get();
+    r.BlockIb = ClipmapLevelBase::BlockIb.Get();
+    r.BlockIdxCnt = ClipmapLevelBase::BlockIdxCnt;
+
+    r.RingVb = ClipmapLevelBase::RingFixUpVb.Get();
+    r.RingIb = ClipmapLevelBase::RingFixUpIb.Get();
+    r.RingIdxCnt = ClipmapLevelBase::RingIdxCnt;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        r.TrimVb[i] = ClipmapLevelBase::TrimVb[i].Get();
+        r.TrimIb[i] = ClipmapLevelBase::TrimIb[i].Get();
+    }
+    r.TrimIdxCnt = ClipmapLevelBase::TrimIdxCnt;
+
+    std::vector<GridInstance> blocks;
+    std::vector<GridInstance> rings;
+    std::vector<GridInstance> trims[4];
+
+    auto wldOfs = Vector2(-127 * static_cast<float>(1 << (LevelCount - 1)));
+    auto texOfs = Vector2(0.0f);
+    for (int i = LevelCount - 1; i >= 1; --i)
+    {
+        auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(wldOfs, texOfs);
+        for (const auto& b : block) blocks.emplace_back(b);
+        rings.emplace_back(ring);
+        trims[tid].emplace_back(trim);
+    }
+    {
+        auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(wldOfs, texOfs);
+        for (const auto& b : block)
+            blocks.emplace_back(b);
+        rings.emplace_back(ring);
+        trims[tid[0]].emplace_back(trim[0]);
+        trims[tid[1]].emplace_back(trim[1]);
+    }
+
+    std::vector<GridInstance> all;
+    all.reserve(blocks.size() + rings.size() + trims[0].size() + trims[1].size() + trims[2].size() + trims[3].size());
+    all.insert(all.end(), blocks.begin(), blocks.end());
+    all.insert(all.end(), rings.begin(), rings.end());
+    for (int i = 0; i < 4; ++i)
+        all.insert(all.end(), trims[i].begin(), trims[i].end());
+
+    r.BlockInstanceStart = 0;
+    r.RingInstanceStart = r.BlockInstanceStart + blocks.size();
+    r.TrimInstanceStart[0] = r.RingInstanceStart + rings.size();
+    r.TrimInstanceStart[1] = r.TrimInstanceStart[0] + trims[0].size();
+    r.TrimInstanceStart[2] = r.TrimInstanceStart[1] + trims[1].size();
+    r.TrimInstanceStart[3] = r.TrimInstanceStart[2] + trims[2].size();
+    r.Grids = all;
+
+    return std::move(r);
 }

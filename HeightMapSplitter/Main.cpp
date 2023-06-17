@@ -231,7 +231,7 @@ int main(int argc, char** argv)
     std::filesystem::create_directories(clipmapPath);
     GenerateClipmapFootPrints(clipmapPath);
 
-    return 0;
+    //return 0;
 
     // load heightmap
     const auto hm = std::make_shared<Heightmap>(inFile);

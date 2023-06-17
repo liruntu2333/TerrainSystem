@@ -7,7 +7,6 @@
 #include <wrl/client.h>
 
 constexpr float PATCH_SIZE = 255.0f;
-constexpr float PATCH_HEIGHT_RANGE = 2000.0f;
 
 class Patch
 {

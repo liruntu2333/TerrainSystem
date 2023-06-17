@@ -7,8 +7,8 @@
 
 #include "../HeightMapSplitter/ThreadPool.h"
 
-constexpr size_t PATCH_NY = 32;
-constexpr size_t PATCH_NX = 32;
+constexpr size_t PATCH_NY = 8;
+constexpr size_t PATCH_NX = 8;
 
 using namespace DirectX;
 using namespace SimpleMath;
@@ -33,7 +33,7 @@ namespace
 }
 
 TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path)),
-    m_Levels({ 0, 1, 2, 3, 4, 5 })
+    m_Levels({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 })
 {
     std::vector<std::future<std::shared_ptr<Patch>>> results;
     for (int y = 0; y < PATCH_NY; ++y)
@@ -68,8 +68,8 @@ TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) :
 }
 
 TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
-    const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
-    std::vector<BoundingBox>& bbs, ID3D11Device* device) const
+	const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
+	float yScale, std::vector<BoundingBox>& bbs, ID3D11Device* device) const
 {
     std::vector<int> visible;
     std::vector<int> lods;
@@ -80,11 +80,11 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
         const auto& [minH, maxH, h, w, x, y, id] = node->m_Bound;
         const auto extents = Vector3(
             w * 0.5f,
-            (maxH - minH) * PATCH_HEIGHT_RANGE * 0.5f,
+            (maxH - minH) * yScale * 0.5f,
             h * 0.5f);
         const auto center = Vector3(
             (x - camXyForCull.x) * PATCH_SIZE + extents.x,
-            (minH + maxH) * 0.5f * PATCH_HEIGHT_RANGE,
+            (minH + maxH) * 0.5f * yScale + 1000.0f,
             (y - camXyForCull.y) * PATCH_SIZE + extents.z);
         const BoundingBox bb(center, extents);
 
@@ -169,11 +169,11 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
         for (const auto& b : block)
             blocks.emplace_back(b);
         rings.emplace_back(ring);
-        trims[tid[0]].emplace_back(trim[0]);
-        trims[tid[1]].emplace_back(trim[1]);
+        for (int i = 0; i < 2; ++i)
+	        trims[tid[i]].emplace_back(trim[0]);
     }
 
-    std::vector<GridInstance> all;
+    auto& all = r.Grids;
     all.reserve(blocks.size() + rings.size() + trims[0].size() + trims[1].size() + trims[2].size() + trims[3].size());
     all.insert(all.end(), blocks.begin(), blocks.end());
     all.insert(all.end(), rings.begin(), rings.end());
@@ -186,7 +186,6 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
     r.TrimInstanceStart[1] = r.TrimInstanceStart[0] + trims[0].size();
     r.TrimInstanceStart[2] = r.TrimInstanceStart[1] + trims[1].size();
     r.TrimInstanceStart[3] = r.TrimInstanceStart[2] + trims[2].size();
-    r.Grids = all;
 
     return std::move(r);
 }

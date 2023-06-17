@@ -365,3 +365,4 @@ FodyWeavers.xsd
 /asset
 *.cso
 *.ini
+/shader/WireFramePS.cso

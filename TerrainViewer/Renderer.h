@@ -10,7 +10,8 @@ struct PassConstants
 	DirectX::SimpleMath::Vector3 LightDir;
 	float LightIntensity;
 	DirectX::XMINT2 CameraXy;
-	int Padding[2];
+	float HeightScale;
+	float pad;
 };
 
 class Renderer

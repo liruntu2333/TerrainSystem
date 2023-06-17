@@ -4,7 +4,6 @@
 static const uint PATCH_SCALE = 255;
 static const float LIGHT_INTENSITY = 0.6f;
 static const float AMBIENT_INTENSITY = 0.1f;
-static const float HEIGHTMAP_SCALE = 2000.0f;
 
 cbuffer PassConstants : register(b0)
 {
@@ -13,7 +12,8 @@ float4x4 g_ViewProjection;
 float3 g_SunDir;
 float g_SunIntensity;
 int2 g_CameraXy;
-int g_Pad0[2];
+float g_HeightMapScale;
+float pad;
 }
 
 float4 LoadColor(uint col)

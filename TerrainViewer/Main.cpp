@@ -104,6 +104,7 @@ int main(int, char**)
     bool drawBb = false;
     DirectX::BoundingFrustum frustumLocal;
     float spd = 300.0f;
+	float yScale = 200.0f;
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -132,8 +133,8 @@ int main(int, char**)
             camCullingXy = camXy;
         }
         std::vector<DirectX::BoundingBox> bounding;
-        const auto& pr = g_System->GetPatchResources(
-            camCullingXy, frustumLocal, bounding, g_pd3dDevice);
+        //const auto& pr = g_System->GetPatchResources(
+	       // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
         const auto& cr = g_System->GetClipmapResources();
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
@@ -144,18 +145,20 @@ int main(int, char**)
         g_Constants->LightDir = sunDir;
         g_Constants->LightIntensity = sunIntensity;
         g_Constants->CameraXy = camXy;
+    	g_Constants->HeightScale = yScale;
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::Text("Visible Patch : %d", pr.Patches.size());
-        ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
-        ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
-        ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
+        ImGui::DragFloat("Y Scale", &yScale, 1, 0.0f, 3000.0f);
+        //ImGui::Text("Visible Patch : %d", pr.Patches.size());
+        //ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
+        //ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
+        //ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
         ImGui::DragFloat("Camera Speed", &spd, 1.0f, 0.0f, 5000.0f);
-        ImGui::Checkbox("Wire Frame", &wireFramed);
-        ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-        ImGui::Checkbox("Draw Bounding Box", &drawBb);
-        if (freezeFrustum) drawBb = false;
+        //ImGui::Checkbox("Wire Frame", &wireFramed);
+        //ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
+        //ImGui::Checkbox("Draw Bounding Box", &drawBb);
+        //if (freezeFrustum) drawBb = false;
         ImGui::End();
 
         // Rendering
@@ -170,20 +173,20 @@ int main(int, char**)
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
-         // g_MeshRenderer->Render(g_pd3dDeviceContext, resources);
-         // if (wireFramed)
-         //     g_MeshRenderer->Render(g_pd3dDeviceContext, resources, wireFramed);
-         //
-         // if (drawBb)
-         //     for (const auto& bb : bounding)
-         //         g_Box->Draw(
-         //             Matrix::CreateScale(bb.Extents * 2) *
-         //             Matrix::CreateTranslation(bb.Center),
-         //             g_Camera->GetViewLocal(),
-         //             g_Camera->GetProjectionLocal(),
-         //             DirectX::Colors::White,
-         //             nullptr,
-         //             true);
+          //g_MeshRenderer->Render(g_pd3dDeviceContext, pr);
+          //if (wireFramed)
+          //    g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
+         
+          //if (drawBb)
+          //    for (const auto& bb : bounding)
+          //        g_Box->Draw(
+          //            Matrix::CreateScale(bb.Extents * 2) *
+          //            Matrix::CreateTranslation(bb.Center),
+          //            g_Camera->GetViewLocal(),
+          //            g_Camera->GetProjectionLocal(),
+          //            DirectX::Colors::White,
+          //            nullptr,
+          //            true);
 
         g_GridRenderer->Render(g_pd3dDeviceContext, cr);
 

@@ -72,14 +72,14 @@ void ClipmapRenderer::Render(ID3D11DeviceContext* context, const TerrainSystem::
 
     ID3D11Buffer* cbs[] = { m_Cb0->GetBuffer() };
     context->VSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
-    const auto pc = s_CommonStates->LinearWrap();
-    context->VSSetSamplers(0, 1, &pc);
+    const auto pw = s_CommonStates->PointWrap();
+    context->VSSetSamplers(0, 1, &pw);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
     context->RSSetState(s_CommonStates->Wireframe());  // CullCounterClockwise());
     context->PSSetShader(m_Ps.Get(), nullptr, 0);
     context->PSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
-    const auto lc = s_CommonStates->LinearClamp();
-    context->PSSetSamplers(0, 1, &lc);
+    const auto lw = s_CommonStates->LinearWrap();
+    context->PSSetSamplers(0, 1, &lw);
     context->OMSetBlendState(s_CommonStates->Opaque(), nullptr, 0xffffffff);
     context->OMSetDepthStencilState(s_CommonStates->DepthDefault(), 0);
 

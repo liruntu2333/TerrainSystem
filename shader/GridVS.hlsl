@@ -5,10 +5,8 @@ Texture2D<float> g_Height : register(t0);
 
 void main(
     in float2 positionL : SV_POSITION,
-    in float2 gridScale : TEXCOORD0,
-    in float2 gridOffset : TEXCOORD1,
-    in float2 texelScale : TEXCOORD2,
-    in float2 textureOffset : TEXCOORD3,
+    in float4 scaleFactor : TEXCOORD0,
+    in float4 texelFactor : TEXCOORD1,
     in float4 colorIn : COLOR0,
 
     out float4 positionH : SV_POSITION,
@@ -16,21 +14,18 @@ void main(
     )
 {
     // convert from grid xy to world xy coordinates
-    //  GridScale: grid spacing of current level
-    //  GridOffset: origin of current block within world
-    const float2 worldPos = positionL * gridScale + gridOffset;
+    //  scaleFactor.xy: grid spacing of current level
+    //  scaleFactor.zw: origin of current block within world
+	const float2 worldPos = positionL * scaleFactor.xy + scaleFactor.zw;
 
     // compute coordinates for vertex texture
-    //  TexelScale: 1/(w, h) of texture
-    //  TextureOffset: origin of block in texture 
-    const float2 uv = positionL * texelScale + textureOffset;
-    // const float2 uv = (worldPos + 0.5f) / 8192.0f + 0.5f;
+    //  texelFactor.xy: 1/(w, h) of texture
+    //  texelFactor.zw: origin of block in texture
+	const float2 uv = positionL * texelFactor.xy + texelFactor.zw;
 
-    const float mipFin = log2(gridScale.x);
-    const float mipCoarse = mipFin + 1.0f;
     //  hf is elevation value in current (fine) level
     //  hc is elevation value in coarser level
-	const float hf = g_Height.SampleLevel(g_PointWrap, worldPos / 8192.0f + 0.5f, 0) * HEIGHTMAP_SCALE;
+	const float hf = g_Height.SampleLevel(g_PointWrap, uv, 0) * g_HeightMapScale;
 
     // compute alpha (transition parameter), and blend elevation.
 

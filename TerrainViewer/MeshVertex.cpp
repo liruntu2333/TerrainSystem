@@ -31,7 +31,7 @@ const D3D11_INPUT_ELEMENT_DESC GridInstance::InputElements[InputElementCount] =
     {
         "TEXCOORD",
         0,
-        DXGI_FORMAT_R32G32_FLOAT,
+        DXGI_FORMAT_R32G32B32A32_FLOAT,
         1,
         0,
         D3D11_INPUT_PER_INSTANCE_DATA,
@@ -40,27 +40,9 @@ const D3D11_INPUT_ELEMENT_DESC GridInstance::InputElements[InputElementCount] =
     {
         "TEXCOORD",
         1,
-        DXGI_FORMAT_R32G32_FLOAT,
+        DXGI_FORMAT_R32G32B32A32_FLOAT,
         1,
-        8,
-        D3D11_INPUT_PER_INSTANCE_DATA,
-        1
-    },
-    {
-        "TEXCOORD",
-        2,
-        DXGI_FORMAT_R32G32_FLOAT,
-        2,
         16,
-        D3D11_INPUT_PER_INSTANCE_DATA,
-        1
-    },
-    {
-        "TEXCOORD",
-        3,
-        DXGI_FORMAT_R32G32_FLOAT,
-        3,
-        24,
         D3D11_INPUT_PER_INSTANCE_DATA,
         1
     },

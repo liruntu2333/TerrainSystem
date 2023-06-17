@@ -23,7 +23,8 @@ void main(
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
     const int2 xyL = g_PatchXy - g_CameraXy;
     float3 positionW = float3((positionL.x + xyL.x), h, (positionL.y + xyL.y));
-    positionW *= float3(PATCH_SCALE, HEIGHTMAP_SCALE, PATCH_SCALE);
+	positionW *= float3(PATCH_SCALE, g_HeightMapScale, PATCH_SCALE);
+	positionW.y += 1000.0f;
 
     // compute normal
     // float z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(-1, 0) * texSz, 0);
@@ -32,7 +33,7 @@ void main(
     // z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(0, -1) * texSz, 0);
     // z2 = g_Height.SampleLevel(g_PointClamp, uv + float2(0, +1) * texSz, 0);
     // const float zy = z2 - z1;
-    // float3 normal = float3(-0.5f * HEIGHTMAP_SCALE * zx, 1.0f, -0.5f * HEIGHTMAP_SCALE * zy);
+    // float3 normal = float3(-0.5f * g_HeightMapScale * zx, 1.0f, -0.5f * g_HeightMapScale * zy);
     // normal = normalize(normal);
 
 	positionH = mul(float4(positionW, 1.0f), g_ViewProjectionLocal);

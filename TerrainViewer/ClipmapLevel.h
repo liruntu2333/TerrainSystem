@@ -21,7 +21,7 @@ public:
         int TrimId;
     };
 
-    struct FullSquare
+    struct SolidSquare
     {
         GridInstance Blocks[16];
         GridInstance RingFixUp;
@@ -54,7 +54,7 @@ public:
     HollowRing GetHollowRing(
         DirectX::SimpleMath::Vector2& wldOfs,
         DirectX::SimpleMath::Vector2& texOfs) const;
-    FullSquare GetSolidSquare(
+    SolidSquare GetSolidSquare(
         DirectX::SimpleMath::Vector2& wldOfs,
         DirectX::SimpleMath::Vector2& texOfs) const;
 

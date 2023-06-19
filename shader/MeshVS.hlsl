@@ -2,7 +2,7 @@
 
 cbuffer ObjectConstants : register(b1)
 {
-uint2 g_PatchXy;
+int2 g_PatchXy;
 uint g_PatchColor;
 int g_Pad1[1];
 }
@@ -18,13 +18,16 @@ void main(
     float2 texSz;
     g_Height.GetDimensions(texSz.x, texSz.y);
     texSz = 1.0f / texSz;
-    const uint2 xy = (g_PatchXy + positionL) * PATCH_SCALE;
-    const float2 uv = ((float2)xy + 0.5f) * texSz;
+
+    const float2 uv = ((positionL + g_PatchXy) * PATCH_SCALE + 0.5f) * texSz;
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
-    const int2 xyL = g_PatchXy - g_CameraXy;
-    float3 positionW = float3((positionL.x + xyL.x), h, (positionL.y + xyL.y));
-	positionW *= float3(PATCH_SCALE, g_HeightMapScale, PATCH_SCALE);
-	positionW.y += 1000.0f;
+
+    float3 positionW = float3(
+        positionL.x + g_PatchXy.x - g_CameraXy.x,
+        h,
+        positionL.y + g_PatchXy.y - g_CameraXy.y);
+    positionW *= float3(PATCH_SCALE, g_HeightMapScale, PATCH_SCALE);
+    positionW.y += 1000.0f;
 
     // compute normal
     // float z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(-1, 0) * texSz, 0);
@@ -36,6 +39,6 @@ void main(
     // float3 normal = float3(-0.5f * g_HeightMapScale * zx, 1.0f, -0.5f * g_HeightMapScale * zy);
     // normal = normalize(normal);
 
-	positionH = mul(float4(positionW, 1.0f), g_ViewProjectionLocal);
-	texCoord = uv;
+    positionH = mul(float4(positionW, 1.0f), g_ViewProjectionLocal);
+    texCoord = uv;
 }

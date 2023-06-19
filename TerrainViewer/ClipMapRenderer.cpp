@@ -16,10 +16,11 @@ ClipmapRenderer::ClipmapRenderer(
         CD3D11_BUFFER_DESC(0, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE),
         TerrainSystem::LevelCount * 14 + 5) {}
 
-void ClipmapRenderer::Initialize()
+void ClipmapRenderer::Initialize(const std::filesystem::path& shaderDir)
 {
     Microsoft::WRL::ComPtr<ID3DBlob> blob;
-    ThrowIfFailed(D3DReadFileToBlob(L"./shader/GridVS.cso", &blob));
+    auto name = (shaderDir / "GridVS.cso").wstring();
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
 
     ThrowIfFailed(
         m_Device->CreateVertexShader(
@@ -45,7 +46,8 @@ void ClipmapRenderer::Initialize()
             &m_InputLayout)
         );
 
-    ThrowIfFailed(D3DReadFileToBlob(L"./shader/GridPS.cso", &blob));
+    name = shaderDir / "GridPS.cso";
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
     ThrowIfFailed(
         m_Device->CreatePixelShader(
             blob->GetBufferPointer(),
@@ -53,9 +55,20 @@ void ClipmapRenderer::Initialize()
             nullptr,
             &m_Ps)
         );
+
+    name = shaderDir / "GridWireFrame.cso";
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
+    ThrowIfFailed(
+        m_Device->CreatePixelShader(
+            blob->GetBufferPointer(),
+            blob->GetBufferSize(),
+            nullptr,
+            &m_WireFramePs)
+        );
 }
 
-void ClipmapRenderer::Render(ID3D11DeviceContext* context, const TerrainSystem::ClipmapRenderResource& rr)
+void ClipmapRenderer::Render(
+    ID3D11DeviceContext* context, const TerrainSystem::ClipmapRenderResource& rr, bool wireFrame)
 {
     m_InsBuff.SetData(context, rr.Grids.data(), rr.Grids.size());
 
@@ -72,11 +85,21 @@ void ClipmapRenderer::Render(ID3D11DeviceContext* context, const TerrainSystem::
 
     ID3D11Buffer* cbs[] = { m_Cb0->GetBuffer() };
     context->VSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
-    const auto pw = s_CommonStates->PointWrap();
+    const auto pw = s_CommonStates->LinearWrap();
     context->VSSetSamplers(0, 1, &pw);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
-    context->RSSetState(s_CommonStates->Wireframe());  // CullCounterClockwise());
-    context->PSSetShader(m_Ps.Get(), nullptr, 0);
+
+    if (wireFrame)
+    {
+        context->RSSetState(s_CommonStates->Wireframe());
+        context->PSSetShader(m_WireFramePs.Get(), nullptr, 0);
+    }
+    else
+    {
+        context->RSSetState(s_CommonStates->CullCounterClockwise());
+        context->PSSetShader(m_Ps.Get(), nullptr, 0);
+    }
+
     context->PSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
     const auto lw = s_CommonStates->LinearWrap();
     context->PSSetSamplers(0, 1, &lw);

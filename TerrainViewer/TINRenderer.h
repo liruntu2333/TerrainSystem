@@ -20,13 +20,13 @@ public:
     TINRenderer(TINRenderer&&) = delete;
     TINRenderer& operator=(TINRenderer&&) = delete;
 
-    void Initialize(ID3D11DeviceContext* context);
+    void Initialize(ID3D11DeviceContext* context, const std::filesystem::path& shaderDir);
     void Render(ID3D11DeviceContext* context, const TerrainSystem::PatchRenderResource& r, bool wireFrame = false);
 
 protected:
     struct ObjectConstants
     {
-        DirectX::XMUINT2 PatchXy;
+        DirectX::XMINT2 PatchXy;
         uint32_t Color;
         int Padding;
     };

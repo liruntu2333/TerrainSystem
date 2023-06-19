@@ -50,15 +50,18 @@ public:
     ~TerrainSystem() = default;
 
     [[nodiscard]] PatchRenderResource GetPatchResources(
-	    const DirectX::XMINT2& camXyForCull,
-	    const DirectX::BoundingFrustum& frustumLocal, float yScale,
-	    std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
+        const DirectX::XMINT2& camXyForCull,
+        const DirectX::BoundingFrustum& frustumLocal, float yScale,
+        std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources();
 
-    static constexpr int LevelCount = 10;
+    static constexpr int LevelCount = 5;
 
 protected:
+    void InitMeshPatches(ID3D11Device* device);
+    void InitClipmapLevels(ID3D11Device* device);
+
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;
 
@@ -68,5 +71,5 @@ protected:
 
     const std::filesystem::path m_Path;
 
-    std::array<ClipmapLevel, LevelCount> m_Levels;
+    std::vector<ClipmapLevel> m_Levels {};
 };

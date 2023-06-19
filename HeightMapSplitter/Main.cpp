@@ -251,7 +251,7 @@ int main(int argc, char** argv)
     hm->SaveDds(parent);
     std::cout << "dds generated" << std::endl;
 
-    // return 0;
+    return 0;
     const auto patches = hm->SplitIntoPatches(256);
     std::cout << "patches generated" << std::endl;
     std::vector<std::pair<float, float>> bounds;

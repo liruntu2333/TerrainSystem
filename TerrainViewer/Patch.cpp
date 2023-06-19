@@ -41,7 +41,7 @@ Patch::RenderResource Patch::GetResource(const std::filesystem::path& path, int 
         m_Resource->Ib.Get(),
         m_Resource->IdxCnt,
         0,
-        XMUINT2(m_X, m_Y),
+        XMINT2(m_X, m_Y),
         m_Resource->Idx16Bit,
     };
 }

@@ -20,14 +20,15 @@ public:
     ClipmapRenderer(ClipmapRenderer&&) = delete;
     ClipmapRenderer& operator=(ClipmapRenderer&&) = delete;
 
-    void Initialize();
-    void Render(ID3D11DeviceContext* context, const TerrainSystem::ClipmapRenderResource& rr);
+    void Initialize(const std::filesystem::path& shaderDir);
+    void Render(ID3D11DeviceContext* context, const TerrainSystem::ClipmapRenderResource& rr, bool wireFrame = false);
 
 protected:
 
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_InputLayout = nullptr;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs = nullptr;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_WireFramePs = nullptr;
 
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> m_Cb0;
     DirectX::VertexBuffer<GridInstance> m_InsBuff;

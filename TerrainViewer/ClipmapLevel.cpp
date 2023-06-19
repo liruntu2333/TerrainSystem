@@ -127,19 +127,30 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 }
 
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
-    Vector2& wldOfs, Vector2& texOfs) const
+    Vector2& finerOfs, Vector2& texOfs, const Vector2& txlScl) const
 {
     using namespace SimpleMath;
-    constexpr float textureSize = 2048.0f;
+
     HollowRing ring;
+    ring.TrimId = m_Level % 4;
+    finerOfs -= FootprintTrait<InteriorTrim>::FinerOffset[ring.TrimId] * m_Scale;
+    texOfs -= FootprintTrait<InteriorTrim>::FinerOffset[ring.TrimId] * txlScl;
+    texOfs += Vector2(0.25f) * txlScl;
+
+    for (auto&& block : ring.Blocks)
+    {
+        block.GridScale = Vector2(m_Scale);
+        block.TexelScale = txlScl;
+    }
+    ring.RingFixUp.GridScale = ring.Trim.GridScale = Vector2(m_Scale);
+    ring.RingFixUp.TexelScale = ring.Trim.TexelScale = txlScl;
+
     for (int i = 0; i < 12; ++i)
     {
         GridInstance& block = ring.Blocks[i];
         using Trait = FootprintTrait<Block>;
-        block.GridScale = Vector2(m_Scale);
-        block.GridOffset = Trait::LocalOffset[i] * m_Scale + wldOfs;
-        block.TexelScale = Vector2(m_Scale / textureSize);
-        block.TextureOffset = Trait::LocalOffset[i] * m_Scale / textureSize + texOfs;
+        block.GridOffset = Trait::LocalOffset[i] * m_Scale + finerOfs;
+        block.TextureOffset = Trait::LocalOffset[i] * txlScl + texOfs;
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9
                           ? Colors::DarkGreen
                           : Colors::Purple;
@@ -148,43 +159,42 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
     {
         GridInstance& fixUp = ring.RingFixUp;
         using Trait = FootprintTrait<RingFixUp>;
-        fixUp.GridScale = Vector2(m_Scale);
-        fixUp.GridOffset = Trait::LocalOffset * m_Scale + wldOfs;
-        fixUp.TexelScale = Vector2(m_Scale / textureSize);
-        fixUp.TextureOffset = Trait::LocalOffset / textureSize + texOfs;
+        fixUp.GridOffset = Trait::LocalOffset * m_Scale + finerOfs;
+        fixUp.TextureOffset = Trait::LocalOffset * txlScl + texOfs;
         fixUp.Color = Colors::Gold;
     }
 
-    ring.TrimId = m_Level % 4;
     {
         GridInstance& trim = ring.Trim;
         using Trait = FootprintTrait<InteriorTrim>;
-        trim.GridScale = Vector2(m_Scale);
-        trim.GridOffset = Trait::LocalOffset * m_Scale + wldOfs;
-        trim.TexelScale = Vector2(m_Scale / textureSize);
-        trim.TextureOffset = Trait::LocalOffset * m_Scale / textureSize + texOfs;
+        trim.GridOffset = Trait::LocalOffset * m_Scale + finerOfs;
+        trim.TextureOffset = Trait::LocalOffset * txlScl + texOfs;
         trim.Color = Colors::RoyalBlue;
-
-        wldOfs += Trait::FinerOffset[ring.TrimId] * m_Scale;
-        texOfs += Trait::FinerOffset[ring.TrimId] * m_Scale / textureSize;
     }
+
     return std::move(ring);
 }
 
 ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
-    Vector2& wldOfs, Vector2& texOfs) const
+    const Vector2& finerOfs, const Vector2& texOfs, const Vector2& txlScl) const
 {
     using namespace SimpleMath;
-    constexpr float textureSize = 2048.0f;
     SolidSquare sqr;
+
+    for (auto&& block : sqr.Blocks)
+    {
+        block.GridScale = Vector2(m_Scale);
+        block.TexelScale = txlScl;
+    }
+    sqr.RingFixUp.GridScale = sqr.Trim[0].GridScale = sqr.Trim[1].GridScale = Vector2(m_Scale);
+    sqr.RingFixUp.TexelScale = sqr.Trim[0].TexelScale = sqr.Trim[1].TexelScale = txlScl;
+
     for (int i = 0; i < 16; ++i)
     {
         GridInstance& block = sqr.Blocks[i];
         using Trait = FootprintTrait<Block>;
-        block.GridScale = Vector2(m_Scale);
-        block.GridOffset = Trait::LocalOffset[i] * m_Scale + wldOfs;
-        block.TexelScale = Vector2(m_Scale / textureSize);
-        block.TextureOffset = Trait::LocalOffset[i] * m_Scale / textureSize + texOfs;
+        block.GridOffset = Trait::LocalOffset[i] * m_Scale + finerOfs;
+        block.TextureOffset = Trait::LocalOffset[i] * txlScl + texOfs;
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9 || i == 12 || i == 15
                           ? Colors::DarkGreen
                           : Colors::Purple;
@@ -193,10 +203,8 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
     {
         GridInstance& fixUp = sqr.RingFixUp;
         using Trait = FootprintTrait<RingFixUp>;
-        fixUp.GridScale = Vector2(m_Scale);
-        fixUp.GridOffset = Trait::LocalOffset * m_Scale + wldOfs;
-        fixUp.TexelScale = Vector2(m_Scale / textureSize);
-        fixUp.TextureOffset = Trait::LocalOffset * m_Scale / textureSize + texOfs;
+        fixUp.GridOffset = Trait::LocalOffset * m_Scale + finerOfs;
+        fixUp.TextureOffset = Trait::LocalOffset * txlScl + texOfs;
         fixUp.Color = Colors::Gold;
     }
 
@@ -205,15 +213,10 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
     for (auto& trim : sqr.Trim)
     {
         using Trait = FootprintTrait<InteriorTrim>;
-        trim.GridScale = Vector2(m_Scale);
-        trim.GridOffset = Trait::LocalOffset * m_Scale + wldOfs;
-        trim.TexelScale = Vector2(m_Scale / textureSize);
-        trim.TextureOffset = Trait::LocalOffset * m_Scale / textureSize + texOfs;
+        trim.GridOffset = Trait::LocalOffset * m_Scale + finerOfs;
+        trim.TextureOffset = Trait::LocalOffset * txlScl + texOfs;
         trim.Color = Colors::RoyalBlue;
     }
-
-    wldOfs += FootprintTrait<Block>::LocalOffset[15] * m_Scale;
-    texOfs += FootprintTrait<Block>::LocalOffset[15] * m_Scale / textureSize;
 
     return std::move(sqr);
 }

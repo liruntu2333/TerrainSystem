@@ -30,10 +30,16 @@ namespace
         2040.0f,
         3060.0f,
     };
+
+    template <int N>
+    void CreateLevels(std::vector<ClipmapLevel>& levels)
+    {
+        if constexpr (N > 1) CreateLevels<N - 1>(levels);
+        levels.emplace_back(N - 1);
+    }
 }
 
-TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path)),
-    m_Levels({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 })
+void TerrainSystem::InitMeshPatches(ID3D11Device* device)
 {
     std::vector<std::future<std::shared_ptr<Patch>>> results;
     for (int y = 0; y < PATCH_NY; ++y)
@@ -50,6 +56,24 @@ TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) :
         m_Patches.emplace(id, std::move(p));
     }
 
+    std::ifstream boundsFile(m_Path / "bounds.json");
+    if (!boundsFile.is_open())
+        throw std::runtime_error("Failed to open bounds.json.");
+    nlohmann::json j;
+    boundsFile >> j;
+    m_BoundTree = std::make_unique<BoundTree>(j);
+}
+
+void TerrainSystem::InitClipmapLevels(ID3D11Device* device)
+{
+    ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
+    CreateLevels<LevelCount>(m_Levels);
+}
+
+TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
+{
+    // InitMeshPatches(device);
+
     m_Height = std::make_unique<Texture2D>(device, m_Path / "height.dds");
     m_Height->CreateViews(device);
     m_Normal = std::make_unique<Texture2D>(device, m_Path / "normal.dds");
@@ -57,19 +81,12 @@ TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) :
     m_Albedo = std::make_unique<Texture2D>(device, m_Path / "albedo.dds");
     m_Albedo->CreateViews(device);
 
-    std::ifstream boundsFile(m_Path / "bounds.json");
-    if (!boundsFile.is_open())
-        throw std::runtime_error("Failed to open \"bounds.json\".");
-    nlohmann::json j;
-    boundsFile >> j;
-    m_BoundTree = std::make_unique<BoundTree>(j);
-
-    ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
+    InitClipmapLevels(device);
 }
 
 TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
-	const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
-	float yScale, std::vector<BoundingBox>& bbs, ID3D11Device* device) const
+    const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
+    float yScale, std::vector<BoundingBox>& bbs, ID3D11Device* device) const
 {
     std::vector<int> visible;
     std::vector<int> lods;
@@ -155,30 +172,32 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
-    auto wldOfs = Vector2(-127 * static_cast<float>(1 << (LevelCount - 1)));
-    auto texOfs = Vector2(0.0f);
-    for (int i = LevelCount - 1; i >= 1; --i)
+    auto finerOfs = Vector2(-127.0);
+    auto texelScale = Vector2(1.0) / Vector2(m_Height->GetDesc().Width, m_Height->GetDesc().Height);
+    auto texOfs = Vector2(0.5) - Vector2(126.5) * texelScale;
     {
-        auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(wldOfs, texOfs);
-        for (const auto& b : block) blocks.emplace_back(b);
-        rings.emplace_back(ring);
-        trims[tid].emplace_back(trim);
-    }
-    {
-        auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(wldOfs, texOfs);
+        auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(finerOfs, texOfs, texelScale);
         for (const auto& b : block)
             blocks.emplace_back(b);
         rings.emplace_back(ring);
         for (int i = 0; i < 2; ++i)
-	        trims[tid[i]].emplace_back(trim[0]);
+            trims[tid[i]].emplace_back(trim[0]);
+    }
+
+    for (int i = 1; i < LevelCount; ++i)
+    {
+        texelScale *= 2.0f;
+        auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(finerOfs, texOfs, texelScale);
+        for (const auto& b : block) blocks.emplace_back(b);
+        rings.emplace_back(ring);
+        trims[tid].emplace_back(trim);
     }
 
     auto& all = r.Grids;
     all.reserve(blocks.size() + rings.size() + trims[0].size() + trims[1].size() + trims[2].size() + trims[3].size());
     all.insert(all.end(), blocks.begin(), blocks.end());
     all.insert(all.end(), rings.begin(), rings.end());
-    for (int i = 0; i < 4; ++i)
-        all.insert(all.end(), trims[i].begin(), trims[i].end());
+    for (int i = 0; i < 4; ++i) all.insert(all.end(), trims[i].begin(), trims[i].end());
 
     r.BlockInstanceStart = 0;
     r.RingInstanceStart = r.BlockInstanceStart + blocks.size();

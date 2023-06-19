@@ -48,17 +48,17 @@ protected:
 class ClipmapLevel : public ClipmapLevelBase
 {
 public:
-    ClipmapLevel(int l) : m_Scale(1 << l), m_Level(l) {}
+    ClipmapLevel(int l) : m_Level(l), m_Scale(1u << l) {}
     ~ClipmapLevel() = default;
 
     HollowRing GetHollowRing(
-        DirectX::SimpleMath::Vector2& wldOfs,
-        DirectX::SimpleMath::Vector2& texOfs) const;
+        DirectX::SimpleMath::Vector2& finerOfs,
+        DirectX::SimpleMath::Vector2& texOfs, const DirectX::SimpleMath::Vector2& txlScl) const;
     SolidSquare GetSolidSquare(
-        DirectX::SimpleMath::Vector2& wldOfs,
-        DirectX::SimpleMath::Vector2& texOfs) const;
+        const DirectX::SimpleMath::Vector2& finerOfs,
+        const DirectX::SimpleMath::Vector2& texOfs, const DirectX::SimpleMath::Vector2& txlScl) const;
 
 protected:
-    const float m_Scale;
     const int m_Level;
+    const float m_Scale;
 };

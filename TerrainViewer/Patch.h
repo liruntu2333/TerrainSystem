@@ -20,7 +20,7 @@ public:
         ID3D11Buffer* Ib;
         uint32_t IdxCnt;
         uint32_t Color;
-        DirectX::XMUINT2 PatchXy; // Left bottom corner of the patch in global texture.
+        DirectX::XMINT2 PatchXy; // Left bottom corner of the patch in global texture.
         bool Idx16Bit;
     };
 

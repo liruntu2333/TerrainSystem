@@ -121,6 +121,9 @@
     <FxCompile Include="..\shader\GridPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shader\GridWireFrame.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shader\ShaderUtil.hlsli">

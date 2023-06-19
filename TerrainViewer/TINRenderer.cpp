@@ -12,10 +12,11 @@ TINRenderer::TINRenderer(
     const std::shared_ptr<ConstantBuffer<PassConstants>>& passConst) :
     Renderer(device), m_Cb1(device), m_Cb0(passConst) {}
 
-void TINRenderer::Initialize(ID3D11DeviceContext* context)
+void TINRenderer::Initialize(ID3D11DeviceContext* context, const std::filesystem::path& shaderDir)
 {
     Microsoft::WRL::ComPtr<ID3DBlob> blob;
-    ThrowIfFailed(D3DReadFileToBlob(L"./shader/MeshVS.cso", &blob));
+    auto name = (shaderDir / "MeshVS.cso").wstring();
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
 
     ThrowIfFailed(
         m_Device->CreateVertexShader(
@@ -34,7 +35,8 @@ void TINRenderer::Initialize(ID3D11DeviceContext* context)
             &m_InputLayout)
         );
 
-    ThrowIfFailed(D3DReadFileToBlob(L"./shader/MeshPS.cso", &blob));
+    name = (shaderDir / "MeshPS.cso").wstring();
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
     ThrowIfFailed(
         m_Device->CreatePixelShader(
             blob->GetBufferPointer(),
@@ -43,7 +45,8 @@ void TINRenderer::Initialize(ID3D11DeviceContext* context)
             &m_Ps)
         );
 
-    ThrowIfFailed(D3DReadFileToBlob(L"./shader/WireFramePS.cso", &blob));
+    name = (shaderDir / "WireFramePS.cso").wstring();
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
     ThrowIfFailed(
         m_Device->CreatePixelShader(
             blob->GetBufferPointer(),

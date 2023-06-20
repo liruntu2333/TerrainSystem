@@ -23,9 +23,9 @@ void main(
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
 
     float3 positionW = float3(
-        positionL.x + g_PatchXy.x - g_CameraXy.x,
+        positionL.x + g_PatchXy.x - g_ViewPatch.x,
         h,
-        positionL.y + g_PatchXy.y - g_CameraXy.y);
+        positionL.y + g_PatchXy.y - g_ViewPatch.y);
     positionW *= float3(PATCH_SCALE, g_HeightMapScale, PATCH_SCALE);
     positionW.y += 1000.0f;
 

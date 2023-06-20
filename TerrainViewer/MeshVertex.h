@@ -32,9 +32,9 @@ struct GridVertex
 
 struct GridInstance
 {
-    DirectX::SimpleMath::Vector2 GridScale;
+    DirectX::SimpleMath::Vector2 ScaleFactor;
+    DirectX::SimpleMath::Vector2 OffsetInLevel;
     DirectX::SimpleMath::Vector2 GridOffset;
-    DirectX::SimpleMath::Vector2 TexelScale;
     DirectX::SimpleMath::Vector2 TextureOffset;
     DirectX::SimpleMath::Vector4 Color;
 

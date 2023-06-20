@@ -146,7 +146,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
     return std::move(r);
 }
 
-TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
+TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(const Vector3& viewPos)
 {
     ClipmapRenderResource r;
     r.Height = m_Height->GetSrv();
@@ -172,13 +172,13 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
-    auto finerOfs = Vector2(-127.0);
-    auto texelScale = Vector2(1.0) / Vector2(m_Height->GetDesc().Width, m_Height->GetDesc().Height);
-    auto texOfs = Vector2(0.5) - Vector2(126.5) * texelScale;
+    Vector2 view(viewPos.x, viewPos.z);
+    auto finerOfs = Vector2(-127.0) + view;
+    auto texelScale = 1.0 / m_Height->GetDesc().Width;
+    auto texOfs = Vector2(0.5) - Vector2(127) * texelScale + view * texelScale;
     {
         auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(finerOfs, texOfs, texelScale);
-        for (const auto& b : block)
-            blocks.emplace_back(b);
+        for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         for (int i = 0; i < 2; ++i)
             trims[tid[i]].emplace_back(trim[0]);
@@ -186,7 +186,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources()
 
     for (int i = 1; i < LevelCount; ++i)
     {
-        texelScale *= 2.0f;
+        texelScale *= 2.0;
         auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(finerOfs, texOfs, texelScale);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);

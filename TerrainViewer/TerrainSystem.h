@@ -54,7 +54,7 @@ public:
         const DirectX::BoundingFrustum& frustumLocal, float yScale,
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
-    [[nodiscard]] ClipmapRenderResource GetClipmapResources();
+    [[nodiscard]] ClipmapRenderResource GetClipmapResources(const DirectX::SimpleMath::Vector3& viewPos);
 
     static constexpr int LevelCount = 5;
 

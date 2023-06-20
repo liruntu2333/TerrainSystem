@@ -1,24 +1,30 @@
 #include "ShaderUtil.hlsli"
 
-SamplerState g_AnisotropicClamp : register(s0);
-Texture2D g_Normal : register(t0);
+SamplerState g_LinearClamp : register(s0);
+Texture2D<float2> g_Normal : register(t0);
 Texture2D g_Albedo : register(t1);
 
 void main(
     in float4 positionL : SV_POSITION,
-    in float4 colorIn : COLOR0,
-    in float2 texCoord : TEXCOORD0,
-    nointerpolation in float level : TEXCOORD1,
+    in float4 colorIn : COLOR,
+    in float3 texCoord : TEXCOORD,
+    in float3 normal : NORMAL,
 
     out float4 colorOut : SV_TARGET
     )
 {
-	const float4 sample = g_Normal.SampleLevel(g_AnisotropicClamp, texCoord.xy, level);
-	const float3 albedo = g_Albedo.SampleLevel(g_AnisotropicClamp, texCoord.xy, level).rgb;
-    float3 normal = sample.rbg;
-    normal = normalize(normal * 2.0f - 1.0f);
-	float3 col = Shade(normal, g_SunDir, g_SunIntensity, sample.a, AMBIENT_INTENSITY)
-        * albedo /** colorIn.rgb*/;
+    // const float2 pnf = g_Normal.Sample(g_LinearClamp, texCoord.xy, texCoord.z).rg;
+    // const float2 pnc = g_Normal.SampleLevel(g_LinearClamp, texCoord.xy, texCoord.z + 1).rg;
+	float2 pn = g_Normal.SampleLevel(g_LinearClamp, texCoord.xy, texCoord.z).rg;
+    pn = pn * 2 - 1;
+    const float3 n = float3(pn.x, sqrt(1.0 - dot(pn, pn)), pn.y);
 
-	colorOut = float4(col, 1.0f);
+    // const float3 alf = g_Albedo.SampleLevel(g_LinearClamp, texCoord.xy, texCoord.z).rgb;
+    // const float3 alc = g_Albedo.SampleLevel(g_LinearClamp, texCoord.xy, texCoord.z + 1).rgb;
+	const float3 al = g_Albedo.SampleLevel(g_LinearClamp, texCoord.xy, texCoord.z).rgb;
+
+	float3 col = Shade(n, g_LightDirection, g_LightIntensity, 1, AMBIENT_INTENSITY) * al
+        /** colorIn.rgb*/;
+
+    colorOut = float4(col, 1.0f);
 }

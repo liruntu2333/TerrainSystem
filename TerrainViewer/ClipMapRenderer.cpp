@@ -85,7 +85,7 @@ void ClipmapRenderer::Render(
 
     ID3D11Buffer* cbs[] = { m_Cb0->GetBuffer() };
     context->VSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
-    const auto pw = s_CommonStates->LinearWrap();
+    const auto pw = s_CommonStates->PointWrap();
     context->VSSetSamplers(0, 1, &pw);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
 

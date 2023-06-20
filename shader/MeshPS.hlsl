@@ -16,13 +16,14 @@ void main(
     in float2 texCoord : TEXCOORD,
     out float4 color : SV_TARGET)
 {
-    const float4 sample = g_Normal.Sample(g_AnisotropicClamp, texCoord.xy);
+    float2 normXz = g_Normal.Sample(g_AnisotropicClamp, texCoord.xy).rg;
+	normXz = normXz * 2.0 - 1.0;
+	float normY = sqrt(1.0 - dot(normXz, normXz));
+	const float3 norm = normalize(float3(normXz.x, normY, normXz.y));
 
-    const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, texCoord.xy).rgb;
-    float3 norm = sample.rbg;
-    norm = normalize(norm * 2.0f - 1.0f);
+	const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, texCoord.xy).rgb;
 
-    float3 col = Shade(norm, g_SunDir, g_SunIntensity, sample.a, AMBIENT_INTENSITY)
+    float3 col = Shade(norm, g_LightDirection, g_LightIntensity, 1, AMBIENT_INTENSITY)
         * albedo /** LoadColor(g_PatchColor).rgb*/;
     color = float4(col, 1.0f);
 }

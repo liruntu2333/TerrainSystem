@@ -7,13 +7,15 @@ static const float AMBIENT_INTENSITY = 0.1f;
 
 cbuffer PassConstants : register(b0)
 {
-float4x4 g_ViewProjectionLocal;
-float4x4 g_ViewProjection;
-float3 g_SunDir;
-float g_SunIntensity;
-int2 g_CameraXy;
-float g_HeightMapScale;
-float pad;
+	float4x4 g_ViewProjectionLocal;
+	float4x4 g_ViewProjection;
+	float3 g_LightDirection;
+	float g_LightIntensity;
+	int2 g_ViewPatch;
+	float2 g_ViewPosition;
+	float2 g_AlphaOffset;
+	float g_OneOverWidth;
+	float g_HeightMapScale;
 }
 
 float4 LoadColor(uint col)

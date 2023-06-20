@@ -93,7 +93,6 @@ int main(int, char**)
 
     CreateSystem();
 
-    // Main loop
     bool done = false;
     bool wireFramed = false;
     float sunPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
@@ -103,8 +102,10 @@ int main(int, char**)
     DirectX::XMINT2 camCullingXy {};
     bool drawBb = false;
     DirectX::BoundingFrustum frustumLocal;
-    float spd = 300.0f;
-    float yScale = 2000.0f;
+    float spd = 30.0f;
+    float hScale = 2000.0f;
+    float transition = 1.0f;
+    // Main loop
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -133,28 +134,33 @@ int main(int, char**)
             camCullingXy = camXy;
         }
         std::vector<DirectX::BoundingBox> bounding;
+        auto viewPos = g_Camera->GetPosition();
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cr = g_System->GetClipmapResources();
+        const auto& cr = g_System->GetClipmapResources(viewPos);
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
         sunDir.Normalize();
         g_Constants->ViewProjectionLocal = g_Camera->GetViewProjectionLocal().Transpose();
         g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
-        g_Constants->LightDir = sunDir;
+        g_Constants->LightDirection = sunDir;
         g_Constants->LightIntensity = sunIntensity;
-        g_Constants->CameraXy = camXy;
-        g_Constants->HeightScale = yScale;
+        g_Constants->ViewPatch = camXy;
+        g_Constants->HeightScale = hScale;
+        g_Constants->AlphaOffset = Vector2(126 - transition);
+        g_Constants->OneOverWidth = 1.0 / transition;
+        g_Constants->ViewPosition = Vector2(viewPos.x, viewPos.z);
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::DragFloat("Y Scale", &yScale, 1, 0.0f, 3000.0f);
+        ImGui::DragFloat("Y Scale", &hScale, 1, 0.0, 3000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
-        ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0f, DirectX::XM_2PI);
-        ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0f);
-        ImGui::DragFloat("Camera Speed", &spd, 1.0f, 0.0f, 5000.0f);
+        ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0, DirectX::XM_2PI);
+        ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0);
+        ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
+        ImGui::SliderFloat("Transition Width", &transition, 0.0, 13.0);
         ImGui::Checkbox("Wire Frame", &wireFramed);
         //ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         //ImGui::Checkbox("Draw Bounding Box", &drawBb);
@@ -275,7 +281,7 @@ void CreateRenderTarget()
 
     D3D11_TEXTURE2D_DESC texDesc;
     pBackBuffer->GetDesc(&texDesc);
-    CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D32_FLOAT,
+    CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D24_UNORM_S8_UINT,
         texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL,
         D3D11_USAGE_DEFAULT);
     g_depthStencil = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, dsDesc);
@@ -296,13 +302,19 @@ void CleanupRenderTarget()
 void CreateSystem()
 {
     g_Constants = std::make_unique<PassConstants>();
+    g_Constants->ViewPosition = Vector2(0.0);
     g_Cb0 = std::make_unique<DirectX::ConstantBuffer<PassConstants>>(g_pd3dDevice);
+
     g_MeshRenderer = std::make_unique<TINRenderer>(g_pd3dDevice, g_Cb0);
     g_MeshRenderer->Initialize(g_pd3dDeviceContext, "shader");
+
     g_GridRenderer = std::make_unique<ClipmapRenderer>(g_pd3dDevice, g_Cb0);
     g_GridRenderer->Initialize("shader");
+
     g_Camera = std::make_unique<Camera>();
+
     g_System = std::make_unique<TerrainSystem>("asset", g_pd3dDevice);
+
     g_Box = DirectX::GeometricPrimitive::CreateCube(g_pd3dDeviceContext);
 }
 

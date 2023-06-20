@@ -53,10 +53,10 @@ public:
 
     HollowRing GetHollowRing(
         DirectX::SimpleMath::Vector2& finerOfs,
-        DirectX::SimpleMath::Vector2& texOfs, const DirectX::SimpleMath::Vector2& txlScl) const;
+        DirectX::SimpleMath::Vector2& texOfs, float txlScl) const;
     SolidSquare GetSolidSquare(
         const DirectX::SimpleMath::Vector2& finerOfs,
-        const DirectX::SimpleMath::Vector2& texOfs, const DirectX::SimpleMath::Vector2& txlScl) const;
+        const DirectX::SimpleMath::Vector2& texOfs, float txlScl) const;
 
 protected:
     const int m_Level;

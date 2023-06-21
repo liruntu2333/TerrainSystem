@@ -5,42 +5,44 @@ Texture2D<float> g_Height : register(t0);
 
 void main(
     in float2 positionL : SV_POSITION,
-    in float4 scales : TEXCOORD0,
-    in float4 offsets : TEXCOORD1,
-    in float4 colorIn : COLOR0,
+    in float4 localOffset : TEXCOORD0,
+    in float4 levelOffset : TEXCOORD1,
+    in uint2 colorLevel : TEXCOORD2,
 
     out float4 positionH : SV_POSITION,
-    out float4 colorOut : COLOR,
-    out float3 texCoord : TEXCOORD,    // coordinates for normal & albedo lookup
-    out float3 normal : NORMAL
+    out float4 color : COLOR,
+    out float3 texCoord : TEXCOORD    // coordinates for normal & albedo lookup
     )
 {
-    // convert from grid xy to world xy coordinates
-    //  scales.x: grid spacing of current level
-    //  scales.zw: origin of current block within world
-    int2 groupXy = int2(positionL + scales.zw) % 254;
-    if (groupXy.x == 0 && groupXy.y % 2) positionL.y++;
-    if (groupXy.y == 0 && groupXy.x % 2) positionL.x++;
+    // degenrate perimeter triangles to avoid T-junction
+    // localOffset.zw: offset of current footprint in level local space
+    uint2 xyL = uint2(positionL + localOffset.zw) % 254;
+    if (xyL.x == 0 && xyL.y % 2) positionL.y++;
+    if (xyL.y == 0 && xyL.x % 2) positionL.x++;
 
-    const float2 worldPos = positionL * scales.xx + offsets.xy;
+    // convert from grid xy to world xy coordinates
+    // localOffset.x: grid spacing of current level, y : texel spacing of current level
+    // levelOffset.xy: origin of current footprint in world space
+    const float2 positionW = positionL * localOffset.xx + levelOffset.xy;
 
     // compute coordinates for vertex texture
-    //  offsets.xy: 1/(w, h) of texture
-    //  offsets.zw: origin of block in texture
+    // levelOffset.zw: origin of footprint in texture
+    const float2 uv = positionL * localOffset.yy + levelOffset.zw;
 
-	const float2 uv = positionL * scales.yy + offsets.zw;
     // compute alpha (transition parameter), and blend elevation.
-    float2 alpha = saturate((abs(worldPos - g_ViewPosition) / scales.xx - g_AlphaOffset)
+    float2 alpha = saturate((abs(positionL + localOffset.zw - 127) - g_AlphaOffset)
         * g_OneOverWidth);
     alpha.x = max(alpha.x, alpha.y);
 
-	float w = floor(log2(scales.x));
-    w += alpha.x;
-
-	float h = g_Height.SampleLevel(g_PointWrap, uv, w);
+    // colorLevel.y : level 
+    const float hf = g_Height.SampleLevel(g_PointWrap, uv, colorLevel.y);
+    const float hc = g_Height.SampleLevel(g_PointWrap, uv, colorLevel.y + 1);
+    float h = lerp(hf, hc, alpha.x);
     h *= g_HeightMapScale;
 
-    positionH = mul(float4(worldPos.x, h, worldPos.y, 1), g_ViewProjection);
-    colorOut = colorIn;
+    const float w = colorLevel.y + alpha.x;
+
+    positionH = mul(float4(positionW.x, 0, positionW.y, 1), g_ViewProjection);
+    color = LoadColor(colorLevel.x); // colorLevel.x : color
     texCoord = float3(uv, w);
 }

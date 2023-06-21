@@ -5,10 +5,9 @@ Texture2D<float2> g_Normal : register(t0);
 Texture2D g_Albedo : register(t1);
 
 void main(
-    in float4 positionL : SV_POSITION,
+    in float4 positionH : SV_POSITION,
     in float4 colorIn : COLOR,
     in float3 texCoord : TEXCOORD,
-    in float3 normal : NORMAL,
 
     out float4 colorOut : SV_TARGET
     )

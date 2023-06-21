@@ -56,7 +56,7 @@ public:
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(const DirectX::SimpleMath::Vector3& viewPos);
 
-    static constexpr int LevelCount = 5;
+    static constexpr int LevelCount = 2;
 
 protected:
     void InitMeshPatches(ID3D11Device* device);
@@ -72,4 +72,6 @@ protected:
     const std::filesystem::path m_Path;
 
     std::vector<ClipmapLevel> m_Levels {};
+
+    DirectX::SimpleMath::Vector2 m_View {};
 };

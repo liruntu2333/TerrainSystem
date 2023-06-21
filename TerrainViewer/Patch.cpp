@@ -4,7 +4,7 @@
 #include <string>
 #include <directxtk/BufferHelpers.h>
 #include "D3DHelper.h"
-#include "MeshVertex.h"
+#include "Vertex.h"
 #include <DirectXColors.h>
 
 #include "../HeightMapSplitter/ThreadPool.h"

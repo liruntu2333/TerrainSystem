@@ -30,13 +30,6 @@ namespace
         2040.0f,
         3060.0f,
     };
-
-    template <int N>
-    void CreateLevels(std::vector<ClipmapLevel>& levels)
-    {
-        if constexpr (N > 1) CreateLevels<N - 1>(levels);
-        levels.emplace_back(N - 1);
-    }
 }
 
 void TerrainSystem::InitMeshPatches(ID3D11Device* device)
@@ -67,7 +60,7 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
-    CreateLevels<LevelCount>(m_Levels);
+    for (int i = 0; i < LevelCount; ++i) m_Levels.emplace_back(i);
 }
 
 TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
@@ -173,21 +166,25 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(const Ve
     std::vector<GridInstance> trims[4];
 
     Vector2 view(viewPos.x, viewPos.z);
-    auto finerOfs = Vector2(-127.0) + view;
+    auto dView = view - m_View;
+    m_View = view;
     auto texelScale = 1.0 / m_Height->GetDesc().Width;
-    auto texOfs = Vector2(0.5) - Vector2(127) * texelScale + view * texelScale;
+
+    for (auto&& level : m_Levels)
     {
-        auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(finerOfs, texOfs, texelScale);
+        level.Update(dView);
+    }
+    {
+        auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(texelScale);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
-        for (int i = 0; i < 2; ++i)
-            trims[tid[i]].emplace_back(trim[0]);
+        for (int i = 0; i < 2; ++i) trims[tid[i]].emplace_back(trim[0]);
     }
 
     for (int i = 1; i < LevelCount; ++i)
     {
         texelScale *= 2.0;
-        auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(finerOfs, texOfs, texelScale);
+        auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(texelScale);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);

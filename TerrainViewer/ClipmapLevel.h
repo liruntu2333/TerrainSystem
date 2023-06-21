@@ -4,7 +4,7 @@
 #include <d3d11.h>
 #include <filesystem>
 
-#include "MeshVertex.h"
+#include "Vertex.h"
 
 static constexpr int ClipMapN = 255;
 static constexpr int ClipMapM = (ClipMapN + 1) / 4;
@@ -12,7 +12,6 @@ static constexpr int ClipMapM = (ClipMapN + 1) / 4;
 class ClipmapLevelBase
 {
 public:
-
     struct HollowRing
     {
         GridInstance Blocks[12];
@@ -48,17 +47,18 @@ protected:
 class ClipmapLevel : public ClipmapLevelBase
 {
 public:
-    ClipmapLevel(int l) : m_Level(l), m_Scale(1u << l) {}
+    ClipmapLevel(int l);
     ~ClipmapLevel() = default;
 
-    HollowRing GetHollowRing(
-        DirectX::SimpleMath::Vector2& finerOfs,
-        DirectX::SimpleMath::Vector2& texOfs, float txlScl) const;
-    SolidSquare GetSolidSquare(
-        const DirectX::SimpleMath::Vector2& finerOfs,
-        const DirectX::SimpleMath::Vector2& texOfs, float txlScl) const;
+    void Update(const DirectX::SimpleMath::Vector2& dView);
+    [[nodiscard]] HollowRing GetHollowRing(float txlScl) const;
+    [[nodiscard]] SolidSquare GetSolidSquare(float txlScl) const;
 
 protected:
     const int m_Level;
     const float m_Scale;
+    DirectX::SimpleMath::Vector2 m_WorldOffset;
+    DirectX::SimpleMath::Vector2 m_TexelOffset;
+    DirectX::SimpleMath::Vector2 m_Ticker;
+    int m_TrimId = 0;
 };

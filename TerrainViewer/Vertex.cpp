@@ -1,4 +1,4 @@
-#include "MeshVertex.h"
+#include "Vertex.h"
 
 const D3D11_INPUT_ELEMENT_DESC MeshVertex::InputElements[InputElementCount] =
 {
@@ -47,9 +47,9 @@ const D3D11_INPUT_ELEMENT_DESC GridInstance::InputElements[InputElementCount] =
         1
     },
     {
-        "COLOR",
-        0,
-        DXGI_FORMAT_R32G32B32A32_FLOAT,
+        "TEXCOORD",
+        2,
+        DXGI_FORMAT_R32G32_UINT,
         1,
         32,
         D3D11_INPUT_PER_INSTANCE_DATA,

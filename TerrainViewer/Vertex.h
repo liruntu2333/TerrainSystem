@@ -32,11 +32,12 @@ struct GridVertex
 
 struct GridInstance
 {
-    DirectX::SimpleMath::Vector2 ScaleFactor;
-    DirectX::SimpleMath::Vector2 OffsetInLevel;
-    DirectX::SimpleMath::Vector2 GridOffset;
+    DirectX::SimpleMath::Vector2 ScaleFactor;       // x : grid spacing     y : texture size
+    DirectX::SimpleMath::Vector2 OffsetInLevel;     // footprint offset in level
+    DirectX::SimpleMath::Vector2 OffsetInWorld;     // footprint offset in world
     DirectX::SimpleMath::Vector2 TextureOffset;
-    DirectX::SimpleMath::Vector4 Color;
+    uint32_t Color;
+    uint32_t Level;
 
     static constexpr unsigned int InputElementCount = 3;
     static const D3D11_INPUT_ELEMENT_DESC InputElements[InputElementCount];

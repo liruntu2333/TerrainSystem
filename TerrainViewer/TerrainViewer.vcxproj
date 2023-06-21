@@ -158,7 +158,7 @@
     <ClCompile Include="Patch.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="TerrainSystem.cpp" />
-    <ClCompile Include="MeshVertex.cpp" />
+    <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -175,7 +175,7 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="StructuredBuffer.h" />
     <ClInclude Include="TerrainSystem.h" />
-    <ClInclude Include="MeshVertex.h" />
+    <ClInclude Include="Vertex.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexBuffer.h" />
   </ItemGroup>

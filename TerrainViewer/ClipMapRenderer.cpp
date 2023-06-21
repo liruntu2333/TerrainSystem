@@ -4,7 +4,7 @@
 #include <d3dcompiler.h>
 #include <directxtk/BufferHelpers.h>
 #include "D3DHelper.h"
-#include "MeshVertex.h"
+#include "Vertex.h"
 
 using namespace DirectX;
 using namespace SimpleMath;

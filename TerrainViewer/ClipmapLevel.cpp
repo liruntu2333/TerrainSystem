@@ -60,7 +60,7 @@ namespace
     template <>
     struct FootprintTrait<InteriorTrim> : FootprintTraitBase
     {
-        static constexpr Vector2 LocalOffset = { 0, 0 };
+        static constexpr Vector2 LocalOffset = {0, 0};
         static constexpr Vector2 FinerOffset[] =
         {
             Vector2(M, M),
@@ -75,9 +75,17 @@ namespace
     template <>
     struct FootprintTrait<RingFixUp> : FootprintTraitBase
     {
-        static constexpr Vector2 LocalOffset = { 0, 0 };
+        static constexpr Vector2 LocalOffset = {0, 0};
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::Gold);
+    };
+
+    enum TrimPattern : int
+    {
+        Lt = 0,
+        Rt,
+        Rb,
+        Lb,
     };
 }
 
@@ -138,24 +146,22 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 
 ClipmapLevel::ClipmapLevel(int l)
     : m_Level(l), m_Scale(1u << l),
-    m_WorldOffset(Vector2(-128, -126)), m_TexelOffset(Vector2(0.0))
+      m_WorldOffset(Vector2(-128, -126)), m_TexelOffset(Vector2(0.0)),
+      m_Ticker(0.499999f, -0.499999f) {}
+
+Vector2 ClipmapLevel::UpdateCenter(const Vector2& dView)
 {
-    m_Ticker = Vector2(0.0f, 0.0f);
-}
+    m_Ticker += dView / m_Scale * 0.5f;
+    const Vector2 ofs(
+        std::round(m_Ticker.x),
+        std::round(m_Ticker.y));
 
-void ClipmapLevel::Update(const Vector2& dView)
-{
-    m_Ticker += dView / m_Scale;
+    m_WorldOffset += ofs * 2;
+    m_TexelOffset += ofs * 2;
 
-    Vector2 fdp;
-    fdp.x = std::floor(m_Ticker.x / 2);
-    fdp.y = std::floor(m_Ticker.y / 2);
+    m_Ticker -= ofs;
 
-    m_WorldOffset = m_WorldOffset + fdp * 2;
-    m_TexelOffset = m_TexelOffset + fdp * 2;
-
-    m_Ticker.x -= fdp.x * 2;
-    m_Ticker.y -= fdp.y * 2;
+    return ofs;
 
     // const bool finerXAsync = abs(m_Ticker.x) >= 0.5f;
     // const bool finerYAsync = abs(m_Ticker.y) >= 0.5f;
@@ -178,13 +184,34 @@ void ClipmapLevel::Update(const Vector2& dView)
     // m_TrimId = (finerCorner + 2) % 4;
 }
 
+XMINT2 operator/(const XMINT2& lhs, int rhs)
+{
+    return {lhs.x / rhs, lhs.y / rhs};
+}
+
+XMINT2 operator+(const XMINT2& lhs, const XMINT2& rhs)
+{
+    return {lhs.x + rhs.x, lhs.y + rhs.y};
+}
+
+Vector2 operator+(const Vector2& lhs, const XMINT2& rhs)
+{
+    return {lhs.x + rhs.x, lhs.y + rhs.y};
+}
+
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
     float txlScl) const
 {
     using namespace SimpleMath;
 
+    TrimPattern trimType;
+    if (m_Ticker.x >= 0 && m_Ticker.y < 0) trimType = Lt;
+    else if (m_Ticker.x < 0 && m_Ticker.y < 0) trimType = Rt;
+    else if (m_Ticker.x < 0 && m_Ticker.y >= 0) trimType = Rb;
+    else /*if (m_Ticker.x >= 0 && m_Ticker.y >= 0)*/ trimType = Lb;
+
     HollowRing hollow;
-    hollow.TrimId = m_TrimId;
+    hollow.TrimId = trimType;
     const auto finerOfs = m_WorldOffset * m_Scale;
     const auto texOfs = m_TexelOffset * txlScl;
 
@@ -268,7 +295,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
         fixUp.Color = Trait::Color;
     }
 
-    solid.TrimId[0] = m_TrimId;
+    solid.TrimId[0] = 0;
     solid.TrimId[1] = (solid.TrimId[0] + 2) % 4;
     for (auto& trim : solid.Trim)
     {

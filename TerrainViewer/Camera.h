@@ -22,7 +22,7 @@ public:
     void Update(const ImGuiIO& io, float spd);
 
 private:
-    DirectX::SimpleMath::Vector3 m_Position { 0, 400, 0 };
+    DirectX::SimpleMath::Vector3 m_Position { 0, 200, 0 };
     DirectX::SimpleMath::Vector3 m_Rotation { DirectX::XM_PIDIV4, 0, 0.0f }; // row pitch yaw
     DirectX::SimpleMath::Vector3 m_Forward;
     DirectX::SimpleMath::Vector3 m_Right;
@@ -34,5 +34,5 @@ private:
 
     int m_PatchX = 0;
     int m_PatchY = 0;
-    DirectX::SimpleMath::Vector3 m_LocalPosition { 0, 400, 0 };
+    DirectX::SimpleMath::Vector3 m_LocalPosition { 0, 200, 0 };
 };

@@ -170,15 +170,22 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(const Ve
     m_View = view;
     auto texelScale = 1.0 / m_Height->GetDesc().Width;
 
-    for (auto&& level : m_Levels)
+    // auto dFiner = m_Levels[0].UpdateCenter(dView);
+    // for (int i = 1; i < LevelCount; ++i)
+    // {
+    //     dFiner = m_Levels[i].UpdateCenter(dFiner);
+    // }
+
+    for (auto && level : m_Levels)
     {
-        level.Update(dView);
+        level.UpdateCenter(dView);
     }
+    
     {
         auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(texelScale);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
-        for (int i = 0; i < 2; ++i) trims[tid[i]].emplace_back(trim[0]);
+        for (int i = 0; i < 2; ++i) trims[tid[i]].emplace_back(trim[i]);
     }
 
     for (int i = 1; i < LevelCount; ++i)

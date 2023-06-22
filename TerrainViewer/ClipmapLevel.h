@@ -37,8 +37,8 @@ protected:
     inline static Microsoft::WRL::ComPtr<ID3D11Buffer> BlockIb = nullptr;
     inline static Microsoft::WRL::ComPtr<ID3D11Buffer> RingFixUpVb = nullptr;
     inline static Microsoft::WRL::ComPtr<ID3D11Buffer> RingFixUpIb = nullptr;
-    inline static Microsoft::WRL::ComPtr<ID3D11Buffer> TrimVb[4] { nullptr };
-    inline static Microsoft::WRL::ComPtr<ID3D11Buffer> TrimIb[4] = { nullptr };
+    inline static Microsoft::WRL::ComPtr<ID3D11Buffer> TrimVb[4]{nullptr};
+    inline static Microsoft::WRL::ComPtr<ID3D11Buffer> TrimIb[4] = {nullptr};
     inline static int BlockIdxCnt;
     inline static int RingIdxCnt;
     inline static int TrimIdxCnt;
@@ -50,7 +50,7 @@ public:
     ClipmapLevel(int l);
     ~ClipmapLevel() = default;
 
-    void Update(const DirectX::SimpleMath::Vector2& dView);
+    DirectX::SimpleMath::Vector2 UpdateCenter(const DirectX::SimpleMath::Vector2& dView);
     [[nodiscard]] HollowRing GetHollowRing(float txlScl) const;
     [[nodiscard]] SolidSquare GetSolidSquare(float txlScl) const;
 
@@ -60,5 +60,4 @@ protected:
     DirectX::SimpleMath::Vector2 m_WorldOffset;
     DirectX::SimpleMath::Vector2 m_TexelOffset;
     DirectX::SimpleMath::Vector2 m_Ticker;
-    int m_TrimId = 0;
 };

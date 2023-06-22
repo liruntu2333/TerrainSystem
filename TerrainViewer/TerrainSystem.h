@@ -56,7 +56,7 @@ public:
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(const DirectX::SimpleMath::Vector3& viewPos);
 
-    static constexpr int LevelCount = 2;
+    static constexpr int LevelCount = 5;
 
 protected:
     void InitMeshPatches(ID3D11Device* device);

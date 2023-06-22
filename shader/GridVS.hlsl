@@ -27,7 +27,7 @@ void main(
 
     // compute coordinates for vertex texture
     // levelOffset.zw: origin of footprint in texture
-    const float2 uv = positionL * localOffset.yy + levelOffset.zw;
+	const float2 uv = positionW / 2048;
 
     // compute alpha (transition parameter), and blend elevation.
     float2 alpha = saturate((abs(positionL + localOffset.zw - 127) - g_AlphaOffset)
@@ -37,12 +37,12 @@ void main(
     // colorLevel.y : level 
     const float hf = g_Height.SampleLevel(g_PointWrap, uv, colorLevel.y);
     const float hc = g_Height.SampleLevel(g_PointWrap, uv, colorLevel.y + 1);
-    float h = lerp(hf, hc, alpha.x);
+	float h = lerp(hf, hc, floor(alpha.x));
     h *= g_HeightMapScale;
 
     const float w = colorLevel.y + alpha.x;
 
-    positionH = mul(float4(positionW.x, 0, positionW.y, 1), g_ViewProjection);
+	positionH = mul(float4(positionW.x, h, positionW.y, 1), g_ViewProjection);
     color = LoadColor(colorLevel.x); // colorLevel.x : color
     texCoord = float3(uv, w);
 }

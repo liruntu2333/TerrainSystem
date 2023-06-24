@@ -4,7 +4,7 @@ SamplerState g_PointWrap : register(s0);
 Texture2D<float> g_Height : register(t0);
 
 void main(
-    in float2 positionL : SV_POSITION,
+    in uint2 positionL : SV_POSITION,
     in float4 localOffset : TEXCOORD0,
     in float4 levelOffset : TEXCOORD1,
     in uint2 colorLevel : TEXCOORD2,
@@ -23,11 +23,11 @@ void main(
     // convert from grid xy to world xy coordinates
     // localOffset.x: grid spacing of current level, y : texel spacing of current level
     // levelOffset.xy: origin of current footprint in world space
-    const float2 positionW = positionL * localOffset.xx + levelOffset.xy;
+    const float2 positionW = positionL * localOffset.x + levelOffset.xy;
 
     // compute coordinates for vertex texture
     // levelOffset.zw: origin of footprint in texture
-	const float2 uv = positionW / 2048;
+	const float2 uv = positionW * localOffset.y / localOffset.x;
 
     // compute alpha (transition parameter), and blend elevation.
     float2 alpha = saturate((abs(positionL + localOffset.zw - 127) - g_AlphaOffset)

@@ -105,7 +105,7 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
             std::back_inserter(grid),
             [](const MeshVertex& v)
             {
-                return GridVertex(Vector2(v.PositionX, v.PositionY));
+                return GridVertex(v.PositionX, v.PositionY);
             });
 
         ThrowIfFailed(CreateStaticBuffer(
@@ -149,7 +149,7 @@ ClipmapLevel::ClipmapLevel(int l)
       m_WorldOffset(Vector2(-128, -126)), m_TexelOffset(Vector2(0.0)),
       m_Ticker(0.499999f, -0.499999f) {}
 
-Vector2 ClipmapLevel::UpdateCenter(const Vector2& dView)
+Vector2 ClipmapLevel::Update(const Vector2& dView)
 {
     m_Ticker += dView / m_Scale * 0.5f;
     const Vector2 ofs(

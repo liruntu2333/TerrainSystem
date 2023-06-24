@@ -17,11 +17,11 @@ namespace
 {
     const PackedVector::XMCOLOR G_COLORS[] =
     {
-        { 1.000000000f, 0.000000000f, 0.000000000f, 1.000000000f },
-        { 0.000000000f, 0.501960814f, 0.000000000f, 1.000000000f },
-        { 0.000000000f, 0.000000000f, 1.000000000f, 1.000000000f },
-        { 1.000000000f, 1.000000000f, 0.000000000f, 1.000000000f },
-        { 0.000000000f, 1.000000000f, 1.000000000f, 1.000000000f },
+        {1.000000000f, 0.000000000f, 0.000000000f, 1.000000000f},
+        {0.000000000f, 0.501960814f, 0.000000000f, 1.000000000f},
+        {0.000000000f, 0.000000000f, 1.000000000f, 1.000000000f},
+        {1.000000000f, 1.000000000f, 0.000000000f, 1.000000000f},
+        {0.000000000f, 1.000000000f, 1.000000000f, 1.000000000f},
     };
 
     const std::set G_DISTANCES =
@@ -170,17 +170,11 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(const Ve
     m_View = view;
     auto texelScale = 1.0 / m_Height->GetDesc().Width;
 
-    // auto dFiner = m_Levels[0].UpdateCenter(dView);
-    // for (int i = 1; i < LevelCount; ++i)
-    // {
-    //     dFiner = m_Levels[i].UpdateCenter(dFiner);
-    // }
-
-    for (auto && level : m_Levels)
+    for (auto&& level : m_Levels)
     {
-        level.UpdateCenter(dView);
+        level.Update(dView);
     }
-    
+
     {
         auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(texelScale);
         for (const auto& b : block) blocks.emplace_back(b);

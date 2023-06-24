@@ -50,7 +50,7 @@ public:
     ClipmapLevel(int l);
     ~ClipmapLevel() = default;
 
-    DirectX::SimpleMath::Vector2 UpdateCenter(const DirectX::SimpleMath::Vector2& dView);
+    DirectX::SimpleMath::Vector2 Update(const DirectX::SimpleMath::Vector2& dView);
     [[nodiscard]] HollowRing GetHollowRing(float txlScl) const;
     [[nodiscard]] SolidSquare GetSolidSquare(float txlScl) const;
 

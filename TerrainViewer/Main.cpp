@@ -148,7 +148,7 @@ int main(int, char**)
         g_Constants->LightIntensity = sunIntensity;
         g_Constants->ViewPatch = camXy;
         g_Constants->HeightScale = hScale;
-        g_Constants->AlphaOffset = Vector2(127 - transition);
+        g_Constants->AlphaOffset = Vector2(126 - transition);
         g_Constants->OneOverWidth = 1.0 / transition;
         g_Constants->ViewPosition = Vector2();
 
@@ -160,7 +160,7 @@ int main(int, char**)
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
-        ImGui::SliderFloat("Transition Width", &transition, 1.0, 13.0);
+        ImGui::SliderFloat("Transition Width", &transition, 0.1, 13.0);
         ImGui::Checkbox("Wire Frame", &wireFramed);
         //ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         //ImGui::Checkbox("Draw Bounding Box", &drawBb);

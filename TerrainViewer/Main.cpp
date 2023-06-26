@@ -103,8 +103,8 @@ int main(int, char**)
     bool drawBb = false;
     DirectX::BoundingFrustum frustumLocal;
     float spd = 30.0f;
-    float hScale = 5000.0f;
-    float transition = 12.45f;
+    float yScale = 5000.0f;
+    float transition = 25.4f;
     // Main loop
     while (!done)
     {
@@ -128,16 +128,17 @@ int main(int, char**)
 
         g_Camera->Update(io, spd);
         const auto camXy = g_Camera->GetPatch();
+        const auto view = g_Camera->GetPosition();
         if (!freezeFrustum)
         {
             frustumLocal = g_Camera->GetFrustumLocal();
             camCullingXy = camXy;
         }
         std::vector<DirectX::BoundingBox> bounding;
-        auto viewPos = g_Camera->GetPosition();
+
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cr = g_System->GetClipmapResources(viewPos);
+        const auto& cr = g_System->GetClipmapResources(view, Vector3(), yScale);
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -147,14 +148,14 @@ int main(int, char**)
         g_Constants->LightDirection = sunDir;
         g_Constants->LightIntensity = sunIntensity;
         g_Constants->ViewPatch = camXy;
-        g_Constants->HeightScale = hScale;
+        g_Constants->HeightScale = yScale;
         g_Constants->AlphaOffset = Vector2(126 - transition);
         g_Constants->OneOverWidth = 1.0 / transition;
-        g_Constants->ViewPosition = Vector2(viewPos.x, viewPos.z);
+        g_Constants->ViewPosition = Vector2(view.x, view.z);
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::DragFloat("Y Scale", &hScale, 1, 0.0, 3000.0);
+        ImGui::DragFloat("Y Scale", &yScale, 1, 0.0, 3000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0, DirectX::XM_2PI);
@@ -162,7 +163,7 @@ int main(int, char**)
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
         ImGui::SliderFloat("Transition Width", &transition, 0.1, 26.0);
         ImGui::Checkbox("Wire Frame", &wireFramed);
-        //ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
+        ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         //ImGui::Checkbox("Draw Bounding Box", &drawBb);
         //if (freezeFrustum) drawBb = false;
         ImGui::End();

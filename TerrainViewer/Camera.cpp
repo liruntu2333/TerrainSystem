@@ -82,7 +82,9 @@ void Camera::Update(const ImGuiIO& io, float spd)
         dir = -right;
     if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_D)])
         dir = right;
-    m_LocalPosition += dir * dt * spd;
+
+    const auto disp = dir * dt * spd;
+    m_LocalPosition += disp;
 
     Vector2 dxy;
     m_LocalPosition.x = std::modf(m_LocalPosition.x / PATCH_SIZE, &dxy.x) * PATCH_SIZE;

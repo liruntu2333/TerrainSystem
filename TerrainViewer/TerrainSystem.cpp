@@ -17,11 +17,11 @@ namespace
 {
     const PackedVector::XMCOLOR G_COLORS[] =
     {
-        {1.000000000f, 0.000000000f, 0.000000000f, 1.000000000f},
-        {0.000000000f, 0.501960814f, 0.000000000f, 1.000000000f},
-        {0.000000000f, 0.000000000f, 1.000000000f, 1.000000000f},
-        {1.000000000f, 1.000000000f, 0.000000000f, 1.000000000f},
-        {0.000000000f, 1.000000000f, 1.000000000f, 1.000000000f},
+        { 1.000000000f, 0.000000000f, 0.000000000f, 1.000000000f },
+        { 0.000000000f, 0.501960814f, 0.000000000f, 1.000000000f },
+        { 0.000000000f, 0.000000000f, 1.000000000f, 1.000000000f },
+        { 1.000000000f, 1.000000000f, 0.000000000f, 1.000000000f },
+        { 0.000000000f, 1.000000000f, 1.000000000f, 1.000000000f },
     };
 
     const std::set G_DISTANCES =
@@ -60,7 +60,11 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
-    for (int i = 0; i < LevelCount; ++i) m_Levels.emplace_back(i);
+    for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
+    {
+        m_Levels.emplace_back(i);
+    }
+    m_HeightMap = std::make_unique<HeightMap>(m_Path / "height.png");
 }
 
 TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
@@ -139,7 +143,8 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
     return std::move(r);
 }
 
-TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(const Vector3& viewPos)
+TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
+    const Vector3& view3, const Vector3& dView, float yScale)
 {
     ClipmapRenderResource r;
     r.Height = m_Height->GetSrv();
@@ -165,27 +170,36 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(const Ve
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
-    Vector2 view(viewPos.x, viewPos.z);
-    auto dView = view - m_View;
-    m_View = view;
-    auto texelScale = 1.0 / m_Height->GetDesc().Width;
+    Vector2 view2(view3.x, view3.z);
+    const auto dView2 = view2 - m_View;
+    m_View = view2;
+    const auto texelScaleFinest = 1.0 / m_Height->GetDesc().Width;
 
     for (auto&& level : m_Levels)
     {
-        level.Update(dView);
+        level.Update(dView2);
+    }
+
+    int lowestActive = LevelMin;
+    if (float vh = view3.y - m_HeightMap->Get(view2.x, view2.y) * yScale; vh > 0)
+    {
+        lowestActive = std::clamp(std::log2(vh / (2.5f * 254.0f)),
+            static_cast<float>(LevelMin),
+            static_cast<float>(LevelMin + LevelCount - 1));
     }
 
     {
-        auto [block, ring, trim, tid] = m_Levels[0].GetSolidSquare(texelScale);
+        auto [block, ring, trim, tid] = m_Levels[lowestActive].GetSolidSquare(
+            texelScaleFinest * std::pow(2.0f, lowestActive));
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         for (int i = 0; i < 2; ++i) trims[tid[i]].emplace_back(trim[i]);
     }
 
-    for (int i = 1; i < LevelCount; ++i)
+    for (int lv = lowestActive + 1; lv < LevelMin + LevelCount; ++lv)
     {
-        texelScale *= 2.0;
-        auto [block, ring, trim, tid] = m_Levels[i].GetHollowRing(texelScale);
+        auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing(
+            texelScaleFinest * std::pow(2.0f, lv));
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);

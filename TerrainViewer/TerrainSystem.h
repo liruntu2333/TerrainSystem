@@ -8,6 +8,8 @@
 #include "Texture2D.h"
 #include "../HeightMapSplitter/BoundTree.h"
 
+#include "HeightMap.h"
+
 class TerrainSystem
 {
 public:
@@ -54,9 +56,12 @@ public:
         const DirectX::BoundingFrustum& frustumLocal, float yScale,
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
-    [[nodiscard]] ClipmapRenderResource GetClipmapResources(const DirectX::SimpleMath::Vector3& viewPos);
+    [[nodiscard]] ClipmapRenderResource GetClipmapResources(
+        const DirectX::SimpleMath::Vector3& view3,
+        const DirectX::SimpleMath::Vector3& dView, float yScale);
 
-    static constexpr int LevelCount = 10;
+    static constexpr int LevelCount = 9;
+    static constexpr int LevelMin = 0;
 
 protected:
     void InitMeshPatches(ID3D11Device* device);
@@ -65,13 +70,14 @@ protected:
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;
 
+    std::vector<ClipmapLevel> m_Levels {};
+    std::unique_ptr<HeightMap> m_HeightMap = nullptr;
+
     std::unique_ptr<DirectX::Texture2D> m_Height {};
     std::unique_ptr<DirectX::Texture2D> m_Normal {};
     std::unique_ptr<DirectX::Texture2D> m_Albedo {};
 
     const std::filesystem::path m_Path;
-
-    std::vector<ClipmapLevel> m_Levels {};
 
     DirectX::SimpleMath::Vector2 m_View {};
 };

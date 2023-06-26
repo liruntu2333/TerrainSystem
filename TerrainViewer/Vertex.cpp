@@ -49,7 +49,7 @@ const D3D11_INPUT_ELEMENT_DESC GridInstance::InputElements[InputElementCount] =
     {
         "TEXCOORD",
         2,
-        DXGI_FORMAT_R32G32_UINT,
+        DXGI_FORMAT_R32G32B32A32_UINT,
         1,
         32,
         D3D11_INPUT_PER_INSTANCE_DATA,

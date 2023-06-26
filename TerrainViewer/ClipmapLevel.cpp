@@ -60,7 +60,7 @@ namespace
     template <>
     struct FootprintTrait<InteriorTrim> : FootprintTraitBase
     {
-        static constexpr Vector2 LocalOffset = { 0, 0 };
+        //static constexpr Vector2 LocalOffset = { 0, 0 };
         static constexpr Vector2 FinerOffset[] =
         {
             Vector2(M, M),
@@ -75,7 +75,7 @@ namespace
     template <>
     struct FootprintTrait<RingFixUp> : FootprintTraitBase
     {
-        static constexpr Vector2 LocalOffset = { 0, 0 };
+        //static constexpr Vector2 LocalOffset = { 0, 0 };
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::Gold);
     };
@@ -194,23 +194,29 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
     HollowRing hollow;
     hollow.TrimId = trimType;
     const Vector2 xzOfs = Vector2(m_Scale) * m_WorldOffset;
-    const auto uvOfs = m_TexelOffset * txlScl;
+    const Vector2 uvOfs = Vector2(m_TexelOffset.x, m_TexelOffset.y) * txlScl;
 
     for (auto&& block : hollow.Blocks)
     {
-        block.ScaleFactor = Vector2(m_Scale, txlScl);
+        block.GridScale = Vector2(m_Scale);
+        block.TexelScale = Vector2(txlScl);
+        block.WorldOffset = xzOfs;
+        block.TextureOffset = uvOfs;
         block.Level = m_Level;
     }
-    hollow.RingFixUp.ScaleFactor = hollow.Trim.ScaleFactor = Vector2(m_Scale, txlScl);
+    hollow.RingFixUp.GridScale = hollow.Trim.GridScale = Vector2(m_Scale);
+    hollow.RingFixUp.TexelScale = hollow.Trim.TexelScale = Vector2(txlScl);
+    hollow.RingFixUp.WorldOffset = hollow.Trim.WorldOffset = xzOfs;
+    hollow.RingFixUp.TextureOffset = hollow.Trim.TextureOffset = uvOfs;
     hollow.RingFixUp.Level = hollow.Trim.Level = m_Level;
 
     for (int i = 0; i < 12; ++i)
     {
         GridInstance& block = hollow.Blocks[i];
         using Trait = FootprintTrait<Block>;
-        block.OffsetInWorld = Trait::LocalOffset[i] * m_Scale + xzOfs;
-        block.TextureOffset = Trait::LocalOffset[i] * txlScl + uvOfs;
-        block.OffsetInLevel = Trait::LocalOffset[i];
+        block.WorldOffset += Trait::LocalOffset[i] * m_Scale;
+        block.TextureOffset += Trait::LocalOffset[i] * txlScl;
+        block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9
                           ? Trait::Color0
                           : Trait::Color1;
@@ -219,18 +225,14 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
     {
         GridInstance& fixUp = hollow.RingFixUp;
         using Trait = FootprintTrait<RingFixUp>;
-        fixUp.OffsetInWorld = Trait::LocalOffset * m_Scale + xzOfs;
-        fixUp.TextureOffset = Trait::LocalOffset * txlScl + uvOfs;
-        fixUp.OffsetInLevel = Trait::LocalOffset;
+        fixUp.LocalOffset = XMUINT2();
         fixUp.Color = Trait::Color;
     }
 
     {
         GridInstance& trim = hollow.Trim;
         using Trait = FootprintTrait<InteriorTrim>;
-        trim.OffsetInWorld = Trait::LocalOffset * m_Scale + xzOfs;
-        trim.TextureOffset = Trait::LocalOffset * txlScl + uvOfs;
-        trim.OffsetInLevel = Trait::LocalOffset;
+        trim.LocalOffset = XMUINT2();
         trim.Color = Trait::Color;
     }
 
@@ -245,23 +247,29 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
     SolidSquare solid;
 
     const Vector2 xzOfs = Vector2(m_Scale) * m_WorldOffset;
-    const auto uvOfs = m_TexelOffset * txlScl;
-    
+    const Vector2 uvOfs = Vector2(m_TexelOffset.x, m_TexelOffset.y) * txlScl;
+
     for (auto&& block : solid.Blocks)
     {
-        block.ScaleFactor = Vector2(m_Scale, txlScl);
+        block.GridScale = Vector2(m_Scale);
+        block.TexelScale = Vector2(txlScl);
+        block.WorldOffset = xzOfs;
+        block.TextureOffset = uvOfs;
         block.Level = m_Level;
     }
-    solid.RingFixUp.ScaleFactor = solid.Trim[0].ScaleFactor = solid.Trim[1].ScaleFactor = Vector2(m_Scale, txlScl);
+    solid.RingFixUp.GridScale = solid.Trim[0].GridScale = solid.Trim[1].GridScale = Vector2(m_Scale);
+    solid.RingFixUp.TexelScale = solid.Trim[0].TexelScale = solid.Trim[1].TexelScale = Vector2(txlScl);
+    solid.RingFixUp.WorldOffset = solid.Trim[0].WorldOffset = solid.Trim[1].WorldOffset = xzOfs;
+    solid.RingFixUp.TextureOffset = solid.Trim[0].TextureOffset = solid.Trim[1].TextureOffset = uvOfs;
     solid.RingFixUp.Level = solid.Trim[0].Level = solid.Trim[1].Level = m_Level;
 
     for (int i = 0; i < 16; ++i)
     {
         GridInstance& block = solid.Blocks[i];
         using Trait = FootprintTrait<Block>;
-        block.OffsetInWorld = Trait::LocalOffset[i] * m_Scale + xzOfs;
-        block.TextureOffset = Trait::LocalOffset[i] * txlScl + uvOfs;
-        block.OffsetInLevel = Trait::LocalOffset[i];
+        block.WorldOffset += Trait::LocalOffset[i] * m_Scale;
+        block.TextureOffset += Trait::LocalOffset[i] * txlScl;
+        block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9 || i == 12 || i == 15
                           ? Trait::Color0
                           : Trait::Color1;
@@ -270,9 +278,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
     {
         GridInstance& fixUp = solid.RingFixUp;
         using Trait = FootprintTrait<RingFixUp>;
-        fixUp.OffsetInWorld = Trait::LocalOffset * m_Scale + xzOfs;
-        fixUp.TextureOffset = Trait::LocalOffset * txlScl + uvOfs;
-        fixUp.OffsetInLevel = Trait::LocalOffset;
+        fixUp.LocalOffset = XMUINT2();
         fixUp.Color = Trait::Color;
     }
 
@@ -281,9 +287,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
     for (auto& trim : solid.Trim)
     {
         using Trait = FootprintTrait<InteriorTrim>;
-        trim.OffsetInWorld = Trait::LocalOffset * m_Scale + xzOfs;
-        trim.TextureOffset = Trait::LocalOffset * txlScl + uvOfs;
-        trim.OffsetInLevel = Trait::LocalOffset;
+        trim.LocalOffset = XMUINT2();
         trim.Color = Trait::Color;
     }
 

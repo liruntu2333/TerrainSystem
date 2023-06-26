@@ -31,10 +31,11 @@ struct GridVertex
 
 struct GridInstance
 {
-    DirectX::SimpleMath::Vector2 ScaleFactor; // x : grid spacing     y : texture size
-    DirectX::SimpleMath::Vector2 OffsetInLevel; // footprint offset in level
-    DirectX::SimpleMath::Vector2 OffsetInWorld; // footprint offset in world
-    DirectX::SimpleMath::Vector2 TextureOffset;
+    DirectX::SimpleMath::Vector2 GridScale;         // grid spacing
+    DirectX::SimpleMath::Vector2 TexelScale;        // texel spacing
+    DirectX::SimpleMath::Vector2 WorldOffset;       // footprint offset in world
+    DirectX::SimpleMath::Vector2 TextureOffset;     // footprint offset in texture
+    DirectX::XMUINT2 LocalOffset;                   // footprint offset in level
     uint32_t Color;
     uint32_t Level;
 

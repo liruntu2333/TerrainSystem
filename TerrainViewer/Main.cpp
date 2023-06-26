@@ -103,8 +103,8 @@ int main(int, char**)
     bool drawBb = false;
     DirectX::BoundingFrustum frustumLocal;
     float spd = 30.0f;
-    float hScale = 2000.0f;
-    float transition = 1.0f;
+    float hScale = 5000.0f;
+    float transition = 12.45f;
     // Main loop
     while (!done)
     {
@@ -150,7 +150,7 @@ int main(int, char**)
         g_Constants->HeightScale = hScale;
         g_Constants->AlphaOffset = Vector2(126 - transition);
         g_Constants->OneOverWidth = 1.0 / transition;
-        g_Constants->ViewPosition = Vector2();
+        g_Constants->ViewPosition = Vector2(viewPos.x, viewPos.z);
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
@@ -160,7 +160,7 @@ int main(int, char**)
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
-        ImGui::SliderFloat("Transition Width", &transition, 0.1, 13.0);
+        ImGui::SliderFloat("Transition Width", &transition, 0.1, 26.0);
         ImGui::Checkbox("Wire Frame", &wireFramed);
         //ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         //ImGui::Checkbox("Draw Bounding Box", &drawBb);
@@ -223,7 +223,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferCount = 2;
     sd.BufferDesc.Width = 0;
     sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     sd.BufferDesc.RefreshRate.Numerator = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -302,7 +302,6 @@ void CleanupRenderTarget()
 void CreateSystem()
 {
     g_Constants = std::make_unique<PassConstants>();
-    g_Constants->ViewPosition = Vector2(0.0);
     g_Cb0 = std::make_unique<DirectX::ConstantBuffer<PassConstants>>(g_pd3dDevice);
 
     g_MeshRenderer = std::make_unique<TINRenderer>(g_pd3dDevice, g_Cb0);

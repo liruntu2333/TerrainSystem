@@ -50,14 +50,14 @@ public:
     ClipmapLevel(int l);
     ~ClipmapLevel() = default;
 
-    DirectX::SimpleMath::Vector2 Update(const DirectX::SimpleMath::Vector2& dView);
+    void Update(const DirectX::SimpleMath::Vector2& dView);
     [[nodiscard]] HollowRing GetHollowRing(float txlScl) const;
     [[nodiscard]] SolidSquare GetSolidSquare(float txlScl) const;
 
 protected:
     const int m_Level;
     const float m_Scale;
-    DirectX::SimpleMath::Vector2 m_WorldOffset;
-    DirectX::SimpleMath::Vector2 m_TexelOffset;
+    DirectX::XMINT2 m_WorldOffset;  // * scale to get world offset
+    DirectX::XMINT2 m_TexelOffset;
     DirectX::SimpleMath::Vector2 m_Ticker;
 };

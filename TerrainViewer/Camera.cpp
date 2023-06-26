@@ -84,29 +84,17 @@ void Camera::Update(const ImGuiIO& io, float spd)
         dir = right;
     m_LocalPosition += dir * dt * spd;
 
-    if (m_LocalPosition.x >= PATCH_SIZE)
-    {
-        m_LocalPosition.x -= PATCH_SIZE;
-        m_PatchX++;
-    }
-    if (m_LocalPosition.x < 0)
-    {
-        m_LocalPosition.x += PATCH_SIZE;
-        m_PatchX--;
-    }
-    if (m_LocalPosition.z >= PATCH_SIZE)
-    {
-        m_LocalPosition.z -= PATCH_SIZE;
-        m_PatchY++;
-    }
-    if (m_LocalPosition.z < 0)
-    {
-        m_LocalPosition.z += PATCH_SIZE;
-        m_PatchY--;
-    }
+    Vector2 dxy;
+    m_LocalPosition.x = std::modf(m_LocalPosition.x / PATCH_SIZE, &dxy.x) * PATCH_SIZE;
+    m_LocalPosition.z = std::modf(m_LocalPosition.z / PATCH_SIZE, &dxy.y) * PATCH_SIZE;
+    m_PatchX += static_cast<int>(dxy.x);
+    m_PatchY += static_cast<int>(dxy.y);
 
-    m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Q)] ? XM_PIDIV4 / 4.0f : XM_PIDIV4;
-    m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_E)] ? XM_PIDIV4 * 2.0f : m_Fov;
+    m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Q)]
+                ? XM_PIDIV4 / 4.0f
+                : io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_E)]
+                      ? XM_PIDIV2
+                      : XM_PIDIV4;
 
     if (io.MouseDown[ImGuiMouseButton_Right])
     {

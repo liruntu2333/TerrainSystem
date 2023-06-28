@@ -5,6 +5,7 @@
 #include <iostream>
 #include <set>
 
+#include "HeightMap.h"
 #include "../HeightMapSplitter/ThreadPool.h"
 
 constexpr size_t PATCH_NY = 8;
@@ -60,11 +61,19 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
+    auto hm = std::make_shared<HeightMap>(m_Path / "height.png");
+
+    m_HeightCm = std::make_shared<ClipmapTexture>(device,
+        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
+            ClipmapLevel::TextureSz, ClipmapLevel::TextureSz, LevelCount, 1,
+            D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DEFAULT));
+    m_HeightCm->CreateViews(device);
+
     for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
     {
-        m_Levels.emplace_back(i);
+        m_Levels.emplace_back(i, hm, m_HeightCm);
+        hm = hm->GetCoarser();
     }
-    m_HeightMap = std::make_unique<HeightMap>(m_Path / "height.png");
 }
 
 TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
@@ -144,10 +153,11 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
-    const Vector3& view3, const Vector3& dView, float yScale)
+    const Vector3& view3, const Vector3& dView, float yScale, ID3D11DeviceContext* context)
 {
     ClipmapRenderResource r;
-    r.Height = m_Height->GetSrv();
+    // r.Height = m_Height->GetSrv();
+    r.HeightCm = m_HeightCm->GetSrv();
     r.Normal = m_Normal->GetSrv();
     r.Albedo = m_Albedo->GetSrv();
 
@@ -173,24 +183,27 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     Vector2 view2(view3.x, view3.z);
     const auto dView2 = view2 - m_View;
     m_View = view2;
-    const auto texelScaleFinest = 1.0 / m_Height->GetDesc().Width;
 
     for (auto&& level : m_Levels)
     {
-        level.Update(dView2);
+        level.UpdateOffset(dView2);
     }
 
     int lowestActive = LevelMin;
-    if (float vh = view3.y - m_HeightMap->Get(view2.x, view2.y) * yScale; vh > 0)
+    if (float vh = view3.y - m_Levels[0].GetHeight() * yScale; vh > 0)
     {
         lowestActive = std::clamp(std::log2(vh / (2.5f * 254.0f)),
             static_cast<float>(LevelMin),
             static_cast<float>(LevelMin + LevelCount - 1));
     }
 
+    for (int i = lowestActive; i < LevelCount + LevelMin; ++i)
     {
-        auto [block, ring, trim, tid] = m_Levels[lowestActive].GetSolidSquare(
-            texelScaleFinest * std::pow(2.0f, lowestActive));
+        m_Levels[i].UpdateTexture(context);
+    }
+
+    {
+        auto [block, ring, trim, tid] = m_Levels[lowestActive].GetSolidSquare();
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         for (int i = 0; i < 2; ++i) trims[tid[i]].emplace_back(trim[i]);
@@ -198,8 +211,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
 
     for (int lv = lowestActive + 1; lv < LevelMin + LevelCount; ++lv)
     {
-        auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing(
-            texelScaleFinest * std::pow(2.0f, lv));
+        auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing();
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);

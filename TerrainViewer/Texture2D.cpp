@@ -2,7 +2,6 @@
 
 #include <cassert>
 
-#include "D3DHelper.h"
 #include <directxtk/DDSTextureLoader.h>
 #include <directxtk/WICTextureLoader.h>
 
@@ -57,7 +56,7 @@ void Texture2D::CreateViews(ID3D11Device* device)
 
     if (m_Uav == nullptr && bindFlag & D3D11_BIND_UNORDERED_ACCESS)
     {
-        assert(!isMultiSample); // MSAA resource shouldn't be multi-sampled.
+        assert(!isMultiSample); // bind UAV resource shouldn't be multi-sampled.
         auto uav = CD3D11_UNORDERED_ACCESS_VIEW_DESC(m_Texture.Get(),
             D3D11_UAV_DIMENSION_TEXTURE2D);
         auto hr = device->CreateUnorderedAccessView(m_Texture.Get(), &uav, &m_Uav);
@@ -149,8 +148,10 @@ Texture2DArray::Texture2DArray(
     ID3D11Device* device, ID3D11DeviceContext* context, const std::vector<std::filesystem::path>& paths)
 {
     CreateTextureArrayOnList(device, context, paths, m_Texture.Get(), m_Desc);
-    Texture2DArray::CreateViews(device);
 }
+
+Texture2DArray::Texture2DArray(ID3D11Device* device, const CD3D11_TEXTURE2D_DESC& desc) :
+    Texture2D(device, desc) {}
 
 void Texture2DArray::CreateViews(ID3D11Device* device)
 {
@@ -161,4 +162,41 @@ void Texture2DArray::CreateViews(ID3D11Device* device)
         const auto hr = device->CreateShaderResourceView(m_Texture.Get(), &srv, &m_Srv);
         ThrowIfFailed(hr);
     }
+}
+
+ClipmapTexture::ClipmapTexture(ID3D11Device* device, const CD3D11_TEXTURE2D_DESC& desc) :
+    Texture2DArray(device, desc) { }
+
+void ClipmapTexture::CreateViews(ID3D11Device* device)
+{
+    auto bindFlag = m_Desc.BindFlags;
+    if (m_Srv == nullptr && bindFlag & D3D11_BIND_SHADER_RESOURCE)
+    {
+        auto srv = CD3D11_SHADER_RESOURCE_VIEW_DESC(m_Texture.Get(),
+            D3D11_SRV_DIMENSION_TEXTURE2DARRAY);
+        auto hr = device->CreateShaderResourceView(m_Texture.Get(), &srv, &m_Srv);
+        ThrowIfFailed(hr);
+    }
+
+    if (m_Rtv == nullptr && bindFlag & D3D11_BIND_RENDER_TARGET)
+    {
+        auto rtv = CD3D11_RENDER_TARGET_VIEW_DESC(m_Texture.Get(),
+            D3D11_RTV_DIMENSION_TEXTURE2DARRAY);
+        auto hr = device->CreateRenderTargetView(m_Texture.Get(), &rtv, &m_Rtv);
+        ThrowIfFailed(hr);
+    }
+
+    if (m_Uav == nullptr && bindFlag & D3D11_BIND_UNORDERED_ACCESS)
+    {
+        auto uav = CD3D11_UNORDERED_ACCESS_VIEW_DESC(m_Texture.Get(),
+            D3D11_UAV_DIMENSION_TEXTURE2DARRAY);
+        auto hr = device->CreateUnorderedAccessView(m_Texture.Get(), &uav, &m_Uav);
+        ThrowIfFailed(hr);
+    }
+}
+
+std::unique_ptr<MapGuard> ClipmapTexture::Map(
+    ID3D11DeviceContext* context, unsigned subresource, D3D11_MAP mapType, unsigned mapFlags)
+{
+    return std::make_unique<MapGuard>(context, m_Texture.Get(), subresource, mapType, mapFlags);
 }

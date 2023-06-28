@@ -3,6 +3,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include  <filesystem>
+#include "D3DHelper.h"
 
 namespace DirectX
 {
@@ -22,7 +23,7 @@ namespace DirectX
 
         [[nodiscard]] auto GetTexture() const { return m_Texture.Get(); }
         explicit operator ID3D11Texture2D*() const { return m_Texture.Get(); }
-        //explicit operator ID3D11Resource*() const { return m_Texture.Get(); }
+        //explicit operator ID3D11Resource*() const { return m_Texture.GetHeight(); }
         [[nodiscard]] auto GetSrv() const { return m_Srv.Get(); }
         [[nodiscard]] auto GetRtv() const { return m_Rtv.Get(); }
         [[nodiscard]] auto GetUav() const { return m_Uav.Get(); }
@@ -63,6 +64,9 @@ namespace DirectX
             ID3D11Device* device,
             ID3D11DeviceContext* context,
             const std::vector<std::filesystem::path>& paths);
+        Texture2DArray(
+            ID3D11Device* device,
+            const CD3D11_TEXTURE2D_DESC& desc);
 
         static void CreateTextureArrayOnList(
             ID3D11Device* device,
@@ -74,5 +78,20 @@ namespace DirectX
         ~Texture2DArray() override = default;
 
         void CreateViews(ID3D11Device* device) override;
+    };
+
+    class ClipmapTexture : public Texture2DArray
+    {
+    public:
+        ClipmapTexture(ID3D11Device* device, const CD3D11_TEXTURE2D_DESC& desc);
+        ~ClipmapTexture() override = default;
+
+        void CreateViews(ID3D11Device* device) override;
+
+        [[nodiscard]] std::unique_ptr<MapGuard> Map(
+            ID3D11DeviceContext* context,
+            unsigned int subresource,
+            D3D11_MAP mapType,
+            unsigned int mapFlags);
     };
 }

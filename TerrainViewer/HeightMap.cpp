@@ -11,9 +11,34 @@ HeightMap::HeightMap(const std::filesystem::path& path)
     m_Width = w;
     m_Height = h;
     const int n = w * h;
-    constexpr float m = 1.f / 65535.f;
+
     m_Values.reserve(n);
-    std::transform(data, data + n, std::back_inserter(m_Values),
-        [m](uint16_t v) { return v * m; });
+    std::copy_n(data, n, std::back_inserter(m_Values));
     free(data);
+}
+
+HeightMap::HeightMap(std::vector<uint16_t> val, const int w) :
+    m_Width(w), m_Height(static_cast<int>(val.size()) / w),
+    m_Values(std::move(val)) {}
+
+std::shared_ptr<HeightMap> HeightMap::GetCoarser() const
+{
+    std::vector<uint16_t> cVal;
+    const int w = m_Width / 2;
+    const int h = m_Height / 2;
+    cVal.reserve(w * h);
+    for (int y = 0; y < h; ++y)
+    {
+        for (int x = 0; x < w; ++x)
+        {
+            uint32_t sum = 0;
+            sum += GetVal(x * 2, y * 2);
+            sum += GetVal(x * 2 + 1, y * 2);
+            sum += GetVal(x * 2, y * 2 + 1);
+            sum += GetVal(x * 2 + 1, y * 2 + 1);
+            cVal.emplace_back(sum / 4);
+        }
+    }
+
+    return std::make_shared<HeightMap>(std::move(cVal), w);
 }

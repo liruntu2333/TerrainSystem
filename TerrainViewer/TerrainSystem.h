@@ -8,8 +8,6 @@
 #include "Texture2D.h"
 #include "../HeightMapSplitter/BoundTree.h"
 
-#include "HeightMap.h"
-
 class TerrainSystem
 {
 public:
@@ -25,7 +23,8 @@ public:
 
     struct ClipmapRenderResource
     {
-        ID3D11ShaderResourceView* Height {};
+        // ID3D11ShaderResourceView* Height {};
+        ID3D11ShaderResourceView* HeightCm {};
         ID3D11ShaderResourceView* Normal {};
         ID3D11ShaderResourceView* Albedo {};
 
@@ -58,9 +57,9 @@ public:
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
         const DirectX::SimpleMath::Vector3& view3,
-        const DirectX::SimpleMath::Vector3& dView, float yScale);
+        const DirectX::SimpleMath::Vector3& dView, float yScale, ID3D11DeviceContext* context);
 
-    static constexpr int LevelCount = 9;
+    static constexpr int LevelCount = 5;
     static constexpr int LevelMin = 0;
 
 protected:
@@ -71,7 +70,7 @@ protected:
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;
 
     std::vector<ClipmapLevel> m_Levels {};
-    std::unique_ptr<HeightMap> m_HeightMap = nullptr;
+    std::shared_ptr<DirectX::ClipmapTexture> m_HeightCm {};
 
     std::unique_ptr<DirectX::Texture2D> m_Height {};
     std::unique_ptr<DirectX::Texture2D> m_Normal {};

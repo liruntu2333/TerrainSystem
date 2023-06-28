@@ -22,7 +22,7 @@ public:
 
     void Initialize(const std::filesystem::path& shaderDir);
     void Render(ID3D11DeviceContext* context, const TerrainSystem::ClipmapRenderResource& rr, bool wireFrame = false);
-
+    
 protected:
 
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_InputLayout = nullptr;

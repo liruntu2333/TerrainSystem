@@ -15,9 +15,11 @@
 #include "TerrainSystem.h"
 #include "../HeightMapSplitter/ThreadPool.h"
 #include <directxtk/GeometricPrimitive.h>
+#include <d3d11_3.h>
 
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
+static ID3D11Device3* g_pd3dDevice3 = NULL;
 static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
 static IDXGISwapChain* g_pSwapChain = NULL;
 static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
@@ -138,7 +140,7 @@ int main(int, char**)
 
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cr = g_System->GetClipmapResources(view, Vector3(), yScale);
+        const auto& cr = g_System->GetClipmapResources(view, Vector3(), yScale, g_pd3dDeviceContext);
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -195,8 +197,8 @@ int main(int, char**)
         //            nullptr,
         //            true);
 
-        g_GridRenderer->Render(g_pd3dDeviceContext, cr);
-        if (wireFramed) g_GridRenderer->Render(g_pd3dDeviceContext, cr, true);
+        //g_GridRenderer->Render(g_pd3dDeviceContext, cr);
+        /*if (wireFramed)*/ g_GridRenderer->Render(g_pd3dDeviceContext, cr, true);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -240,9 +242,9 @@ bool CreateDeviceD3D(HWND hWnd)
     createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 
     D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0, };
+    const D3D_FEATURE_LEVEL featureLevelArray[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, };
     HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
-        featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel,
+        featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel,
         &g_pd3dDeviceContext);
     if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
         res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_WARP, NULL, createDeviceFlags, featureLevelArray, 2,

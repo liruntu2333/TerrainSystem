@@ -1,7 +1,7 @@
 #include "ShaderUtil.hlsli"
 
 SamplerState g_PointWrap : register(s0);
-Texture2D<float> g_Height : register(t0);
+Texture2DArray<float> g_Height : register(t0);
 
 void main(
     in uint2 positionL : SV_POSITION,   // local position in footprint at finer level
@@ -38,17 +38,17 @@ void main(
 
     // compute coordinates for vertex texture
     // offsets.zw: origin of footprint in texture
-    const float2 uvf = pf * scales.zw / scales.xy;
-    const float2 uvc = pc * scales.zw / scales.xy;
+	const float2 uvf = positionL * scales.zw + offsets.zw;
+	const float2 uvc = positionC * scales.zw + offsets.zw;
     const float2 uv = lerp(uvf, uvc, alpha.x);
 
     // params.w : level 
     const float w = params.w + alpha.x;
 
     // blend elevation value
-    const float hf = g_Height.SampleLevel(g_PointWrap, uvf, params.w);
-    const float hc = g_Height.SampleLevel(g_PointWrap, uvc, params.w + 1);
-    float h = lerp(hf, hc, alpha.x);
+	const float hf = g_Height.SampleLevel(g_PointWrap, float3(uvf, params.w), 0);
+	const float hc = g_Height.SampleLevel(g_PointWrap, float3(uvc, params.w + 1), 0);
+	float h = hf;
     h *= g_HeightMapScale;
 
     float3 positionW = float3(p.x, h, p.y);

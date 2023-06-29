@@ -140,7 +140,7 @@ int main(int, char**)
 
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cr = g_System->GetClipmapResources(view, Vector3(), yScale, g_pd3dDeviceContext);
+        const auto& cr = g_System->GetClipmapResources(view, yScale, g_pd3dDeviceContext);
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -152,7 +152,7 @@ int main(int, char**)
         g_Constants->ViewPatch = camXy;
         g_Constants->HeightScale = yScale;
         g_Constants->AlphaOffset = Vector2(126 - transition);
-        g_Constants->OneOverWidth = 1.0 / transition;
+        g_Constants->OneOverTransition = 1.0 / transition;
         g_Constants->ViewPosition = Vector2(view.x, view.z);
 
         ImGui::Begin("Terrain System");

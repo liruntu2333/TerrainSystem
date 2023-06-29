@@ -5,8 +5,8 @@
 
 struct MeshVertex
 {
-    uint8_t PositionX{};
-    uint8_t PositionY{};
+    uint8_t PositionX {};
+    uint8_t PositionY {};
     //uint8_t MorphX;
     //uint8_t MorphZ;
 
@@ -21,7 +21,7 @@ struct MeshVertex
 
 struct GridVertex
 {
-    DirectX::PackedVector::XMUBYTE2 Position{};
+    DirectX::PackedVector::XMUBYTE2 Position {};
 
     static constexpr unsigned int InputElementCount = 1;
     static const D3D11_INPUT_ELEMENT_DESC InputElements[InputElementCount];
@@ -31,11 +31,11 @@ struct GridVertex
 
 struct GridInstance
 {
-    DirectX::SimpleMath::Vector2 GridScale;         // grid spacing
-    DirectX::SimpleMath::Vector2 TexelScale;        // texel spacing
-    DirectX::SimpleMath::Vector2 WorldOffset;       // footprint offset in world
-    DirectX::SimpleMath::Vector2 TextureOffset;     // footprint offset in texture
-    DirectX::XMUINT2 LocalOffset;                   // footprint offset in level
+    DirectX::SimpleMath::Vector2 GridScale;             // grid spacing
+    DirectX::SimpleMath::Vector2 WorldOffset;           // offset in world
+    DirectX::SimpleMath::Vector2 TextureOffsetFiner;    // offset in fine texture
+    DirectX::SimpleMath::Vector2 TextureOffsetCoarser;  // offset in coarse texture
+    DirectX::XMUINT2 LocalOffset;                       // offset in level
     uint32_t Color;
     uint32_t Level;
 

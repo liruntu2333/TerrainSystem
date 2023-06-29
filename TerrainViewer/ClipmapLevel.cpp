@@ -67,10 +67,10 @@ namespace
         //static constexpr Vector2 LocalOffset = { 0, 0 };
         static constexpr Vector2 FinerOffset[] =
         {
-            Vector2(M, M),
-            Vector2(M - 1, M),
-            Vector2(M - 1, M - 1),
-            Vector2(M, M - 1),
+            Vector2(M, M - 1),          // M, M in inverted coordinate
+            Vector2(M - 1, M - 1),      // M - 1, M in inverted coordinate
+            Vector2(M - 1, M),          // M - 1, M - 1 in inverted coordinate
+            Vector2(M, M),              // M, M - 1 in inverted coordinate
         };
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::RoyalBlue);
@@ -82,14 +82,6 @@ namespace
         //static constexpr Vector2 LocalOffset = { 0, 0 };
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::Gold);
-    };
-
-    enum TrimPattern : int
-    {
-        Lt = 0,
-        Rt,
-        Rb,
-        Lb,
     };
 
     Vector2 operator+(const Vector2& lhs, const XMINT2& rhs)
@@ -121,6 +113,17 @@ namespace
     {
         return { lhs.x + rhs.x, lhs.y + rhs.y };
     }
+
+    const XMCOLOR LevelColors[] =
+    {
+        XMCOLOR(Colors::Red),
+        XMCOLOR(Colors::Green),
+        XMCOLOR(Colors::Blue),
+        XMCOLOR(Colors::Yellow),
+        XMCOLOR(Colors::Cyan),
+        XMCOLOR(Colors::Magenta),
+        XMCOLOR(Colors::White),
+    };
 }
 
 void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, ID3D11Device* device)
@@ -165,6 +168,7 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
     loadVb(path / "ring_fix_up.vtx", RingFixUpVb);
     loadIb(path / "ring_fix_up.idx", RingFixUpIb, RingIdxCnt);
 
+    // hack to fit in LH-coordinate, RH should use lt rt lb rb as the name it is
     loadVb(path / "trim_lb.vtx", TrimVb[0]);
     loadIb(path / "trim_lb.idx", TrimIb[0], TrimIdxCnt);
     loadVb(path / "trim_rb.vtx", TrimVb[1]);
@@ -205,7 +209,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     //     D3D11CalcSubresource(0, m_ArraySlice, 1), D3D11_MAP_WRITE, 0);
 
     std::vector<uint16_t> hm(TextureSz * TextureSz);
-    const auto dst = reinterpret_cast<uint16_t*>(hm.data());
+    const auto dst = hm.data();
     constexpr int dw = TextureN;
     constexpr int dh = TextureN;
 
@@ -235,13 +239,13 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     {
         m_TexelOrigin = { 0, 0 };
         copyRectWarp(dw, dh,
-            0, 0,
+            m_TexelOrigin.x, m_TexelOrigin.y,
             m_GridOrigin.x, m_GridOrigin.y);
         m_MappedOrigin = m_GridOrigin;
         context->UpdateSubresource(m_HeightTex->GetTexture(),
             D3D11CalcSubresource(0, m_ArraySlice, 1),
             nullptr, hm.data(), TextureSz * sizeof uint16_t,
-            hm.size() * sizeof uint16_t);
+            0);
         return;
     }
 
@@ -266,41 +270,32 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     m_TexelOrigin.y = PositiveMod(m_TexelOrigin.y, TextureSz);
 }
 
-ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing() const
+ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const ClipmapLevel& coarse) const
 {
     using namespace SimpleMath;
 
-    TrimPattern trimType;
-    if (m_Ticker.x >= 0 && m_Ticker.y < 0) trimType = Lt;
-    else if (m_Ticker.x < 0 && m_Ticker.y < 0) trimType = Rt;
-    else if (m_Ticker.x < 0 && m_Ticker.y >= 0) trimType = Rb;
-    else /*if (m_Ticker.x >= 0 && m_Ticker.y >= 0)*/ trimType = Lb;
-
     HollowRing hollow;
-    hollow.TrimId = trimType;
-    const Vector2 xzOfs = Vector2(m_GridSpacing) * m_GridOrigin;
-    const Vector2 uvOfs = Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz;
+    hollow.TrimId = GetTrimPattern();
 
-    for (auto&& block : hollow.Blocks)
+    const GridInstance ins
     {
-        block.GridScale = Vector2(m_GridSpacing);
-        block.TexelScale = Vector2(OneOverSz);
-        block.WorldOffset = xzOfs;
-        block.TextureOffset = uvOfs;
-        block.Level = m_Level;
-    }
-    hollow.RingFixUp.GridScale = hollow.Trim.GridScale = Vector2(m_GridSpacing);
-    hollow.RingFixUp.TexelScale = hollow.Trim.TexelScale = Vector2(OneOverSz);
-    hollow.RingFixUp.WorldOffset = hollow.Trim.WorldOffset = xzOfs;
-    hollow.RingFixUp.TextureOffset = hollow.Trim.TextureOffset = uvOfs;
-    hollow.RingFixUp.Level = hollow.Trim.Level = m_Level;
+        Vector2(m_GridSpacing),
+        (Vector2(m_GridSpacing) * m_GridOrigin),
+        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz),
+        (coarse.GetFinerBlockOffset()),
+        XMUINT2(),
+        LevelColors[PositiveMod(m_Level, 7)],
+        static_cast<uint32_t>(m_Level)
+    };
 
     for (int i = 0; i < 12; ++i)
     {
         GridInstance& block = hollow.Blocks[i];
         using Trait = FootprintTrait<Block>;
+        block = ins;
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
-        block.TextureOffset += Trait::LocalOffset[i] * OneOverSz;
+        block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
+        block.TextureOffsetCoarser += Trait::LocalOffset[i] * OneOverSz * 0.5f;
         block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9
                           ? Trait::Color0
@@ -310,14 +305,14 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing() const
     {
         GridInstance& fixUp = hollow.RingFixUp;
         using Trait = FootprintTrait<RingFixUp>;
-        fixUp.LocalOffset = XMUINT2();
+        fixUp = ins;
         fixUp.Color = Trait::Color;
     }
 
     {
         GridInstance& trim = hollow.Trim;
         using Trait = FootprintTrait<InteriorTrim>;
-        trim.LocalOffset = XMUINT2();
+        trim = ins;
         trim.Color = Trait::Color;
     }
 
@@ -325,34 +320,30 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing() const
 }
 
 
-ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare() const
+ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const ClipmapLevel& coarse) const
 {
     using namespace SimpleMath;
     SolidSquare solid;
 
-    const Vector2 xzOfs = Vector2(m_GridSpacing) * m_GridOrigin;
-    const Vector2 uvOfs = Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz;
-
-    for (auto&& block : solid.Blocks)
+    const GridInstance ins
     {
-        block.GridScale = Vector2(m_GridSpacing);
-        block.TexelScale = Vector2(OneOverSz);
-        block.WorldOffset = xzOfs;
-        block.TextureOffset = uvOfs;
-        block.Level = m_Level;
-    }
-    solid.RingFixUp.GridScale = solid.Trim[0].GridScale = solid.Trim[1].GridScale = Vector2(m_GridSpacing);
-    solid.RingFixUp.TexelScale = solid.Trim[0].TexelScale = solid.Trim[1].TexelScale = Vector2(OneOverSz);
-    solid.RingFixUp.WorldOffset = solid.Trim[0].WorldOffset = solid.Trim[1].WorldOffset = xzOfs;
-    solid.RingFixUp.TextureOffset = solid.Trim[0].TextureOffset = solid.Trim[1].TextureOffset = uvOfs;
-    solid.RingFixUp.Level = solid.Trim[0].Level = solid.Trim[1].Level = m_Level;
+        Vector2(m_GridSpacing),
+        (Vector2(m_GridSpacing) * m_GridOrigin),
+        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz),
+        (coarse.GetFinerBlockOffset()),
+        XMUINT2(),
+        LevelColors[PositiveMod(m_Level, 7)],
+        static_cast<uint32_t>(m_Level)
+    };
 
     for (int i = 0; i < 16; ++i)
     {
         GridInstance& block = solid.Blocks[i];
         using Trait = FootprintTrait<Block>;
+        block = ins;
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
-        block.TextureOffset += Trait::LocalOffset[i] * OneOverSz;
+        block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
+        block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
         block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9 || i == 12 || i == 15
                           ? Trait::Color0
@@ -362,16 +353,14 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare() const
     {
         GridInstance& fixUp = solid.RingFixUp;
         using Trait = FootprintTrait<RingFixUp>;
-        fixUp.LocalOffset = XMUINT2();
+        fixUp = ins;
         fixUp.Color = Trait::Color;
     }
 
-    solid.TrimId[0] = 0;
-    solid.TrimId[1] = (solid.TrimId[0] + 2) % 4;
     for (auto& trim : solid.Trim)
     {
         using Trait = FootprintTrait<InteriorTrim>;
-        trim.LocalOffset = XMUINT2();
+        trim = ins;
         trim.Color = Trait::Color;
     }
 
@@ -381,4 +370,10 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare() const
 float ClipmapLevel::GetHeight() const
 {
     return m_HeightSrc->GetHeight(m_GridOrigin.x, m_GridOrigin.y);
+}
+
+Vector2 ClipmapLevel::GetFinerBlockOffset() const
+{
+    return (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) +
+        FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern()]) * OneOverSz;
 }

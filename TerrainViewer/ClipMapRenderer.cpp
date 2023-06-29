@@ -14,7 +14,7 @@ ClipmapRenderer::ClipmapRenderer(
     const std::shared_ptr<ConstantBuffer<PassConstants>>& passConst) :
     Renderer(device), m_Cb0(passConst), m_InsBuff(m_Device,
         CD3D11_BUFFER_DESC(0, D3D11_BIND_VERTEX_BUFFER, D3D11_USAGE_DYNAMIC, D3D11_CPU_ACCESS_WRITE),
-        TerrainSystem::LevelCount * 14 + 5) {}
+        TerrainSystem::LevelCount * 19) {}
 
 void ClipmapRenderer::Initialize(const std::filesystem::path& shaderDir)
 {

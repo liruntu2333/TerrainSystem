@@ -153,7 +153,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
-    const Vector3& view3, const Vector3& dView, float yScale, ID3D11DeviceContext* context)
+    const Vector3& view3, float yScale, ID3D11DeviceContext* context)
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -203,15 +203,17 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     }
 
     {
-        auto [block, ring, trim, tid] = m_Levels[lowestActive].GetSolidSquare();
+        auto [block, ring, trim] = m_Levels[lowestActive].GetSolidSquare(
+            m_Levels[std::min(lowestActive + 1, LevelMin + LevelCount - 1)]);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
-        for (int i = 0; i < 2; ++i) trims[tid[i]].emplace_back(trim[i]);
+        for (int i = 0; i < 2; ++i) trims[i * 2].emplace_back(trim[i]);
     }
 
     for (int lv = lowestActive + 1; lv < LevelMin + LevelCount; ++lv)
     {
-        auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing();
+        auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing(
+            m_Levels[std::min(lv + 1, LevelMin + LevelCount - 1)]);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);

@@ -3,7 +3,6 @@
 #include <wrl/client.h>
 #include <d3d11.h>
 #include <filesystem>
-#include <directxtk/DirectXHelpers.h>
 
 #include "Vertex.h"
 
@@ -32,8 +31,7 @@ public:
     {
         GridInstance Blocks[16];
         GridInstance RingFixUp;
-        GridInstance Trim[2];
-        int TrimId[2];
+        GridInstance Trim[2]; // lt, rb
     };
 
     static void LoadFootprintGeometry(const std::filesystem::path& path, ID3D11Device* device);
@@ -62,13 +60,23 @@ public:
 
     void UpdateOffset(const DirectX::SimpleMath::Vector2& dView);
     void UpdateTexture(ID3D11DeviceContext* context);
-    [[nodiscard]] HollowRing GetHollowRing() const;
-    [[nodiscard]] SolidSquare GetSolidSquare() const;
+    [[nodiscard]] HollowRing GetHollowRing(const ClipmapLevel& coarse) const;
+    [[nodiscard]] SolidSquare GetSolidSquare(const ClipmapLevel& coarse) const;
     [[nodiscard]] float GetHeight() const;
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerBlockOffset() const;
 
-    friend TerrainSystem;
+    friend class TerrainSystem;
 
 protected:
+    [[nodiscard]] int GetTrimPattern() const
+    {
+        if (m_Ticker.x >= 0 && m_Ticker.y < 0) return 0;
+        if (m_Ticker.x < 0 && m_Ticker.y < 0) return 1;
+        if (m_Ticker.x < 0 && m_Ticker.y >= 0) return 2;
+        /*if (m_Ticker.x >= 0 && m_Ticker.y >= 0)*/
+        return 3;
+    }
+
     const int m_Level;
     const float m_GridSpacing;
     inline static constexpr int TextureSz = 1 << ClipmapK;

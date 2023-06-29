@@ -57,7 +57,7 @@ public:
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
         const DirectX::SimpleMath::Vector3& view3,
-        const DirectX::SimpleMath::Vector3& dView, float yScale, ID3D11DeviceContext* context);
+        float yScale, ID3D11DeviceContext* context);
 
     static constexpr int LevelCount = 5;
     static constexpr int LevelMin = 0;

@@ -16,6 +16,7 @@ cbuffer PassConstants : register(b0)
 	float2 g_AlphaOffset;
 	float g_OneOverWidth;
 	float g_HeightMapScale;
+	float4 g_SampleRate; // xy : on finer level, zw : on coarser level
 }
 
 float4 LoadColor(uint col)

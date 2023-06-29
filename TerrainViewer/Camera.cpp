@@ -16,26 +16,26 @@ Matrix Camera::GetView() const
     return XMMatrixLookToLH(m_Position, m_Forward, Vector3::Up);
 }
 
-Matrix Camera::GetViewLocal() const
-{
-    return XMMatrixLookToLH(m_LocalPosition, m_Forward, Vector3::Up);
-}
+// Matrix Camera::GetViewLocal() const
+// {
+//     return XMMatrixLookToLH(m_LocalPosition, m_Forward, Vector3::Up);
+// }
 
 Matrix Camera::GetProjection() const
 {
     return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
 }
 
-Matrix Camera::GetProjectionLocal() const
-{
-    return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
-}
+// Matrix Camera::GetProjectionLocal() const
+// {
+//     return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+// }
 
-Matrix Camera::GetViewProjectionLocal() const
-{
-    return XMMatrixLookToLH(m_LocalPosition, m_Forward, Vector3::Up) *
-        XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
-}
+// Matrix Camera::GetViewProjectionLocal() const
+// {
+//     return XMMatrixLookToLH(m_LocalPosition, m_Forward, Vector3::Up) *
+//         XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+// }
 
 BoundingFrustum Camera::GetFrustum() const
 {
@@ -44,12 +44,12 @@ BoundingFrustum Camera::GetFrustum() const
     return f;
 }
 
-BoundingFrustum Camera::GetFrustumLocal() const
-{
-    BoundingFrustum f(XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane));
-    f.Transform(f, Matrix::CreateFromYawPitchRoll(m_Rotation) * Matrix::CreateTranslation(m_LocalPosition));
-    return f;
-}
+// BoundingFrustum Camera::GetFrustumLocal() const
+// {
+//     BoundingFrustum f(XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane));
+//     f.Transform(f, Matrix::CreateFromYawPitchRoll(m_Rotation) * Matrix::CreateTranslation(m_LocalPosition));
+//     return f;
+// }
 
 void Camera::SetViewPort(ID3D11DeviceContext* context) const
 {
@@ -83,14 +83,14 @@ void Camera::Update(const ImGuiIO& io, float spd)
     if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_D)])
         dir = right;
 
-    const auto disp = dir * dt * spd;
-    m_LocalPosition += disp;
+    m_DeltaPosition = dir * dt * spd;
+    m_Position += m_DeltaPosition;
 
-    Vector2 dxy;
-    m_LocalPosition.x = std::modf(m_LocalPosition.x / PATCH_SIZE, &dxy.x) * PATCH_SIZE;
-    m_LocalPosition.z = std::modf(m_LocalPosition.z / PATCH_SIZE, &dxy.y) * PATCH_SIZE;
-    m_PatchX += static_cast<int>(dxy.x);
-    m_PatchY += static_cast<int>(dxy.y);
+    // Vector2 dxy;
+    // m_LocalPosition.x = std::modf(m_LocalPosition.x / PATCH_SIZE, &dxy.x) * PATCH_SIZE;
+    // m_LocalPosition.z = std::modf(m_LocalPosition.z / PATCH_SIZE, &dxy.y) * PATCH_SIZE;
+    // m_PatchX += static_cast<int>(dxy.x);
+    // m_PatchY += static_cast<int>(dxy.y);
 
     m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Q)]
                 ? XM_PIDIV4 / 4.0f
@@ -104,8 +104,8 @@ void Camera::Update(const ImGuiIO& io, float spd)
         const auto dy = io.MouseDelta.y;
         m_Rotation.x += dy * 0.001f;
         m_Rotation.y += dx * 0.001f;
-        m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.1f, XM_PIDIV2 - 0.1f);
+        m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
     }
 
-    m_Position = m_LocalPosition + Vector3(m_PatchX * PATCH_SIZE, 0, m_PatchY * PATCH_SIZE);
+    // m_Position = m_LocalPosition + Vector3(m_PatchX * PATCH_SIZE, 0, m_PatchY * PATCH_SIZE);
 }

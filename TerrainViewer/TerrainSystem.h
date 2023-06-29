@@ -56,8 +56,8 @@ public:
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
-        const DirectX::SimpleMath::Vector3& view3,
-        float yScale, ID3D11DeviceContext* context);
+        const DirectX::SimpleMath::Vector2& dView2,
+        float viewY, float yScale, ID3D11DeviceContext* context);
 
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;

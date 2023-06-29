@@ -153,7 +153,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
-    const Vector3& view3, float yScale, ID3D11DeviceContext* context)
+    const Vector2& dView2, float viewY, float yScale, ID3D11DeviceContext* context)
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -180,10 +180,6 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
-    Vector2 view2(view3.x, view3.z);
-    const auto dView2 = view2 - m_View;
-    m_View = view2;
-
     for (auto&& level : m_Levels)
     {
         level.UpdateOffset(dView2);
@@ -191,7 +187,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
 
     int lowestActive = LevelMin;
     while (lowestActive < LevelMax &&
-        !m_Levels[lowestActive - LevelMin].IsActive(view3.y, yScale))
+        !m_Levels[lowestActive - LevelMin].IsActive(viewY, yScale))
         ++lowestActive;
 
     for (int lv = lowestActive; lv < LevelMin + LevelCount; ++lv)

@@ -7,15 +7,16 @@ static const float SphereRadius = 200000.0f;
 
 cbuffer PassConstants : register(b0)
 {
-float4x4 ViewProjectionLocal;
+// float4x4 ViewProjectionLocal;
 float4x4 ViewProjection;
 float3 LightDirection;
 float LightIntensity;
-int2 ViewPatch;
-float2 ViewPosition;
-float2 AlphaOffset;
+// int2 ViewPatch;
+float3 ViewPosition;
 float OneOverWidth;
+float2 AlphaOffset;
 float HeightMapScale;
+float pad;
 }
 
 float4 LoadColor(uint col)
@@ -92,8 +93,8 @@ float Luminance(float3 color)
 
 float3 MakeSphere(const float2 xz, const float y, const float r)
 {
-	const float3 center = float3(0, -r, 0);
-	float3 p = center + normalize(float3(xz.x, 0, xz.y) - center) * (r + y);
+    const float3 center = float3(0, -r, 0);
+    float3 p = center + normalize(float3(xz.x, 0, xz.y) - center) * (r + y);
     return p;
 }
 

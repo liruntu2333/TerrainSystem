@@ -96,14 +96,13 @@ int main(int, char**)
     CreateSystem();
 
     bool done = false;
-    bool wireFramed = false;
-    float sunPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
-    float sunTheta = 0.6f;
-    float sunIntensity = 1.0f;
+    bool wireFrame = false;
+    float lPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
+    float lTheta = 0.6f;
+    float lInt = 1.0f;
     bool freezeFrustum = false;
-    DirectX::XMINT2 camCullingXy {};
     bool drawBb = false;
-    DirectX::BoundingFrustum frustumLocal;
+    DirectX::BoundingFrustum frustum {};
     float spd = 30.0f;
     float hScale = 5000.0f;
     float transition = 25.4f;
@@ -129,45 +128,40 @@ int main(int, char**)
         ImGui::NewFrame();
 
         g_Camera->Update(io, spd);
-        const auto camXy = g_Camera->GetPatch();
         const auto view = g_Camera->GetPosition();
-        if (!freezeFrustum)
-        {
-            frustumLocal = g_Camera->GetFrustumLocal();
-            camCullingXy = camXy;
-        }
-        std::vector<DirectX::BoundingBox> bounding;
-
+        const auto dView = g_Camera->GetDeltaPosition();
+        if (!freezeFrustum) frustum = g_Camera->GetFrustum();
+        std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cr = g_System->GetClipmapResources(view, hScale, g_pd3dDeviceContext);
+        const auto& cmr = g_System->GetClipmapResources(
+            Vector2(dView.x, dView.z), view.y, hScale, g_pd3dDeviceContext);
 
-        Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
-            std::sin(sunTheta) * std::sin(sunPhi));
-        sunDir.Normalize();
-        g_Constants->ViewProjectionLocal = g_Camera->GetViewProjectionLocal().Transpose();
+        Vector3 lDir(
+            std::sin(lTheta) * std::cos(lPhi),
+            std::cos(lTheta),
+            std::sin(lTheta) * std::sin(lPhi));
+        lDir.Normalize();
+
         g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
-        g_Constants->LightDirection = sunDir;
-        g_Constants->LightIntensity = sunIntensity;
-        g_Constants->ViewPatch = camXy;
+        g_Constants->ViewPosition = view;
+        g_Constants->Light = Vector4(lDir.x, lDir.y, lDir.z, lInt);
         g_Constants->HeightScale = hScale;
         g_Constants->AlphaOffset = Vector2(126 - transition);
-        g_Constants->OneOverTransition = 1.0 / transition;
-        g_Constants->ViewPosition = Vector2(view.x, view.z);
+        g_Constants->OneOverTransition = 1.0f / transition;
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
         ImGui::DragFloat("H Scale", &hScale, 1, 0.0, 10000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
-        ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
-        ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0, DirectX::XM_2PI);
-        ImGui::SliderFloat("Sun Intensity", &sunIntensity, 0.0f, 1.0);
+        ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
+        ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
+        ImGui::SliderFloat("Sun Intensity", &lInt, 0.0f, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
         ImGui::SliderFloat("Transition Width", &transition, 0.1, 26.0);
-        ImGui::Checkbox("Wire Frame", &wireFramed);
+        ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-        //ImGui::Checkbox("Draw Bounding Box", &drawBb);
-        //if (freezeFrustum) drawBb = false;
+        ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::End();
 
         // Rendering
@@ -199,7 +193,7 @@ int main(int, char**)
 
         //g_GridRenderer->Render(g_pd3dDeviceContext, cr);
         /*if (wireFramed)*/
-        g_GridRenderer->Render(g_pd3dDeviceContext, cr, wireFramed);
+        g_GridRenderer->Render(g_pd3dDeviceContext, cmr, wireFrame);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 

@@ -187,7 +187,8 @@ ClipmapLevel::ClipmapLevel(
     const std::shared_ptr<HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex)
     : m_Level(l), m_GridSpacing(gScl),
     m_GridOrigin(-128, -126), m_TexelOrigin(0, 0),
-    m_Ticker(0.5f, -0.5f), m_HeightSrc(src), m_HeightTex(hTex), m_ArraySlice(l) {}
+    m_Ticker(0.4999999f, -0.4999999f),
+    m_HeightSrc(src), m_HeightTex(hTex), m_ArraySlice(l) {}
 
 void ClipmapLevel::UpdateOffset(const Vector2& dView)
 {

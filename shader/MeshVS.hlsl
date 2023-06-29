@@ -22,10 +22,7 @@ void main(
     const float2 uv = ((positionL + g_PatchXy) * PatchScale + 0.5f) * texSz;
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
 
-    float3 positionW = float3(
-        positionL.x + g_PatchXy.x - ViewPatch.x,
-        h,
-        positionL.y + g_PatchXy.y - ViewPatch.y);
+    float3 positionW = float3(positionL.x + g_PatchXy.x, h, positionL.y + g_PatchXy.y);
     positionW *= float3(PatchScale, HeightMapScale, PatchScale);
     positionW.y += 1000.0f;
 
@@ -39,6 +36,6 @@ void main(
     // float3 normal = float3(-0.5f * HeightMapScale * zx, 1.0f, -0.5f * HeightMapScale * zy);
     // normal = normalize(normal);
 
-    positionH = mul(float4(positionW, 1.0f), ViewProjectionLocal);
+    positionH = mul(float4(positionW, 1.0f), ViewProjection);
     texCoord = uv;
 }

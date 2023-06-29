@@ -30,7 +30,7 @@ void main(
     float2 xz = lerp(pf, pc, alpha.x);
 
     // recompute alpha based on view distance for temporal continuity
-    alpha = saturate((abs(xz - ViewPosition) / wldParams.xy - AlphaOffset) * OneOverWidth);
+    alpha = saturate((abs(xz - ViewPosition.xz) / wldParams.xy - AlphaOffset) * OneOverWidth);
     alpha.x = max(alpha.x, alpha.y);
 
     // blend position xz for space continuity to avoid T-junctions and popping

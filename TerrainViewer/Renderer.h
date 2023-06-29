@@ -5,15 +5,13 @@
 
 struct PassConstants
 {
-    DirectX::SimpleMath::Matrix ViewProjectionLocal;	// within local patch coordinate
-    DirectX::SimpleMath::Matrix ViewProjection;			// within world
-    DirectX::SimpleMath::Vector3 LightDirection;
-    float LightIntensity;
-    DirectX::XMINT2 ViewPatch;
-    DirectX::SimpleMath::Vector2 ViewPosition;
+    DirectX::SimpleMath::Matrix ViewProjection;
+    DirectX::SimpleMath::Vector4 Light;
+    DirectX::SimpleMath::Vector3 ViewPosition;
+    float OneOverTransition;
     DirectX::SimpleMath::Vector2 AlphaOffset;
-    float OneOverTransition;									// 1 / w(transition area)
     float HeightScale;
+    float pad;
 };
 
 class Renderer

@@ -1,7 +1,7 @@
 #include "ShaderUtil.hlsli"
 
-SamplerState g_PointWrap : register(s0);
-Texture2DArray<float> g_Height : register(t0);
+SamplerState PointWrap : register(s0);
+Texture2DArray<float> Height : register(t0);
 
 void main(
     in uint2 positionL : SV_POSITION,   // local position in footprint at finer level
@@ -11,12 +11,11 @@ void main(
 
     out float4 positionH : SV_POSITION,
     out float4 color : COLOR,
-    out float3 texCoord : TEXCOORD0,    // coordinates for normal & albedo lookup
-    out float height : TEXCOORD1
+    out float3 texCoord : TEXCOORD0    // coordinates for normal & albedo lookup
     )
 {
     // compute approximated alpha (transition parameter) based on grid index
-    float2 alpha = saturate((abs(int2(positionL + lvlParams.xy) - 127) - g_AlphaOffset) * g_OneOverWidth);
+    float2 alpha = saturate((abs(int2(positionL + lvlParams.xy) - 127) - AlphaOffset) * OneOverWidth);
     alpha.x = max(alpha.x, alpha.y);
 
     // degenrate triangles into coarser level
@@ -31,7 +30,7 @@ void main(
     float2 xz = lerp(pf, pc, alpha.x);
 
     // recompute alpha based on view distance for temporal continuity
-    alpha = saturate((abs(xz - g_ViewPosition) / wldParams.xy - g_AlphaOffset) * g_OneOverWidth);
+    alpha = saturate((abs(xz - ViewPosition) / wldParams.xy - AlphaOffset) * OneOverWidth);
     alpha.x = max(alpha.x, alpha.y);
 
     // blend position xz for space continuity to avoid T-junctions and popping
@@ -50,14 +49,13 @@ void main(
     const float w = lvlParams.w + alpha.x;
 
     // blend elevation value
-    const float hf = g_Height.SampleLevel(g_PointWrap, float3(uvf, lvlParams.w), 0);
-    const float hc = g_Height.SampleLevel(g_PointWrap, float3(uvc, lvlParams.w + 1), 0);
+    const float hf = Height.SampleLevel(PointWrap, float3(uvf, lvlParams.w), 0);
+    const float hc = Height.SampleLevel(PointWrap, float3(uvc, lvlParams.w + 1), 0);
 	float h = lerp(hf, hc, alpha.x);
-    h *= g_HeightMapScale;
-    height = h;
+    h *= HeightMapScale;
 
-    float3 positionW = float3(xz.x, h, xz.y);
-    positionH = mul(float4(positionW, 1), g_ViewProjection);
+	positionH = float4(MakeSphere(xz, h, SphereRadius), 1);
+    positionH = mul(positionH, ViewProjection);
     color = LoadColor(lvlParams.z); // lvlParams.z : color
     texCoord = float3(uv, w);
 }

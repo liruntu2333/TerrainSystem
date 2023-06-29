@@ -105,7 +105,7 @@ int main(int, char**)
     bool drawBb = false;
     DirectX::BoundingFrustum frustumLocal;
     float spd = 30.0f;
-    float yScale = 5000.0f;
+    float hScale = 5000.0f;
     float transition = 25.4f;
     // Main loop
     while (!done)
@@ -140,7 +140,7 @@ int main(int, char**)
 
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cr = g_System->GetClipmapResources(view, yScale, g_pd3dDeviceContext);
+        const auto& cr = g_System->GetClipmapResources(view, hScale, g_pd3dDeviceContext);
 
         Vector3 sunDir(std::sin(sunTheta) * std::cos(sunPhi), std::cos(sunTheta),
             std::sin(sunTheta) * std::sin(sunPhi));
@@ -150,14 +150,14 @@ int main(int, char**)
         g_Constants->LightDirection = sunDir;
         g_Constants->LightIntensity = sunIntensity;
         g_Constants->ViewPatch = camXy;
-        g_Constants->HeightScale = yScale;
+        g_Constants->HeightScale = hScale;
         g_Constants->AlphaOffset = Vector2(126 - transition);
         g_Constants->OneOverTransition = 1.0 / transition;
         g_Constants->ViewPosition = Vector2(view.x, view.z);
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::DragFloat("Y Scale", &yScale, 1, 0.0, 3000.0);
+        ImGui::DragFloat("H Scale", &hScale, 1, 0.0, 10000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &sunTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &sunPhi, 0.0, DirectX::XM_2PI);
@@ -198,7 +198,8 @@ int main(int, char**)
         //            true);
 
         //g_GridRenderer->Render(g_pd3dDeviceContext, cr);
-        /*if (wireFramed)*/ g_GridRenderer->Render(g_pd3dDeviceContext, cr, true);
+        /*if (wireFramed)*/
+        g_GridRenderer->Render(g_pd3dDeviceContext, cr, wireFramed);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -244,7 +245,8 @@ bool CreateDeviceD3D(HWND hWnd)
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, };
     HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
-        featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel,
+        featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
+        &featureLevel,
         &g_pd3dDeviceContext);
     if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
         res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_WARP, NULL, createDeviceFlags, featureLevelArray, 2,

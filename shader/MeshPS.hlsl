@@ -23,7 +23,7 @@ void main(
 
 	const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, texCoord.xy).rgb;
 
-    float3 col = Shade(norm, g_LightDirection, g_LightIntensity, 1, AMBIENT_INTENSITY)
+    float3 col = Shade(norm, LightDirection, LightIntensity, 1, Ambient)
         * albedo /** LoadColor(g_PatchColor).rgb*/;
     color = float4(col, 1.0f);
 }

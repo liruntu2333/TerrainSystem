@@ -67,10 +67,10 @@ namespace
         //static constexpr Vector2 LocalOffset = { 0, 0 };
         static constexpr Vector2 FinerOffset[] =
         {
-            Vector2(M, M - 1),          // M, M in inverted coordinate
-            Vector2(M - 1, M - 1),      // M - 1, M in inverted coordinate
-            Vector2(M - 1, M),          // M - 1, M - 1 in inverted coordinate
-            Vector2(M, M),              // M, M - 1 in inverted coordinate
+            Vector2(M, M - 1),          // maybe M, M in RH coordinate
+            Vector2(M - 1, M - 1),      // maybe M - 1, M in RH coordinate
+            Vector2(M - 1, M),          // maybe M - 1, M - 1 in RH coordinate
+            Vector2(M, M),              // maybe M, M - 1 in RH coordinate
         };
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::RoyalBlue);
@@ -183,9 +183,9 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 
 
 ClipmapLevel::ClipmapLevel(
-    int l,
+    int l, float gScl,
     const std::shared_ptr<HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex)
-    : m_Level(l), m_GridSpacing(std::powf(2, l)),
+    : m_Level(l), m_GridSpacing(gScl),
     m_GridOrigin(-128, -126), m_TexelOrigin(0, 0),
     m_Ticker(0.5f, -0.5f), m_HeightSrc(src), m_HeightTex(hTex), m_ArraySlice(l) {}
 
@@ -270,7 +270,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     m_TexelOrigin.y = PositiveMod(m_TexelOrigin.y, TextureSz);
 }
 
-ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const ClipmapLevel& coarse) const
+ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) const
 {
     using namespace SimpleMath;
 
@@ -280,9 +280,9 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const ClipmapLevel& coa
     const GridInstance ins
     {
         Vector2(m_GridSpacing),
-        (Vector2(m_GridSpacing) * m_GridOrigin),
-        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz),
-        (coarse.GetFinerBlockOffset()),
+        Vector2(m_GridSpacing) * m_GridOrigin,
+        Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz,
+        toc,
         XMUINT2(),
         LevelColors[PositiveMod(m_Level, 7)],
         static_cast<uint32_t>(m_Level)
@@ -320,7 +320,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const ClipmapLevel& coa
 }
 
 
-ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const ClipmapLevel& coarse) const
+ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) const
 {
     using namespace SimpleMath;
     SolidSquare solid;
@@ -330,7 +330,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const ClipmapLevel& c
         Vector2(m_GridSpacing),
         (Vector2(m_GridSpacing) * m_GridOrigin),
         (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz),
-        (coarse.GetFinerBlockOffset()),
+        (toc),
         XMUINT2(),
         LevelColors[PositiveMod(m_Level, 7)],
         static_cast<uint32_t>(m_Level)
@@ -369,7 +369,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const ClipmapLevel& c
 
 float ClipmapLevel::GetHeight() const
 {
-    return m_HeightSrc->GetHeight(m_GridOrigin.x, m_GridOrigin.y);
+    return m_HeightSrc->GetHeight(m_GridOrigin.x + 127, m_GridOrigin.y + 127);
 }
 
 Vector2 ClipmapLevel::GetFinerBlockOffset() const

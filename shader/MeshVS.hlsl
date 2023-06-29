@@ -19,14 +19,14 @@ void main(
     g_Height.GetDimensions(texSz.x, texSz.y);
     texSz = 1.0f / texSz;
 
-    const float2 uv = ((positionL + g_PatchXy) * PATCH_SCALE + 0.5f) * texSz;
+    const float2 uv = ((positionL + g_PatchXy) * PatchScale + 0.5f) * texSz;
     const float h = g_Height.SampleLevel(g_PointClamp, uv, 0);
 
     float3 positionW = float3(
-        positionL.x + g_PatchXy.x - g_ViewPatch.x,
+        positionL.x + g_PatchXy.x - ViewPatch.x,
         h,
-        positionL.y + g_PatchXy.y - g_ViewPatch.y);
-    positionW *= float3(PATCH_SCALE, g_HeightMapScale, PATCH_SCALE);
+        positionL.y + g_PatchXy.y - ViewPatch.y);
+    positionW *= float3(PatchScale, HeightMapScale, PatchScale);
     positionW.y += 1000.0f;
 
     // compute normal
@@ -36,9 +36,9 @@ void main(
     // z1 = g_Height.SampleLevel(g_PointClamp, uv + float2(0, -1) * texSz, 0);
     // z2 = g_Height.SampleLevel(g_PointClamp, uv + float2(0, +1) * texSz, 0);
     // const float zy = z2 - z1;
-    // float3 normal = float3(-0.5f * g_HeightMapScale * zx, 1.0f, -0.5f * g_HeightMapScale * zy);
+    // float3 normal = float3(-0.5f * HeightMapScale * zx, 1.0f, -0.5f * HeightMapScale * zy);
     // normal = normalize(normal);
 
-    positionH = mul(float4(positionW, 1.0f), g_ViewProjectionLocal);
+    positionH = mul(float4(positionW, 1.0f), ViewProjectionLocal);
     texCoord = uv;
 }

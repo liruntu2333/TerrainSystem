@@ -1,22 +1,21 @@
 #ifndef SHADER_UTIL
 #define SHADER_UTIL
 
-static const uint PATCH_SCALE = 255;
-static const float LIGHT_INTENSITY = 0.6f;
-static const float AMBIENT_INTENSITY = 0.1f;
+static const uint PatchScale = 255;
+static const float Ambient = 0.1f;
+static const float SphereRadius = 200000.0f;
 
 cbuffer PassConstants : register(b0)
 {
-	float4x4 g_ViewProjectionLocal;
-	float4x4 g_ViewProjection;
-	float3 g_LightDirection;
-	float g_LightIntensity;
-	int2 g_ViewPatch;
-	float2 g_ViewPosition;
-	float2 g_AlphaOffset;
-	float g_OneOverWidth;
-	float g_HeightMapScale;
-	float4 g_SampleRate; // xy : on finer level, zw : on coarser level
+float4x4 ViewProjectionLocal;
+float4x4 ViewProjection;
+float3 LightDirection;
+float LightIntensity;
+int2 ViewPatch;
+float2 ViewPosition;
+float2 AlphaOffset;
+float OneOverWidth;
+float HeightMapScale;
 }
 
 float4 LoadColor(uint col)
@@ -89,6 +88,13 @@ float3 GammaCorrect(const float3 color)
 float Luminance(float3 color)
 {
     return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
+}
+
+float3 MakeSphere(const float2 xz, const float y, const float r)
+{
+	const float3 center = float3(0, -r, 0);
+	float3 p = center + normalize(float3(xz.x, 0, xz.y) - center) * (r + y);
+    return p;
 }
 
 #endif

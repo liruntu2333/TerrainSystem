@@ -54,16 +54,21 @@ class ClipmapLevel : public ClipmapLevelBase
 {
 public:
     ClipmapLevel(
-        int l, const std::shared_ptr<HeightMap>& src,
+        int l, float gScl, const std::shared_ptr<HeightMap>& src,
         const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
     ~ClipmapLevel() = default;
 
     void UpdateOffset(const DirectX::SimpleMath::Vector2& dView);
     void UpdateTexture(ID3D11DeviceContext* context);
-    [[nodiscard]] HollowRing GetHollowRing(const ClipmapLevel& coarse) const;
-    [[nodiscard]] SolidSquare GetSolidSquare(const ClipmapLevel& coarse) const;
+    [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
+    [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] float GetHeight() const;
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerBlockOffset() const;
+
+    [[nodiscard]] bool IsActive(float hView, float hScale) const
+    {
+        return std::abs(hView - hScale * GetHeight()) < 2.5f * 254.0f * m_GridSpacing;
+    }
 
     friend class TerrainSystem;
 

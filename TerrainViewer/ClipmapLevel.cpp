@@ -67,10 +67,10 @@ namespace
         //static constexpr Vector2 LocalOffset = { 0, 0 };
         static constexpr Vector2 FinerOffset[] =
         {
-            Vector2(M, M - 1),          // maybe M, M in RH coordinate
-            Vector2(M - 1, M - 1),      // maybe M - 1, M in RH coordinate
-            Vector2(M - 1, M),          // maybe M - 1, M - 1 in RH coordinate
-            Vector2(M, M),              // maybe M, M - 1 in RH coordinate
+            Vector2(M, M),
+            Vector2(M - 1, M),
+            Vector2(M - 1, M - 1),
+            Vector2(M, M - 1),
         };
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::RoyalBlue);
@@ -168,15 +168,14 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
     loadVb(path / "ring_fix_up.vtx", RingFixUpVb);
     loadIb(path / "ring_fix_up.idx", RingFixUpIb, RingIdxCnt);
 
-    // hack to fit in LH-coordinate, RH should use lt rt lb rb as the name it is
-    loadVb(path / "trim_lb.vtx", TrimVb[0]);
-    loadIb(path / "trim_lb.idx", TrimIb[0], TrimIdxCnt);
-    loadVb(path / "trim_rb.vtx", TrimVb[1]);
-    loadIb(path / "trim_rb.idx", TrimIb[1], TrimIdxCnt);
-    loadVb(path / "trim_rt.vtx", TrimVb[2]);
-    loadIb(path / "trim_rt.idx", TrimIb[2], TrimIdxCnt);
-    loadVb(path / "trim_lt.vtx", TrimVb[3]);
-    loadIb(path / "trim_lt.idx", TrimIb[3], TrimIdxCnt);
+    loadVb(path / "trim_lt.vtx", TrimVb[0]);
+    loadIb(path / "trim_lt.idx", TrimIb[0], TrimIdxCnt);
+    loadVb(path / "trim_rt.vtx", TrimVb[1]);
+    loadIb(path / "trim_rt.idx", TrimIb[1], TrimIdxCnt);
+    loadVb(path / "trim_rb.vtx", TrimVb[2]);
+    loadIb(path / "trim_rb.idx", TrimIb[2], TrimIdxCnt);
+    loadVb(path / "trim_lb.vtx", TrimVb[3]);
+    loadIb(path / "trim_lb.idx", TrimIb[3], TrimIdxCnt);
 
     loaded = true;
 }

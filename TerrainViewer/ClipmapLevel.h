@@ -75,9 +75,9 @@ public:
 protected:
     [[nodiscard]] int GetTrimPattern() const
     {
-        if (m_Ticker.x >= 0 && m_Ticker.y < 0) return 0;
-        if (m_Ticker.x < 0 && m_Ticker.y < 0) return 1;
-        if (m_Ticker.x < 0 && m_Ticker.y >= 0) return 2;
+        if (m_Ticker.x >= 0 && m_Ticker.y >= 0) return 0;
+        if (m_Ticker.x < 0 && m_Ticker.y >= 0) return 1;
+        if (m_Ticker.x < 0 && m_Ticker.y < 0) return 2;
         /*if (m_Ticker.x >= 0 && m_Ticker.y >= 0)*/
         return 3;
     }

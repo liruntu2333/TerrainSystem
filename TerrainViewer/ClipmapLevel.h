@@ -59,12 +59,18 @@ public:
         const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
     ~ClipmapLevel() = default;
 
-    void UpdateOffset(const DirectX::SimpleMath::Vector2& dView);
+    void UpdateOffset(const DirectX::SimpleMath::Vector2& dView, const DirectX::SimpleMath::Vector2& ofsFiner);
+    DirectX::XMINT2 UpdateOffset(const DirectX::XMINT2& dFiner);
     void UpdateTexture(ID3D11DeviceContext* context);
     [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] float GetHeight() const;
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerBlockOffset() const;
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerOffset() const;
+
+    DirectX::SimpleMath::Vector2 GetBlockOffset() const
+    {
+        return { m_GridOrigin.x * m_GridSpacing, m_GridOrigin.y * m_GridSpacing };
+    }
 
     [[nodiscard]] bool IsActive(float hView, float hScale) const
     {
@@ -74,12 +80,14 @@ public:
     friend class TerrainSystem;
 
 protected:
-    [[nodiscard]] int GetTrimPattern() const
+    [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
-        if (m_Ticker.x >= 0 && m_Ticker.y >= 0) return 0;
-        if (m_Ticker.x < 0 && m_Ticker.y >= 0) return 1;
-        if (m_Ticker.x < 0 && m_Ticker.y < 0) return 2;
-        /*if (m_Ticker.x >= 0 && m_Ticker.y >= 0)*/
+        const auto ofs = (finer - GetBlockOffset()) / m_GridSpacing;
+        const int ox = std::round(ofs.x);
+        const int oy = std::round(ofs.y);
+        if (ox == ClipmapM && oy == ClipmapM) return 0;
+        if (ox == ClipmapM - 1 && oy == ClipmapM) return 1;
+        if (ox == ClipmapM - 1 && oy == ClipmapM - 1) return 2;
         return 3;
     }
 
@@ -103,4 +111,5 @@ protected:
     std::shared_ptr<HeightMap> m_HeightSrc;
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex;
     const int m_ArraySlice;
+    int m_TrimPattern = 0;
 };

@@ -188,15 +188,26 @@ ClipmapLevel::ClipmapLevel(
     m_GridOrigin(std::round(view.x / gScl) - 128, std::round(view.x / gScl) - 128),
     m_HeightSrc(src), m_HeightTex(hTex), m_ArraySlice(l) {}
 
-void ClipmapLevel::UpdateOffset(const Vector2& dView)
+void ClipmapLevel::UpdateOffset(const Vector2& dView, const Vector2& ofsFiner)
 {
     m_Ticker += dView / m_GridSpacing * 0.5f;
     const Vector2 ofs(std::round(m_Ticker.x), std::round(m_Ticker.y));
-
-    const auto ofsMul2 = ofs * 2;
-    m_GridOrigin = m_GridOrigin + ofsMul2;
-
+    m_GridOrigin = m_GridOrigin + ofs * 2;
     m_Ticker -= ofs;
+    m_TrimPattern = GetTrimPattern(ofsFiner);
+}
+
+XMINT2 ClipmapLevel::UpdateOffset(const XMINT2& dFiner)
+{
+    m_GridOrigin = m_GridOrigin + dFiner * 2;
+    bool dFinerXOdd = dFiner.x & 1;
+    bool dFinerYOdd = dFiner.y & 1;
+    bool dFinerXPlus = dFiner.x > 0;
+    bool dFinerYPlus = dFiner.y > 0;
+    XMINT2 dGrid = { dFiner.x / 2, dFiner.y / 2 };
+    dGrid.y += dFinerYOdd && dFinerYPlus && m_TrimPattern == 1 ? 1 : 0;
+
+    return dFiner;
 }
 
 void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
@@ -274,7 +285,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) con
     using namespace SimpleMath;
 
     HollowRing hollow;
-    hollow.TrimId = GetTrimPattern();
+    hollow.TrimId = m_TrimPattern;
 
     const GridInstance ins
     {
@@ -371,8 +382,8 @@ float ClipmapLevel::GetHeight() const
     return m_HeightSrc->GetHeight(m_GridOrigin.x + 127, m_GridOrigin.y + 127);
 }
 
-Vector2 ClipmapLevel::GetFinerBlockOffset() const
+Vector2 ClipmapLevel::GetFinerOffset() const
 {
     return (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) +
-        FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern()]) * OneOverSz;
+        FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern]) * OneOverSz;
 }

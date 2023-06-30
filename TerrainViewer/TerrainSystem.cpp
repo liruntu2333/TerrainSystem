@@ -186,9 +186,11 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
-    for (auto&& level : m_Levels)
+    Vector2 finer;
+    for (int i = 0; i < m_Levels.size(); ++i)
     {
-        level.UpdateOffset(Vector2(dView3.x, dView3.z));
+        m_Levels[i].UpdateOffset(Vector2(dView3.x, dView3.z), finer);
+        finer = m_Levels[i].GetBlockOffset();
     }
 
     int lowestActive = LevelMin;
@@ -202,7 +204,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     }
 
     {
-        const auto ofsCoarse = m_Levels[lowestActive + 1 - LevelMin].GetFinerBlockOffset();
+        const auto ofsCoarse = m_Levels[lowestActive + 1 - LevelMin].GetFinerOffset();
         auto [block, ring, trim] = m_Levels[lowestActive].GetSolidSquare(ofsCoarse);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
@@ -211,7 +213,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
 
     for (int lv = lowestActive + 1; lv <= LevelMax; ++lv)
     {
-        const auto ofsCoarse = m_Levels[lv + 1 - LevelMin].GetFinerBlockOffset();
+        const auto ofsCoarse = m_Levels[lv + 1 - LevelMin].GetFinerOffset();
         auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing(ofsCoarse);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);

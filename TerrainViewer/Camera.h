@@ -7,6 +7,9 @@
 class Camera
 {
 public:
+    Camera(const DirectX::SimpleMath::Vector3& pos) : m_Position(pos) { }
+    ~Camera() = default;
+
     [[nodiscard]] DirectX::SimpleMath::Matrix GetViewProjection() const;
     [[nodiscard]] DirectX::SimpleMath::Matrix GetView() const;
     // [[nodiscard]] DirectX::SimpleMath::Matrix GetViewLocal() const;

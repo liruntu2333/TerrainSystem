@@ -38,6 +38,9 @@ namespace
     std::unique_ptr<Camera> g_Camera = nullptr;
     std::unique_ptr<TerrainSystem> g_System = nullptr;
     std::unique_ptr<DirectX::GeometricPrimitive> g_Box = nullptr;
+
+    constexpr Vector2 ViewInit2 = Vector2(4096.0f, 4096.0f);
+    constexpr Vector3 ViewInit3 = Vector3(ViewInit2.x, 2000.0f, ViewInit2.y);
 }
 
 // Forward declarations of helper functions
@@ -95,7 +98,6 @@ int main(int, char**)
 
     CreateSystem();
 
-    bool done = false;
     bool wireFrame = false;
     float lPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
     float lTheta = 0.6f;
@@ -103,9 +105,12 @@ int main(int, char**)
     bool freezeFrustum = false;
     bool drawBb = false;
     DirectX::BoundingFrustum frustum {};
+    Vector3 view(ViewInit3);
     float spd = 30.0f;
     float hScale = 5000.0f;
     float transition = 25.4f;
+
+    bool done = false;
     // Main loop
     while (!done)
     {
@@ -122,20 +127,27 @@ int main(int, char**)
         if (done)
             break;
 
+        done = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Escape)];
+
         // Start the Dear ImGui frame
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
         g_Camera->Update(io, spd);
-        const auto view = g_Camera->GetPosition();
-        const auto dView = g_Camera->GetDeltaPosition();
-        if (!freezeFrustum) frustum = g_Camera->GetFrustum();
+
+        Vector3 dView;
+        if (!freezeFrustum)
+        {
+            frustum = g_Camera->GetFrustum();
+            dView = g_Camera->GetPosition() - view;
+            view = g_Camera->GetPosition();
+        }
+        const auto& cmr = g_System->GetClipmapResources(dView, frustum, hScale, g_pd3dDeviceContext);
+
         std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto& cmr = g_System->GetClipmapResources(
-            Vector2(dView.x, dView.z), view.y, hScale, g_pd3dDeviceContext);
 
         Vector3 lDir(
             std::sin(lTheta) * std::cos(lPhi),
@@ -147,7 +159,7 @@ int main(int, char**)
         g_Constants->ViewPosition = view;
         g_Constants->Light = Vector4(lDir.x, lDir.y, lDir.z, lInt);
         g_Constants->HeightScale = hScale;
-        g_Constants->AlphaOffset = Vector2(126 - transition);
+        g_Constants->AlphaOffset = Vector2(126.0f - transition);
         g_Constants->OneOverTransition = 1.0f / transition;
 
         ImGui::Begin("Terrain System");
@@ -309,9 +321,9 @@ void CreateSystem()
     g_GridRenderer = std::make_unique<ClipmapRenderer>(g_pd3dDevice, g_Cb0);
     g_GridRenderer->Initialize("shader");
 
-    g_Camera = std::make_unique<Camera>();
+    g_Camera = std::make_unique<Camera>(ViewInit3);
 
-    g_System = std::make_unique<TerrainSystem>("asset", g_pd3dDevice);
+    g_System = std::make_unique<TerrainSystem>(ViewInit2, "asset", g_pd3dDevice);
 
     g_Box = DirectX::GeometricPrimitive::CreateCube(g_pd3dDeviceContext);
 }

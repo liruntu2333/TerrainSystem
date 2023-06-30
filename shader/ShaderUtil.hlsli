@@ -7,11 +7,9 @@ static const float SphereRadius = 200000.0f;
 
 cbuffer PassConstants : register(b0)
 {
-// float4x4 ViewProjectionLocal;
 float4x4 ViewProjection;
 float3 LightDirection;
 float LightIntensity;
-// int2 ViewPatch;
 float3 ViewPosition;
 float OneOverWidth;
 float2 AlphaOffset;

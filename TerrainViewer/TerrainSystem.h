@@ -47,7 +47,10 @@ public:
         ClipmapRenderResource() = default;
     };
 
-    TerrainSystem(std::filesystem::path path, ID3D11Device* device);
+    TerrainSystem(
+        const DirectX::SimpleMath::Vector2& view,
+        std::filesystem::path path,
+        ID3D11Device* device);
     ~TerrainSystem() = default;
 
     [[nodiscard]] PatchRenderResource GetPatchResources(
@@ -56,16 +59,18 @@ public:
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
-        const DirectX::SimpleMath::Vector2& dView2,
-        float viewY, float yScale, ID3D11DeviceContext* context);
+        const DirectX::SimpleMath::Vector3& dView3,
+        const DirectX::BoundingFrustum& frustum, float yScale,
+        ID3D11DeviceContext* context);
 
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;
     static constexpr int LevelMax = LevelMin + LevelCount - 2;
+    static constexpr float LevelMinScale = 1.0f; // 1 m per grid
 
 protected:
     void InitMeshPatches(ID3D11Device* device);
-    void InitClipmapLevels(ID3D11Device* device);
+    void InitClipmapLevels(ID3D11Device* device, const DirectX::SimpleMath::Vector2& view);
 
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;

@@ -58,7 +58,7 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
     m_BoundTree = std::make_unique<BoundTree>(j);
 }
 
-void TerrainSystem::InitClipmapLevels(ID3D11Device* device)
+void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
     auto hm = std::make_shared<HeightMap>(m_Path / "height.png");
@@ -71,12 +71,16 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device)
 
     for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
     {
-        m_Levels.emplace_back(i, std::powf(2.0f, i), hm, m_HeightCm);
+        m_Levels.emplace_back(i, LevelMinScale * std::powf(2.0f, i), view, hm, m_HeightCm);
         hm = hm->GetCoarser();
     }
 }
 
-TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) : m_Path(std::move(path))
+TerrainSystem::TerrainSystem(
+    const Vector2& view,
+    std::filesystem::path path,
+    ID3D11Device* device) :
+    m_Path(std::move(path))
 {
     // InitMeshPatches(device);
 
@@ -87,7 +91,7 @@ TerrainSystem::TerrainSystem(std::filesystem::path path, ID3D11Device* device) :
     m_Albedo = std::make_unique<Texture2D>(device, m_Path / "albedo.dds");
     m_Albedo->CreateViews(device);
 
-    InitClipmapLevels(device);
+    InitClipmapLevels(device, view);
 }
 
 TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
@@ -153,7 +157,9 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
-    const Vector2& dView2, float viewY, float yScale, ID3D11DeviceContext* context)
+    const Vector3& dView3,
+    const BoundingFrustum& frustum, float yScale,
+    ID3D11DeviceContext* context)
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -182,12 +188,12 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
 
     for (auto&& level : m_Levels)
     {
-        level.UpdateOffset(dView2);
+        level.UpdateOffset(Vector2(dView3.x, dView3.z));
     }
 
     int lowestActive = LevelMin;
     while (lowestActive < LevelMax &&
-        !m_Levels[lowestActive - LevelMin].IsActive(viewY, yScale))
+        !m_Levels[lowestActive - LevelMin].IsActive(frustum.Origin.y, yScale))
         ++lowestActive;
 
     for (int lv = lowestActive; lv < LevelMin + LevelCount; ++lv)

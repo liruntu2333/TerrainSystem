@@ -54,7 +54,8 @@ class ClipmapLevel : public ClipmapLevelBase
 {
 public:
     ClipmapLevel(
-        int l, float gScl, const std::shared_ptr<HeightMap>& src,
+        int l, float gScl, const DirectX::SimpleMath::Vector2& view,
+        const std::shared_ptr<HeightMap>& src,
         const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
     ~ClipmapLevel() = default;
 
@@ -96,9 +97,9 @@ protected:
         std::numeric_limits<int>::min(), std::numeric_limits<int>::min()
     };                                  // xy offset in source height texel space
     DirectX::XMINT2 m_GridOrigin;       // * GridSpacing to get world offset
-    DirectX::XMINT2 m_TexelOrigin;      // * TextureSpacing to get texture offset
+    DirectX::XMINT2 m_TexelOrigin = { 0, 0 };     // * TextureSpacing to get texture offset
 
-    DirectX::SimpleMath::Vector2 m_Ticker;
+    DirectX::SimpleMath::Vector2 m_Ticker = { 0.5f, 0.5f };
     std::shared_ptr<HeightMap> m_HeightSrc;
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex;
     const int m_ArraySlice;

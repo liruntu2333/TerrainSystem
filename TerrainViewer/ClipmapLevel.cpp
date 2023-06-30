@@ -182,11 +182,10 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 
 
 ClipmapLevel::ClipmapLevel(
-    int l, float gScl,
-    const std::shared_ptr<HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex)
-    : m_Level(l), m_GridSpacing(gScl),
-    m_GridOrigin(-128, -126), m_TexelOrigin(0, 0),
-    m_Ticker(0.4999999f, -0.4999999f),
+    int l, float gScl, const Vector2& view,
+    const std::shared_ptr<HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex) :
+    m_Level(l), m_GridSpacing(gScl),
+    m_GridOrigin(std::round(view.x / gScl) - 128, std::round(view.x / gScl) - 128),
     m_HeightSrc(src), m_HeightTex(hTex), m_ArraySlice(l) {}
 
 void ClipmapLevel::UpdateOffset(const Vector2& dView)

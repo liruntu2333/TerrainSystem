@@ -157,7 +157,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
-    const Vector3& dView3,
+    const Vector3& dView,
     const BoundingFrustum& frustum, float yScale,
     ID3D11DeviceContext* context)
 {
@@ -186,10 +186,11 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
+    Vector2 view = { frustum.Origin.x, frustum.Origin.z };
     Vector2 finer;
     for (int i = 0; i < m_Levels.size(); ++i)
     {
-        m_Levels[i].UpdateOffset(Vector2(dView3.x, dView3.z), finer);
+        m_Levels[i].UpdateOffset(Vector2(dView.x, dView.z), view, finer);
         finer = m_Levels[i].GetBlockOffset();
     }
 

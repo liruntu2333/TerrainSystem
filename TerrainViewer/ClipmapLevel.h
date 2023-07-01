@@ -59,17 +59,18 @@ public:
         const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
     ~ClipmapLevel() = default;
 
-    void UpdateOffset(const DirectX::SimpleMath::Vector2& dView, const DirectX::SimpleMath::Vector2& ofsFiner);
-    DirectX::XMINT2 UpdateOffset(const DirectX::XMINT2& dFiner);
+    void UpdateOffset(const DirectX::SimpleMath::Vector2& dView, const DirectX::SimpleMath::Vector2& view,
+        const DirectX::SimpleMath::Vector2& ofsFiner);
+    // DirectX::XMINT2 UpdateOffset(const DirectX::XMINT2& dFiner);
     void UpdateTexture(ID3D11DeviceContext* context);
     [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] float GetHeight() const;
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerOffset() const;
 
-    DirectX::SimpleMath::Vector2 GetBlockOffset() const
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetBlockOffset() const
     {
-        return { m_GridOrigin.x * m_GridSpacing, m_GridOrigin.y * m_GridSpacing };
+        return m_GridOrigin * m_GridSpacing;
     }
 
     [[nodiscard]] bool IsActive(float hView, float hScale) const
@@ -83,33 +84,34 @@ protected:
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
         const auto ofs = (finer - GetBlockOffset()) / m_GridSpacing;
-        const int ox = std::round(ofs.x);
-        const int oy = std::round(ofs.y);
+        const int ox = ofs.x;
+        const int oy = ofs.y;
         if (ox == ClipmapM && oy == ClipmapM) return 0;
         if (ox == ClipmapM - 1 && oy == ClipmapM) return 1;
         if (ox == ClipmapM - 1 && oy == ClipmapM - 1) return 2;
-        return 3;
+        if (ox == ClipmapM && oy == ClipmapM - 1) return 3;
+        if (m_Level != 0) return 0;
+        return -1; // exception
     }
 
     const int m_Level;
     const float m_GridSpacing;
     inline static constexpr int TextureSz = 1 << ClipmapK;
     inline static constexpr float OneOverSz = 1.0f / TextureSz;
-    inline static constexpr int TextureN = (1 << ClipmapK) - 1; // 1 row 1 col left invalid
+    inline static constexpr int TextureN = (1 << ClipmapK) - 1; // 1 row 1 col left unused
     inline static constexpr int TextureScaleHeight = 1;
     inline static constexpr int TextureScaleNormal = 1;
     inline static constexpr int TextureScaleAlbedo = 1;
 
-    DirectX::XMINT2 m_MappedOrigin =
-    {
-        std::numeric_limits<int>::min(), std::numeric_limits<int>::min()
-    };                                  // xy offset in source height texel space
-    DirectX::XMINT2 m_GridOrigin;       // * GridSpacing to get world offset
-    DirectX::XMINT2 m_TexelOrigin = { 0, 0 };     // * TextureSpacing to get texture offset
+    // * TextureScaleXXX getting xy offset in source texel space
+    DirectX::SimpleMath::Vector2 m_MappedOrigin { std::numeric_limits<float>::max() };
+    // * GridSpacing getting world offset
+    DirectX::SimpleMath::Vector2 m_GridOrigin {};
+    // * TextureSpacing getting texture offset
+    DirectX::SimpleMath::Vector2 m_TexelOrigin {};
 
-    DirectX::SimpleMath::Vector2 m_Ticker = { 0.5f, 0.5f };
-    std::shared_ptr<HeightMap> m_HeightSrc;
-    std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex;
+    std::shared_ptr<HeightMap> m_HeightSrc = nullptr;
+    std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex = nullptr;
     const int m_ArraySlice;
     int m_TrimPattern = 0;
 };

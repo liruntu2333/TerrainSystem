@@ -83,47 +83,6 @@ namespace
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::Gold);
     };
-
-    Vector2 operator+(const Vector2& lhs, const XMINT2& rhs)
-    {
-        return { lhs.x + rhs.x, lhs.y + rhs.y };
-    }
-
-    XMINT2 operator*(const XMINT2& lhs, int rhs)
-    {
-        return { lhs.x * rhs, lhs.y * rhs };
-    }
-
-    XMINT2 operator+(const XMINT2& lhs, const Vector2& rhs)
-    {
-        return { lhs.x + static_cast<int>(rhs.x), lhs.y + static_cast<int>(rhs.y) };
-    }
-
-    Vector2 operator*(const Vector2& lhs, const XMINT2& rhs)
-    {
-        return { lhs.x * rhs.x, lhs.y * rhs.y };
-    }
-
-    XMINT2 operator-(const XMINT2& lhs, const XMINT2& rhs)
-    {
-        return { lhs.x - rhs.x, lhs.y - rhs.y };
-    }
-
-    XMINT2 operator+(const XMINT2& lhs, const XMINT2& rhs)
-    {
-        return { lhs.x + rhs.x, lhs.y + rhs.y };
-    }
-
-    const XMCOLOR LevelColors[] =
-    {
-        XMCOLOR(Colors::Red),
-        XMCOLOR(Colors::Green),
-        XMCOLOR(Colors::Blue),
-        XMCOLOR(Colors::Yellow),
-        XMCOLOR(Colors::Cyan),
-        XMCOLOR(Colors::Magenta),
-        XMCOLOR(Colors::White),
-    };
 }
 
 void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, ID3D11Device* device)
@@ -185,36 +144,22 @@ ClipmapLevel::ClipmapLevel(
     int l, float gScl, const Vector2& view,
     const std::shared_ptr<HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex) :
     m_Level(l), m_GridSpacing(gScl),
-    m_GridOrigin(std::round(view.x / gScl) - 128, std::round(view.x / gScl) - 128),
     m_HeightSrc(src), m_HeightTex(hTex), m_ArraySlice(l) {}
 
-void ClipmapLevel::UpdateOffset(const Vector2& dView, const Vector2& ofsFiner)
+void ClipmapLevel::UpdateOffset(const Vector2& dView, const Vector2& view, const Vector2& ofsFiner)
 {
-    m_Ticker += dView / m_GridSpacing * 0.5f;
-    const Vector2 ofs(std::round(m_Ticker.x), std::round(m_Ticker.y));
-    m_GridOrigin = m_GridOrigin + ofs * 2;
-    m_Ticker -= ofs;
+
+    m_GridOrigin.x = ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
+    m_GridOrigin.y = ceil(view.y / m_GridSpacing * 0.5f) * 2 - 128;
     m_TrimPattern = GetTrimPattern(ofsFiner);
-}
-
-XMINT2 ClipmapLevel::UpdateOffset(const XMINT2& dFiner)
-{
-    m_GridOrigin = m_GridOrigin + dFiner * 2;
-    bool dFinerXOdd = dFiner.x & 1;
-    bool dFinerYOdd = dFiner.y & 1;
-    bool dFinerXPlus = dFiner.x > 0;
-    bool dFinerYPlus = dFiner.y > 0;
-    XMINT2 dGrid = { dFiner.x / 2, dFiner.y / 2 };
-    dGrid.y += dFinerYOdd && dFinerYPlus && m_TrimPattern == 1 ? 1 : 0;
-
-    return dFiner;
 }
 
 void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 {
-    const XMINT2 dGrid = m_GridOrigin - m_MappedOrigin;
-    if (dGrid.x == 0 && dGrid.y == 0) return;
+    const auto dGrid = m_GridOrigin - m_MappedOrigin;
+    if (std::abs(dGrid.x) < 1 && std::abs(dGrid.y) < 1) return;
 
+    // can't use Map method for resource which arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),
     //     D3D11CalcSubresource(0, m_ArraySlice, 1), D3D11_MAP_WRITE, 0);
 
@@ -229,8 +174,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
     auto copyRectWarp = [src, dst, sw, sh](
         const int dx, const int dy,
-        const int dox, const int doy,          // destination origin
-        const int sox, const int soy)     // source origin
+        const int dox, const int doy, // destination origin
+        const int sox, const int soy) // source origin
     {
         assert(dx >= 0 && dy >= 0 && "should update from lt to rb");
         for (int y = 0; y < dy; ++y)
@@ -247,15 +192,15 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
     //if (std::abs(dGrid.x) >= dw || std::abs(dGrid.y) >= dh) // update full tex anyway
     {
-        m_TexelOrigin = { 0, 0 };
+        m_TexelOrigin = Vector2::Zero;
         copyRectWarp(dw, dh,
-            m_TexelOrigin.x, m_TexelOrigin.y,
-            m_GridOrigin.x, m_GridOrigin.y);
+                     m_TexelOrigin.x, m_TexelOrigin.y,
+                     m_GridOrigin.x, m_GridOrigin.y);
         m_MappedOrigin = m_GridOrigin;
         context->UpdateSubresource(m_HeightTex->GetTexture(),
-            D3D11CalcSubresource(0, m_ArraySlice, 1),
-            nullptr, hm.data(), TextureSz * sizeof uint16_t,
-            0);
+                                   D3D11CalcSubresource(0, m_ArraySlice, 1),
+                                   nullptr, hm.data(), TextureSz * sizeof uint16_t,
+                                   0);
         return;
     }
 
@@ -267,17 +212,17 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     const int& soy = m_MappedOrigin.y;
     // update dy * dw first for cache coherence
     copyRectWarp(dw, std::abs(dy),
-        dox + dx, doy + (dy >= 0 ? dh : dy),
-        sox + dx, soy + (dy >= 0 ? dh : dy));
+                 dox + dx, doy + (dy >= 0 ? dh : dy),
+                 sox + dx, soy + (dy >= 0 ? dh : dy));
     // then update dx * (dh - abs(dy))
     copyRectWarp(std::abs(dx), dh - std::abs(dy),
-        dox + (dx >= 0 ? dw : dx), doy + (dy >= 0 ? dy : 0),
-        sox + (dx >= 0 ? dw : dx), soy + (dy >= 0 ? dy : 0));
+                 dox + (dx >= 0 ? dw : dx), doy + (dy >= 0 ? dy : 0),
+                 sox + (dx >= 0 ? dw : dx), soy + (dy >= 0 ? dy : 0));
 
     m_MappedOrigin = m_GridOrigin;
     m_TexelOrigin = m_TexelOrigin + dGrid;
-    m_TexelOrigin.x = PositiveMod(m_TexelOrigin.x, TextureSz);
-    m_TexelOrigin.y = PositiveMod(m_TexelOrigin.y, TextureSz);
+    // m_TexelOrigin.x = PositiveMod(m_TexelOrigin.x, TextureSz);
+    // m_TexelOrigin.y = PositiveMod(m_TexelOrigin.y, TextureSz);
 }
 
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) const
@@ -294,7 +239,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) con
         Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz,
         toc,
         XMUINT2(),
-        LevelColors[PositiveMod(m_Level, 7)],
+        0,
         static_cast<uint32_t>(m_Level)
     };
 
@@ -314,16 +259,14 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) con
 
     {
         GridInstance& fixUp = hollow.RingFixUp;
-        using Trait = FootprintTrait<RingFixUp>;
         fixUp = ins;
-        fixUp.Color = Trait::Color;
+        fixUp.Color = FootprintTrait<RingFixUp>::Color;
     }
 
     {
         GridInstance& trim = hollow.Trim;
-        using Trait = FootprintTrait<InteriorTrim>;
         trim = ins;
-        trim.Color = Trait::Color;
+        trim.Color = FootprintTrait<InteriorTrim>::Color;
     }
 
     return std::move(hollow);
@@ -340,9 +283,9 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) c
         Vector2(m_GridSpacing),
         (Vector2(m_GridSpacing) * m_GridOrigin),
         (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz),
-        (toc),
+        toc,
         XMUINT2(),
-        LevelColors[PositiveMod(m_Level, 7)],
+        0,
         static_cast<uint32_t>(m_Level)
     };
 
@@ -362,16 +305,14 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) c
 
     {
         GridInstance& fixUp = solid.RingFixUp;
-        using Trait = FootprintTrait<RingFixUp>;
         fixUp = ins;
-        fixUp.Color = Trait::Color;
+        fixUp.Color = FootprintTrait<RingFixUp>::Color;
     }
 
     for (auto& trim : solid.Trim)
     {
-        using Trait = FootprintTrait<InteriorTrim>;
         trim = ins;
-        trim.Color = Trait::Color;
+        trim.Color = FootprintTrait<InteriorTrim>::Color;
     }
 
     return std::move(solid);
@@ -384,6 +325,5 @@ float ClipmapLevel::GetHeight() const
 
 Vector2 ClipmapLevel::GetFinerOffset() const
 {
-    return (Vector2(m_TexelOrigin.x, m_TexelOrigin.y) +
-        FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern]) * OneOverSz;
+    return m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern] * OneOverSz;
 }

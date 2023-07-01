@@ -59,7 +59,7 @@ public:
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
-        const DirectX::SimpleMath::Vector3& dView3,
+        const DirectX::SimpleMath::Vector3& dView,
         const DirectX::BoundingFrustum& frustum, float yScale,
         ID3D11DeviceContext* context);
 

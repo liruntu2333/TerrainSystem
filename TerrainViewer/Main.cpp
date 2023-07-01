@@ -19,7 +19,6 @@
 
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
-static ID3D11Device3* g_pd3dDevice3 = NULL;
 static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
 static IDXGISwapChain* g_pSwapChain = NULL;
 static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
@@ -202,9 +201,7 @@ int main(int, char**)
         //            DirectX::Colors::White,
         //            nullptr,
         //            true);
-
-        //g_GridRenderer->Render(g_pd3dDeviceContext, cr);
-        /*if (wireFramed)*/
+        
         g_GridRenderer->Render(g_pd3dDeviceContext, cmr, wireFrame);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

@@ -172,7 +172,6 @@ void ClipmapLevel::UpdateOffset(const Vector2& dView, const Vector2& view, const
 void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 {
     const int dx = m_GridOrigin.x - m_MappedOrigin.x;
-    const int absdx = std::abs(dx);
     const int dy = m_GridOrigin.y - m_MappedOrigin.y;
     if (dx == 0 && dy == 0) return;
 
@@ -195,8 +194,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
     struct UpdateArea
     {
-        int X {}, Y {};
-        unsigned W {}, H {};
+        unsigned X {}, Y {}, W {}, H {};
         std::vector<uint16_t> Source {};
     };
 

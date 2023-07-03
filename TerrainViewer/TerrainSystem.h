@@ -63,6 +63,8 @@ public:
         const DirectX::BoundingFrustum& frustum, float yScale,
         ID3D11DeviceContext* context);
 
+    [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
+
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;
     static constexpr int LevelMax = LevelMin + LevelCount - 2;

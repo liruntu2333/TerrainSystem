@@ -17,6 +17,8 @@
 #include <directxtk/GeometricPrimitive.h>
 #include <d3d11_3.h>
 
+#include "DebugRenderer.h"
+
 // Data
 static ID3D11Device* g_pd3dDevice = NULL;
 static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
@@ -36,7 +38,8 @@ namespace
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera = nullptr;
     std::unique_ptr<TerrainSystem> g_System = nullptr;
-    std::unique_ptr<DirectX::GeometricPrimitive> g_Box = nullptr;
+
+    std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
     constexpr Vector2 ViewInit2 = Vector2(4096.0f, 4096.0f);
     constexpr Vector3 ViewInit3 = Vector3(ViewInit2.x, 2000.0f, ViewInit2.y);
@@ -103,6 +106,7 @@ int main(int, char**)
     float lInt = 1.0f;
     bool freezeFrustum = false;
     bool drawBb = false;
+    bool drawClip = false;
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit3);
     float spd = 30.0f;
@@ -163,7 +167,7 @@ int main(int, char**)
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::DragFloat("H Scale", &hScale, 1, 0.0, 10000.0);
+        ImGui::DragFloat("Height Scale", &hScale, 1, 0.0, 10000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
@@ -173,6 +177,7 @@ int main(int, char**)
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::Checkbox("Draw Bounding Box", &drawBb);
+        ImGui::Checkbox("Show Clipmap Texture", &drawClip);
         ImGui::End();
 
         // Rendering
@@ -186,23 +191,14 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
+        // if (drawBb)
+        //     g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
-        //g_MeshRenderer->Render(g_pd3dDeviceContext, pr);
-        //if (wireFramed)
-        //    g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
-
-        //if (drawBb)
-        //    for (const auto& bb : bounding)
-        //        g_Box->Draw(
-        //            Matrix::CreateScale(bb.Extents * 2) *
-        //            Matrix::CreateTranslation(bb.Center),
-        //            g_Camera->GetViewLocal(),
-        //            g_Camera->GetProjectionLocal(),
-        //            DirectX::Colors::White,
-        //            nullptr,
-        //            true);
-        
+        //g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
         g_GridRenderer->Render(g_pd3dDeviceContext, cmr, wireFrame);
+
+        if(drawClip) 
+            g_DebugRenderer->DrawClippedHeight(g_System->GetHeightClip(), g_pd3dDeviceContext);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -322,7 +318,7 @@ void CreateSystem()
 
     g_System = std::make_unique<TerrainSystem>(ViewInit2, "asset", g_pd3dDevice);
 
-    g_Box = DirectX::GeometricPrimitive::CreateCube(g_pd3dDeviceContext);
+    g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

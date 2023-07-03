@@ -151,6 +151,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="ClipmapLevel.cpp" />
     <ClCompile Include="ClipmapRenderer.cpp" />
+    <ClCompile Include="DebugRenderer.cpp" />
     <ClCompile Include="HeightMap.cpp" />
     <ClCompile Include="imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui_impl_win32.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="ClipmapRenderer.h" />
     <ClInclude Include="CullingSoa.h" />
     <ClInclude Include="D3DHelper.h" />
+    <ClInclude Include="DebugRenderer.h" />
     <ClInclude Include="HeightMap.h" />
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />

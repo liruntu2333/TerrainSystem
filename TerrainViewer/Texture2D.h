@@ -23,7 +23,7 @@ namespace DirectX
 
         [[nodiscard]] auto GetTexture() const { return m_Texture.Get(); }
         explicit operator ID3D11Texture2D*() const { return m_Texture.Get(); }
-        //explicit operator ID3D11Resource*() const { return m_Texture.GetHeight(); }
+        //explicit operator ID3D11Resource*() const { return m_HTex.GetHeightClip(); }
         [[nodiscard]] auto GetSrv() const { return m_Srv.Get(); }
         [[nodiscard]] auto GetRtv() const { return m_Rtv.Get(); }
         [[nodiscard]] auto GetUav() const { return m_Uav.Get(); }

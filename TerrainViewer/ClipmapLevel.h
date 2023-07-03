@@ -54,14 +54,14 @@ class ClipmapLevel : public ClipmapLevelBase
 {
 public:
     ClipmapLevel(
-        int l, float gScl, const DirectX::SimpleMath::Vector2& view,
+        unsigned l, float gScl, const DirectX::SimpleMath::Vector2& view,
         const std::shared_ptr<HeightMap>& src,
         const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
     ~ClipmapLevel() = default;
 
-    void UpdateOffset(const DirectX::SimpleMath::Vector2& dView, const DirectX::SimpleMath::Vector2& view,
+    void UpdateOffset(
+        const DirectX::SimpleMath::Vector2& dView, const DirectX::SimpleMath::Vector2& view,
         const DirectX::SimpleMath::Vector2& ofsFiner);
-    // DirectX::XMINT2 UpdateOffset(const DirectX::XMINT2& dFiner);
     void UpdateTexture(ID3D11DeviceContext* context);
     [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
@@ -89,12 +89,12 @@ protected:
         if (ox == ClipmapM && oy == ClipmapM) return 0;
         if (ox == ClipmapM - 1 && oy == ClipmapM) return 1;
         if (ox == ClipmapM - 1 && oy == ClipmapM - 1) return 2;
-        if (ox == ClipmapM && oy == ClipmapM - 1) return 3;
-        if (m_Level != 0) return 0;
-        return -1; // exception
+        /*if (ox == ClipmapM && oy == ClipmapM - 1)*/ return 3;
+        // if (m_Level != 0) return 0;
+        //return -1; // exception
     }
 
-    const int m_Level;
+    const unsigned m_Level;
     const float m_GridSpacing;
     inline static constexpr int TextureSz = 1 << ClipmapK;
     inline static constexpr float OneOverSz = 1.0f / TextureSz;
@@ -103,15 +103,15 @@ protected:
     inline static constexpr int TextureScaleNormal = 1;
     inline static constexpr int TextureScaleAlbedo = 1;
 
-    // * TextureScaleXXX getting xy offset in source texel space
-    DirectX::SimpleMath::Vector2 m_MappedOrigin { std::numeric_limits<float>::max() };
     // * GridSpacing getting world offset
     DirectX::SimpleMath::Vector2 m_GridOrigin {};
     // * TextureSpacing getting texture offset
     DirectX::SimpleMath::Vector2 m_TexelOrigin {};
+    // * TextureScaleXXX getting xy offset in source texel space
+    DirectX::SimpleMath::Vector2 m_MappedOrigin { static_cast<float>(std::numeric_limits<int>::min() >> 1) };
 
     std::shared_ptr<HeightMap> m_HeightSrc = nullptr;
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex = nullptr;
-    const int m_ArraySlice;
+    const unsigned m_Subresource;
     int m_TrimPattern = 0;
 };

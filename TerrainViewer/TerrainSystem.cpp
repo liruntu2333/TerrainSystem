@@ -5,7 +5,7 @@
 #include <iostream>
 #include <set>
 
-#include "HeightMap.h"
+#include "BitMap.h"
 #include "../HeightMapSplitter/ThreadPool.h"
 
 constexpr size_t PATCH_NY = 8;
@@ -61,7 +61,7 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
-    auto hm = std::make_shared<HeightMap>(m_Path / "height.png");
+    auto hm = std::make_shared<DirectX::HeightMap>(m_Path / "height.dds");
 
     m_HeightCm = std::make_shared<ClipmapTexture>(device,
         CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
@@ -72,7 +72,6 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
     for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
     {
         m_Levels.emplace_back(i, LevelMinScale * std::powf(2.0f, i), view, hm, m_HeightCm);
-        hm = hm->GetCoarser();
     }
 }
 

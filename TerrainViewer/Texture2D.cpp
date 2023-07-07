@@ -4,6 +4,7 @@
 
 #include <directxtk/DDSTextureLoader.h>
 #include <directxtk/WICTextureLoader.h>
+#include "D3DHelper.h"
 
 using namespace DirectX;
 

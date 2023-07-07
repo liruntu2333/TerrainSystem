@@ -47,11 +47,10 @@ void DebugRenderer::DrawClippedHeight(const Texture2D& hm, ID3D11DeviceContext* 
 {
     for (int i = 0; i < LevelCount; ++i)
     {
-        CD3D11_BOX box(0, 0, 0, 256, 256, 1);
         context->CopySubresourceRegion(m_HTex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
             hm.GetTexture(), D3D11CalcSubresource(0, i, 1),
-            &box);
+            nullptr);
     }
     std::vector<ID3D11ShaderResourceView*> srvs;
     for (auto&& tex : m_HTex)

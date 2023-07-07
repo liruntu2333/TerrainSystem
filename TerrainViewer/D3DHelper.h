@@ -3,7 +3,6 @@
 #include <exception>
 #include <cstdio>
 #include <fstream>
-#include <directxtk/DirectXHelpers.h>
 
 namespace DirectX
 {
@@ -54,8 +53,8 @@ std::vector<T> LoadBinary(const std::filesystem::path& path)
     return data;
 }
 
-template <class T>
-T WarpMod(T n, T m)
+template <class T, class U>
+T WarpMod(T n, U m)
 {
     // warp a int and get its positive mod
     if (n > 0) return n % m;

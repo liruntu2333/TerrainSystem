@@ -110,7 +110,7 @@ int main(int, char**)
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit3);
     float spd = 30.0f;
-    float hScale = 5000.0f;
+    float hScale = 2600.0f;
     float transition = 25.4f;
 
     bool done = false;

@@ -3,7 +3,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include  <filesystem>
-#include "D3DHelper.h"
+#include <directxtk/DirectXHelpers.h>
 
 namespace DirectX
 {

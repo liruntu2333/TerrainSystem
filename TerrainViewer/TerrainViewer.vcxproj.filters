@@ -54,7 +54,7 @@
     <ClCompile Include="ClipmapLevel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="HeightMap.cpp">
+    <ClCompile Include="BitMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DebugRenderer.cpp">
@@ -110,7 +110,7 @@
     <ClInclude Include="ClipmapLevel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="HeightMap.h">
+    <ClInclude Include="BitMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DebugRenderer.h">

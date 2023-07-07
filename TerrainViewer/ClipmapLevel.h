@@ -9,9 +9,9 @@
 namespace DirectX
 {
     class ClipmapTexture;
+    class HeightMap;
 }
 
-class HeightMap;
 static constexpr int ClipmapK = 8;
 static constexpr int ClipmapN = (1 << ClipmapK) - 1;
 static constexpr int ClipmapM = (ClipmapN + 1) / 4;
@@ -55,7 +55,7 @@ class ClipmapLevel : public ClipmapLevelBase
 public:
     ClipmapLevel(
         unsigned l, float gScl, const DirectX::SimpleMath::Vector2& view,
-        const std::shared_ptr<HeightMap>& src,
+        const std::shared_ptr<DirectX::HeightMap>& src,
         const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
     ~ClipmapLevel() = default;
 
@@ -68,7 +68,7 @@ public:
     [[nodiscard]] float GetHeight() const;
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerOffset() const;
 
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetBlockOffset() const
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const
     {
         return m_GridOrigin * m_GridSpacing;
     }
@@ -83,15 +83,14 @@ public:
 protected:
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
-        const auto ofs = (finer - GetBlockOffset()) / m_GridSpacing;
+        const auto ofs = (finer - GetWorldOffset()) / m_GridSpacing;
         const int ox = ofs.x;
         const int oy = ofs.y;
         if (ox == ClipmapM && oy == ClipmapM) return 0;
         if (ox == ClipmapM - 1 && oy == ClipmapM) return 1;
         if (ox == ClipmapM - 1 && oy == ClipmapM - 1) return 2;
-        /*if (ox == ClipmapM && oy == ClipmapM - 1)*/ return 3;
-        // if (m_Level != 0) return 0;
-        //return -1; // exception
+        /*if (ox == ClipmapM && oy == ClipmapM - 1)*/
+        return 3;
     }
 
     const unsigned m_Level;
@@ -103,15 +102,15 @@ protected:
     inline static constexpr int TextureScaleNormal = 1;
     inline static constexpr int TextureScaleAlbedo = 1;
 
-    // * GridSpacing getting world offset
-    DirectX::SimpleMath::Vector2 m_GridOrigin {};
-    // * TextureSpacing getting texture offset
-    DirectX::SimpleMath::Vector2 m_TexelOrigin {};
-    // * TextureScaleXXX getting xy offset in source texel space
-    DirectX::SimpleMath::Vector2 m_MappedOrigin { static_cast<float>(std::numeric_limits<int>::min() >> 1) };
+    DirectX::SimpleMath::Vector2 m_GridOrigin {};    // * GridSpacing getting world offset
+    DirectX::SimpleMath::Vector2 m_TexelOrigin {};    // * TextureSpacing getting texture offset
+    DirectX::SimpleMath::Vector2 m_MappedOrigin    // * TextureScaleXXX getting xy offset in source texel space
+    {
+        static_cast<float>(std::numeric_limits<int>::min() >> 1) // prevent overflow
+    };
 
-    std::shared_ptr<HeightMap> m_HeightSrc = nullptr;
+    std::shared_ptr<DirectX::HeightMap> m_HeightSrc = nullptr;
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex = nullptr;
-    const unsigned m_Subresource;
+    const unsigned m_Mip;
     int m_TrimPattern = 0;
 };

@@ -9,7 +9,7 @@
 #include <DirectXPackedVector.h>
 #include <queue>
 
-#include "HeightMap.h"
+#include "BitMap.h"
 #include "Texture2D.h"
 
 using namespace DirectX;
@@ -158,14 +158,14 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 
 ClipmapLevel::ClipmapLevel(
     unsigned l, float gScl, const Vector2& view,
-    const std::shared_ptr<HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex) :
+    const std::shared_ptr<DirectX::HeightMap>& src, const std::shared_ptr<ClipmapTexture>& hTex) :
     m_Level(l), m_GridSpacing(gScl),
-    m_HeightSrc(src), m_HeightTex(hTex), m_Subresource(D3D11CalcSubresource(0, l, 1)) {}
+    m_HeightSrc(src), m_HeightTex(hTex), m_Mip(l) {}
 
 void ClipmapLevel::UpdateOffset(const Vector2& dView, const Vector2& view, const Vector2& ofsFiner)
 {
-    m_GridOrigin.x = ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
-    m_GridOrigin.y = ceil(view.y / m_GridSpacing * 0.5f) * 2 - 128;
+    m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
+    m_GridOrigin.y = std::ceil(view.y / m_GridSpacing * 0.5f) * 2 - 128;
     m_TrimPattern = GetTrimPattern(ofsFiner);
 }
 
@@ -177,17 +177,19 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
     // can't use Map method for resource that arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),
-    //     D3D11CalcSubresource(0, m_Subresource, 1), D3D11_MAP_WRITE, 0);
+    //     D3D11CalcSubresource(0, m_Mip, 1), D3D11_MAP_WRITE, 0);
 
-    const uint16_t* src = m_HeightSrc->GetData();
-    const int sw = m_HeightSrc->GetWidth();
-    const int sh = m_HeightSrc->GetHeight();
+    const uint16_t* src = m_HeightSrc->GetData(m_Mip);
+    const int sw = m_HeightSrc->GetWidth() >> m_Mip;
+    const int sh = m_HeightSrc->GetHeight() >> m_Mip;
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
         m_TexelOrigin = Vector2::Zero;
-        const auto rect = CopyWarp(src, sw, sh, TextureN, TextureN, m_GridOrigin.x, m_GridOrigin.y);
+        const auto rect = CopyWarp(src, sw, sh,
+            TextureN, TextureN,
+            m_GridOrigin.x, m_GridOrigin.y);
         m_MappedOrigin = m_GridOrigin;
-        context->UpdateSubresource(m_HeightTex->GetTexture(), m_Subresource,
+        context->UpdateSubresource(m_HeightTex->GetTexture(), m_Mip,
             nullptr, rect.data(), TextureN * sizeof uint16_t, 0);
         return;
     }
@@ -197,6 +199,19 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
         unsigned X {}, Y {}, W {}, H {};
         std::vector<uint16_t> Source {};
     };
+
+    //  - - - - - - - -
+    //  |             | 
+    //  |   O         | dx
+    //  |     - - - - - - - -
+    //  |     |///////|     |
+    //  |     |///////|  I  |   dh - abs(dy)
+    //  |     |///////|     |
+    //  - - - |- - - - - - -|
+    //        |             |   abs(dy)
+    //        |     I       |   
+    //        - - - - - - - -
+    //              dw
 
     // update dy * dw first for cache coherence
     UpdateArea dwdy;
@@ -220,6 +235,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
         static_cast<int>(m_MappedOrigin.x) + (dx >= 0 ? TextureN : dx),
         static_cast<int>(m_MappedOrigin.y) + (dy >= 0 ? dy : 0));
 
+    // cut into parts if warp cross edges
     std::queue<UpdateArea> q;
     if (dwdy.W > 0 && dwdy.H > 0) q.push(dwdy);
     if (dxdh.W > 0 && dxdh.H > 0) q.push(dxdh);
@@ -255,7 +271,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
         else
         {
             CD3D11_BOX box(x, y, 0, x + w, y + h, 1);
-            context->UpdateSubresource(m_HeightTex->GetTexture(), m_Subresource,
+            context->UpdateSubresource(m_HeightTex->GetTexture(),
+                D3D11CalcSubresource(0, m_Mip, 1),
                 &box, s.data(), w * sizeof uint16_t, 0);
         }
         q.pop();
@@ -361,7 +378,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) c
 
 float ClipmapLevel::GetHeight() const
 {
-    return m_HeightSrc->GetHeight(m_GridOrigin.x + 128, m_GridOrigin.y + 128);
+    return m_HeightSrc->GetPixelHeight(m_GridOrigin.x + 128, m_GridOrigin.y + 128, 0);
 }
 
 Vector2 ClipmapLevel::GetFinerOffset() const

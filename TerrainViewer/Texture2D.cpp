@@ -166,7 +166,11 @@ void Texture2DArray::CreateViews(ID3D11Device* device)
 }
 
 ClipmapTexture::ClipmapTexture(ID3D11Device* device, const CD3D11_TEXTURE2D_DESC& desc) :
-    Texture2DArray(device, desc) { }
+    Texture2DArray(device, desc)
+{
+    if (m_Desc.Width != m_Desc.Height)
+        throw std::exception("ClipmapTexture must be square");
+}
 
 void ClipmapTexture::CreateViews(ID3D11Device* device)
 {
@@ -196,8 +200,8 @@ void ClipmapTexture::CreateViews(ID3D11Device* device)
     }
 }
 
-std::unique_ptr<MapGuard> ClipmapTexture::Map(
-    ID3D11DeviceContext* context, unsigned subresource, D3D11_MAP mapType, unsigned mapFlags)
-{
-    return std::make_unique<MapGuard>(context, m_Texture.Get(), subresource, mapType, mapFlags);
-}
+// std::unique_ptr<MapGuard> ClipmapTexture::Map(
+//     ID3D11DeviceContext* context, unsigned subresource, D3D11_MAP mapType, unsigned mapFlags)
+// {
+//     return std::make_unique<MapGuard>(context, m_Texture.Get(), subresource, mapType, mapFlags);
+// }

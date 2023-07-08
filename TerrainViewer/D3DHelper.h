@@ -54,9 +54,9 @@ std::vector<T> LoadBinary(const std::filesystem::path& path)
 }
 
 template <class T, class U>
-T WarpMod(T n, U m)
+unsigned WarpMod(T n, U m)
 {
     // warp a int and get its positive mod
-    if (n > 0) return n % m;
+    if (n >= 0) return n % m;
     return (n % m + m) % m;
 }

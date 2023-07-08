@@ -10,30 +10,46 @@ namespace DirectX
     class BitMap : public ScratchImage
     {
     public:
+        using TexelFormat = T;
+
         BitMap() = default;
         ~BitMap() = default;
         BitMap(const std::filesystem::path& path);
 
-        [[nodiscard]] T GetVal(int x, int y, int m) const
+        [[nodiscard]] T GetVal(int x, int y, const int m) const
         {
-            x = WarpMod(x, GetHeight());
-            y = WarpMod(y, GetHeight());
-            return GetData(m)[y * GetHeight() + x];
+            x = WarpMod(x, GetMipHeight(m));
+            y = WarpMod(y, GetMipHeight(m));
+            return GetData(m)[y * GetMipHeight(m) + x];
         }
 
-        [[nodiscard]] const T* GetData(int m) const
+        [[nodiscard]] const T* GetData(const int m) const
         {
             return reinterpret_cast<const T*>(GetImage(m, 0, 0)->pixels);
         }
 
-        [[nodiscard]] size_t GetWidth() const
+        [[nodiscard]] size_t GetMipWidth(const size_t mip) const
         {
-            return GetMetadata().width;
+            return GetMetadata().width >> mip;
         }
 
-        [[nodiscard]] size_t GetHeight() const
+        [[nodiscard]] size_t GetMipHeight(const size_t mip) const
         {
-            return GetMetadata().height;
+            return GetMetadata().height >> mip;
+        }
+
+        std::vector<T> CopyRectangle(const int x, const int y, const size_t w, const size_t h, const size_t m)
+        {
+            std::vector<T> data;
+            data.resize(w * h);
+            for (size_t i = 0; i < h; ++i)
+            {
+                for (size_t j = 0; j < w; ++j)
+                {
+                    data[i * w + j] = GetVal(x + j, y + i, m);
+                }
+            }
+            return data;
         }
     };
 
@@ -56,11 +72,27 @@ namespace DirectX
         }
     };
 
-    class ColorMap : public BitMap<uint32_t>
+    class AlbedoMap : public BitMap<uint32_t>
     {
     public:
-        ColorMap() = default;
-        ~ColorMap() = default;
-        ColorMap(const std::filesystem::path& path) : BitMap(path) { }
+        AlbedoMap() = default;
+        ~AlbedoMap() = default;
+        AlbedoMap(const std::filesystem::path& path) : BitMap(path) { }
+    };
+
+    class SplatMap : public BitMap<uint32_t>
+    {
+    public:
+        SplatMap() = default;
+        ~SplatMap() = default;
+        SplatMap(const std::filesystem::path& path) : BitMap(path) { }
+    };
+
+    class NormalMap : public BitMap<uint32_t>
+    {
+    public:
+        NormalMap() = default;
+        ~NormalMap() = default;
+        NormalMap(const std::filesystem::path& path) : BitMap(path) { }
     };
 }

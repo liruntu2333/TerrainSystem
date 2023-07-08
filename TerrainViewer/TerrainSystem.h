@@ -59,7 +59,6 @@ public:
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
-        const DirectX::SimpleMath::Vector3& dView,
         const DirectX::BoundingFrustum& frustum, float yScale,
         ID3D11DeviceContext* context);
 
@@ -79,6 +78,7 @@ protected:
 
     std::vector<ClipmapLevel> m_Levels {};
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightCm {};
+    std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoCm {};
 
     std::unique_ptr<DirectX::Texture2D> m_Height {};
     std::unique_ptr<DirectX::Texture2D> m_Normal {};

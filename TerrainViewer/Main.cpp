@@ -146,7 +146,7 @@ int main(int, char**)
             dView = g_Camera->GetPosition() - view;
             view = g_Camera->GetPosition();
         }
-        const auto& cmr = g_System->GetClipmapResources(dView, frustum, hScale, g_pd3dDeviceContext);
+        const auto& cmr = g_System->GetClipmapResources(frustum, hScale, g_pd3dDeviceContext);
 
         std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(

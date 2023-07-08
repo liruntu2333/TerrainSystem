@@ -4,12 +4,12 @@
 #include <d3d11.h>
 #include <filesystem>
 
+#include "BitMap.h"
 #include "Vertex.h"
 
 namespace DirectX
 {
     class ClipmapTexture;
-    class HeightMap;
 }
 
 static constexpr int ClipmapK = 8;
@@ -53,14 +53,18 @@ protected:
 class ClipmapLevel : public ClipmapLevelBase
 {
 public:
-    ClipmapLevel(
-        unsigned l, float gScl, const DirectX::SimpleMath::Vector2& view,
-        const std::shared_ptr<DirectX::HeightMap>& src,
-        const std::shared_ptr<DirectX::ClipmapTexture>& hTex);
+    ClipmapLevel(unsigned l, float gScl);
     ~ClipmapLevel() = default;
 
+    static void BindSource(
+        const std::shared_ptr<DirectX::HeightMap>& heightSrc,
+        const std::shared_ptr<DirectX::SplatMap>& splatSrc,
+        const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& atlas,
+        const std::shared_ptr<DirectX::ClipmapTexture>& heightTex,
+        const std::shared_ptr<DirectX::ClipmapTexture>& albedoTex);
+
     void UpdateOffset(
-        const DirectX::SimpleMath::Vector2& dView, const DirectX::SimpleMath::Vector2& view,
+        const DirectX::SimpleMath::Vector2& view,
         const DirectX::SimpleMath::Vector2& ofsFiner);
     void UpdateTexture(ID3D11DeviceContext* context);
     [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
@@ -78,6 +82,11 @@ public:
         return std::abs(hView - hScale * GetHeight()) < 2.5f * 254.0f * m_GridSpacing;
     }
 
+    static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
+    {
+        return gridOrigin;
+    }
+
     friend class TerrainSystem;
 
 protected:
@@ -92,15 +101,15 @@ protected:
         /*if (ox == ClipmapM && oy == ClipmapM - 1)*/
         return 3;
     }
-
+    
     const unsigned m_Level;
     const float m_GridSpacing;
     inline static constexpr int TextureSz = 1 << ClipmapK;
     inline static constexpr float OneOverSz = 1.0f / TextureSz;
     inline static constexpr int TextureN = (1 << ClipmapK) - 1; // 1 row 1 col left unused
     inline static constexpr int TextureScaleHeight = 1;
-    inline static constexpr int TextureScaleNormal = 1;
-    inline static constexpr int TextureScaleAlbedo = 1;
+    inline static constexpr int TextureScaleNormal = 8;
+    inline static constexpr int TextureScaleAlbedo = 8;
 
     DirectX::SimpleMath::Vector2 m_GridOrigin {};    // * GridSpacing getting world offset
     DirectX::SimpleMath::Vector2 m_TexelOrigin {};    // * TextureSpacing getting texture offset
@@ -109,8 +118,12 @@ protected:
         static_cast<float>(std::numeric_limits<int>::min() >> 1) // prevent overflow
     };
 
-    std::shared_ptr<DirectX::HeightMap> m_HeightSrc = nullptr;
-    std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex = nullptr;
+    inline static std::shared_ptr<DirectX::HeightMap> m_HeightSrc = nullptr;
+    inline static std::shared_ptr<DirectX::SplatMap> m_SplatSrc = nullptr;
+    inline static std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_Atlas { nullptr };
+    inline static std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex = nullptr;
+    inline static std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoTex = nullptr;
+
     const unsigned m_Mip;
     int m_TrimPattern = 0;
 };

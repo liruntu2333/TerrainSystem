@@ -89,11 +89,28 @@ namespace DirectX
 
         void CreateViews(ID3D11Device* device) override;
 
+        struct Rectangle
+        {
+            unsigned X {}, Y {}, W {}, H {};
+
+            Rectangle(const unsigned x, const unsigned y, const unsigned w, const unsigned h)
+                : X(x), Y(y), W(w), H(h) { }
+
+            Rectangle operator*(const unsigned s) const
+            {
+                return { X * s, Y * s, W * s, H * s };
+            }
+
+            [[nodiscard]] bool IsEmpty() const { return W == 0 || H == 0; }
+        };
+
         template <class T>
         struct UpdateArea
         {
-            unsigned X {}, Y {}, W {}, H {};
+            Rectangle Rect;
             std::vector<T> Src {};
+
+            UpdateArea(const Rectangle& rect, std::vector<T> src) : Rect(rect), Src(src) { }
         };
 
         // [[nodiscard]] std::unique_ptr<MapGuard> Map(
@@ -103,13 +120,13 @@ namespace DirectX
         //     unsigned int mapFlags);
 
         template <class T>
-        void UpdateToroidal(ID3D11DeviceContext* context, unsigned mip,
-            const std::vector<UpdateArea<T>>& areas);
+        void UpdateToroidal(
+            ID3D11DeviceContext* context, unsigned mip, const std::vector<UpdateArea<T>>& areas);
     };
 
     template <class T>
-    void ClipmapTexture::UpdateToroidal(ID3D11DeviceContext* context, const unsigned mip,
-        const std::vector<UpdateArea<T>>& areas)
+    void ClipmapTexture::UpdateToroidal(
+        ID3D11DeviceContext* context, const unsigned mip, const std::vector<UpdateArea<T>>& areas)
     {
         std::queue<UpdateArea<T>> jobs;
         for (auto&& area : areas) jobs.push(area);
@@ -117,38 +134,40 @@ namespace DirectX
         const auto subresource = D3D11CalcSubresource(mip, 0, m_Desc.MipLevels);
         while (!jobs.empty())
         {
-            auto& [x, y, w, h, src] = jobs.front();
+            auto& job = jobs.front();
+            auto& [x, y, w, h] = job.Rect;
+            auto& src = job.Src;
             // cut into parts when warp cross edges
             if (x + w > texSz)
             {
                 const unsigned w1 = texSz - x;
                 const unsigned w2 = w - w1;
-                std::vector<uint16_t> src1(w1 * h);
-                std::vector<uint16_t> src2(w2 * h);
+                std::vector<T> src1(w1 * h);
+                std::vector<T> src2(w2 * h);
                 for (unsigned i = 0; i < h; ++i)
                 {
                     std::copy_n(src.begin() + i * w, w1, src1.begin() + i * w1);
                     std::copy_n(src.begin() + i * w + w1, w2, src2.begin() + i * w2);
                 }
-                jobs.push({ x, y, w1, h, std::move(src1) });
-                jobs.push({ 0, y, w2, h, std::move(src2) });
+                jobs.push(UpdateArea<T>(Rectangle(x, y, w1, h), std::move(src1)));
+                jobs.push(UpdateArea<T>(Rectangle(0, y, w2, h), std::move(src2)));
             }
             else if (y + h > texSz)
             {
                 const unsigned h1 = texSz - y;
                 const unsigned h2 = h - h1;
-                std::vector<uint16_t> src1(w * h1);
-                std::vector<uint16_t> src2(w * h2);
+                std::vector<T> src1(w * h1);
+                std::vector<T> src2(w * h2);
                 std::copy_n(src.begin(), w * h1, src1.begin());
                 std::copy_n(src.begin() + w * h1, w * h2, src2.begin());
-                jobs.push({ x, y, w, h1, std::move(src1) });
-                jobs.push({ x, 0, w, h2, std::move(src2) });
+                jobs.push(UpdateArea<T>(Rectangle(x, y, w, h1), std::move(src1)));
+                jobs.push(UpdateArea<T>(Rectangle(x, 0, w, h2), std::move(src2)));
             }
             else
             {
                 CD3D11_BOX box(x, y, 0, x + w, y + h, 1);
                 context->UpdateSubresource(GetTexture(), subresource,
-                    &box, src.data(), w * sizeof uint16_t, 0);
+                    &box, src.data(), w * sizeof(T), 0);
             }
             jobs.pop();
         }

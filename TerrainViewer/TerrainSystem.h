@@ -63,6 +63,7 @@ public:
         ID3D11DeviceContext* context);
 
     [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
+    [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
 
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;

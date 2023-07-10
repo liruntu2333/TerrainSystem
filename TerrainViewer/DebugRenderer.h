@@ -23,7 +23,11 @@ public:
         const DirectX::SimpleMath::Vector2& position,
         float scale = 1.0f);
 
-    void DrawClippedHeight(const DirectX::Texture2D& hm, ID3D11DeviceContext* context) const;
+    void DrawClippedHeight(
+        const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
+
+    void DrawClippedAlbedo(
+        const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
 
 protected:
     inline static std::unique_ptr<DirectX::GeometricPrimitive> s_Cube = nullptr;
@@ -32,4 +36,5 @@ protected:
     static constexpr int LevelCount = 5;
 
     std::unique_ptr<DirectX::Texture2D> m_HTex[LevelCount] = { nullptr };
+    std::unique_ptr<DirectX::Texture2D> m_ATex[LevelCount] = { nullptr };
 };

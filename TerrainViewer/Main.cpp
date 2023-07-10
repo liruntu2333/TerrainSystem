@@ -139,11 +139,11 @@ int main(int, char**)
 
         g_Camera->Update(io, spd);
 
-        Vector3 dView;
+        // Vector3 dView;
         if (!freezeFrustum)
         {
             frustum = g_Camera->GetFrustum();
-            dView = g_Camera->GetPosition() - view;
+            // dView = g_Camera->GetPosition() - view;
             view = g_Camera->GetPosition();
         }
         const auto& cmr = g_System->GetClipmapResources(frustum, hScale, g_pd3dDeviceContext);
@@ -197,8 +197,13 @@ int main(int, char**)
         //g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
         g_GridRenderer->Render(g_pd3dDeviceContext, cmr, wireFrame);
 
-        if(drawClip) 
-            g_DebugRenderer->DrawClippedHeight(g_System->GetHeightClip(), g_pd3dDeviceContext);
+        if (drawClip)
+        {
+            g_DebugRenderer->DrawClippedHeight(g_System->GetHeightClip(),
+                g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedAlbedo(g_System->GetAlbedoClip(),
+                g_pd3dDeviceContext);
+        }
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 

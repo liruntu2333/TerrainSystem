@@ -16,7 +16,7 @@ namespace DirectX
         ~BitMap() = default;
         BitMap(const std::filesystem::path& path);
 
-        [[nodiscard]] T GetVal(int x, int y, const int m) const
+        [[nodiscard]] const T& GetVal(int x, int y, const int m) const
         {
             x = WarpMod(x, GetMipHeight(m));
             y = WarpMod(y, GetMipHeight(m));
@@ -41,12 +41,15 @@ namespace DirectX
         std::vector<T> CopyRectangle(const int x, const int y, const size_t w, const size_t h, const size_t m)
         {
             std::vector<T> data;
+            const auto src = GetData(m);
+            const auto sw = GetMipWidth(m);
+            const auto sh = GetMipHeight(m);
             data.resize(w * h);
             for (size_t i = 0; i < h; ++i)
             {
                 for (size_t j = 0; j < w; ++j)
                 {
-                    data[i * w + j] = GetVal(x + j, y + i, m);
+                    data[i * w + j] = src[WarpMod(y + i, sh) * sw + WarpMod(x + j, sw)];
                 }
             }
             return data;

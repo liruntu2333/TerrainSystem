@@ -64,7 +64,7 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
     const auto hm = std::make_shared<HeightMap>(m_Path / "height.dds");
     const auto sm = std::make_shared<SplatMap>(m_Path / "splatmap.dds");
 
-    std::vector albedoTex =
+    const std::vector albedo =
     {
         std::make_shared<AlbedoMap>(m_Path / "texture_can/snow.dds"),
         std::make_shared<AlbedoMap>(m_Path / "texture_can/rock.dds"),
@@ -76,18 +76,17 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
         CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
-            LevelCount, 1,
-            D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_DEFAULT));
+            LevelCount, 1));
     m_HeightCm->CreateViews(device);
 
     m_AlbedoCm = std::make_shared<ClipmapTexture>(device,
-        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 
+        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo, 
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
             LevelCount, 1));
     m_AlbedoCm->CreateViews(device);
 
-    ClipmapLevel::BindSource(hm, sm, albedoTex, m_HeightCm, m_AlbedoCm);
+    ClipmapLevel::BindSource(hm, sm, albedo, m_HeightCm, m_AlbedoCm);
 
     for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
     {

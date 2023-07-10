@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #include "BitMap.h"
+#include "Texture2D.h"
 #include "Vertex.h"
 
 namespace DirectX
@@ -90,6 +91,16 @@ public:
     friend class TerrainSystem;
 
 protected:
+    using Rect = DirectX::ClipmapTexture::Rectangle;
+    using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::TexelFormat>;
+    using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::TexelFormat>;
+
+    [[nodiscard]] std::vector<DirectX::HeightMap::TexelFormat> GetSourceElevation(
+        int srcX, int srcY, unsigned w, unsigned h) const;
+
+    [[nodiscard]] std::vector<DirectX::SplatMap::TexelFormat> BlendSourceAlbedo(
+        int srcX, int srcY, unsigned w, unsigned h) const;
+
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
         const auto ofs = (finer - GetWorldOffset()) / m_GridSpacing;
@@ -101,13 +112,16 @@ protected:
         /*if (ox == ClipmapM && oy == ClipmapM - 1)*/
         return 3;
     }
-    
+
+    //void BlendNormal(Rectangle area, const std::vector<DirectX::SplatMap::TexelFormat>& splatSrc);
+
     const unsigned m_Level;
     const float m_GridSpacing;
     inline static constexpr int TextureSz = 1 << ClipmapK;
     inline static constexpr float OneOverSz = 1.0f / TextureSz;
     inline static constexpr int TextureN = (1 << ClipmapK) - 1; // 1 row 1 col left unused
     inline static constexpr int TextureScaleHeight = 1;
+    inline static constexpr int TextureScaleSplat = 1;
     inline static constexpr int TextureScaleNormal = 8;
     inline static constexpr int TextureScaleAlbedo = 8;
 

@@ -11,6 +11,7 @@
 
 #include "BitMap.h"
 #include "Texture2D.h"
+#include "MaterialBlender.h"
 
 using namespace DirectX;
 using namespace SimpleMath;
@@ -141,11 +142,12 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 }
 
 
-ClipmapLevel::ClipmapLevel(unsigned l, float gScl) :
+ClipmapLevel::ClipmapLevel(const unsigned l, const float gScl) :
     m_Level(l), m_GridSpacing(gScl), m_Mip(l) {}
 
-void ClipmapLevel::BindSource(const std::shared_ptr<HeightMap>& heightSrc,
-    const ::std::shared_ptr<SplatMap>& splatSrc, const std::vector<std::shared_ptr<AlbedoMap>>& atlas,
+void ClipmapLevel::BindSource(
+    const std::shared_ptr<HeightMap>& heightSrc,
+    const std::shared_ptr<SplatMap>& splatSrc, const std::vector<std::shared_ptr<AlbedoMap>>& atlas,
     const std::shared_ptr<ClipmapTexture>& heightTex, const std::shared_ptr<ClipmapTexture>& albedoTex)
 {
     m_HeightSrc = heightSrc;
@@ -164,26 +166,26 @@ void ClipmapLevel::UpdateOffset(const Vector2& view, const Vector2& ofsFiner)
 
 void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 {
-    const auto curr = MapToSource(m_GridOrigin);
-    const int dx = curr.x - m_MappedOrigin.x;
-    const int dy = curr.y - m_MappedOrigin.y;
+    const auto currOri = MapToSource(m_GridOrigin);
+    const int dx = currOri.x - m_MappedOrigin.x;
+    const int dy = currOri.y - m_MappedOrigin.y;
     if (dx == 0 && dy == 0) return;
 
     // can't use Map method for resource that arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),
     //     D3D11CalcSubresource(0, m_Mip, 1), D3D11_MAP_WRITE, 0);
-    using Area = ClipmapTexture::UpdateArea<HeightMap::TexelFormat>;
-    std::vector<Area> areas;
+    std::vector<HeightRect> htRects;
+    std::vector<AlbedoRect> alRects;
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
-        Area whole;
-        whole.H = TextureN;
-        whole.W = TextureN;
-        whole.X = m_TexelOrigin.x;
-        whole.Y = m_TexelOrigin.y;
-        whole.Src = m_HeightSrc->CopyRectangle(curr.x, curr.y, TextureN, TextureN, m_Mip);
-        areas.emplace_back(whole);
         m_TexelOrigin = Vector2::Zero;
+        const Rect rect(0, 0, TextureN, TextureN);
+
+        htRects.emplace_back(rect * TextureScaleHeight,
+            GetSourceElevation(currOri.x, currOri.y, rect.W, rect.H));
+
+        alRects.emplace_back(rect * TextureScaleAlbedo,
+            BlendSourceAlbedo(currOri.x, currOri.y, TextureN, TextureN));
     }
     else
     {
@@ -201,36 +203,62 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
         //              dw
 
         // update dy * dw first for cache coherence
-        Area dwdy;
-        dwdy.W = TextureN;
-        dwdy.H = std::abs(dy);
-        dwdy.X = WarpMod(static_cast<int>(m_TexelOrigin.x) + dx, TextureSz);
-        dwdy.Y = WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? TextureN : dy), TextureSz);
-        dwdy.Src = m_HeightSrc->CopyRectangle(
-            curr.x,
-            dy >= 0 ? m_MappedOrigin.y + TextureN : curr.y,
-            dwdy.W, dwdy.H, m_Mip);
+        const Rect dwdy(
+            WarpMod(static_cast<int>(m_TexelOrigin.x) + dx, TextureSz),
+            WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? TextureN : dy), TextureSz),
+            TextureN,
+            std::abs(dy));
+
+        if (!dwdy.IsEmpty())
+        {
+            htRects.emplace_back(
+                dwdy * TextureScaleHeight,
+                GetSourceElevation(
+                    currOri.x,
+                    dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
+                    dwdy.W,
+                    dwdy.H));
+
+            alRects.emplace_back(
+                dwdy * TextureScaleAlbedo,
+                BlendSourceAlbedo(
+                    currOri.x,
+                    dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
+                    dwdy.W,
+                    dwdy.H));
+        }
 
         // then update dx * (dh - abs(dy))
-        Area dxdh;
-        dxdh.W = std::abs(dx);
-        dxdh.H = TextureN - std::abs(dy);
-        dxdh.X = WarpMod(static_cast<int>(m_TexelOrigin.x) + (dx >= 0 ? TextureN : dx), TextureSz);
-        dxdh.Y = WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? dy : 0), TextureSz);
-        dxdh.Src = m_HeightSrc->CopyRectangle(
-            dx >= 0 ? m_MappedOrigin.x + TextureN : curr.x,
-            dy >= 0 ? curr.y : m_MappedOrigin.y,
-            dxdh.W, dxdh.H, m_Mip);
+        const Rect dxdh(
+            WarpMod(static_cast<int>(m_TexelOrigin.x) + (dx >= 0 ? TextureN : dx), TextureSz),
+            WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? dy : 0), TextureSz),
+            std::abs(dx),
+            TextureN - std::abs(dy));
 
-        if (dwdy.W > 0 && dwdy.H > 0) areas.emplace_back(dwdy);
-        if (dxdh.W > 0 && dxdh.H > 0) areas.emplace_back(dxdh);
+        if (!dxdh.IsEmpty())
+        {
+            htRects.emplace_back(dxdh * TextureScaleHeight,
+                GetSourceElevation(
+                    dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                    dy >= 0 ? currOri.y : m_MappedOrigin.y,
+                    dxdh.W,
+                    dxdh.H));
+
+            alRects.emplace_back(dxdh * TextureScaleAlbedo,
+                BlendSourceAlbedo(
+                    dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                    dy >= 0 ? currOri.y : m_MappedOrigin.y,
+                    dxdh.W,
+                    dxdh.H));
+        }
 
         m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
         m_TexelOrigin.y = WarpMod(dy + static_cast<int>(m_TexelOrigin.y), TextureSz);
     }
 
-    m_HeightTex->UpdateToroidal(context, m_Mip, areas);
-    m_MappedOrigin = curr;
+    m_HeightTex->UpdateToroidal(context, m_Mip, htRects);
+    m_AlbedoTex->UpdateToroidal(context, m_Mip, alRects);
+    m_MappedOrigin = currOri;
 }
 
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) const
@@ -334,4 +362,20 @@ float ClipmapLevel::GetHeight() const
 Vector2 ClipmapLevel::GetFinerOffset() const
 {
     return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern]) * OneOverSz;
+}
+
+std::vector<HeightMap::TexelFormat> ClipmapLevel::GetSourceElevation(
+    const int srcX, const int srcY, const unsigned w, const unsigned h) const
+{
+    return m_HeightSrc->CopyRectangle(
+        srcX * TextureScaleHeight, srcY * TextureScaleHeight,
+        w * TextureScaleHeight, h * TextureScaleHeight, m_Mip);
+}
+
+std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceAlbedo(
+    const int splatX, const int splatY, const unsigned w, const unsigned h) const
+{
+    return AlbedoBlender(m_SplatSrc, m_Atlas).Blend(
+        splatX * TextureScaleSplat, splatY * TextureScaleSplat,
+        w * TextureScaleSplat, h * TextureScaleSplat, m_Mip);
 }

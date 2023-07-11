@@ -32,8 +32,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                 const auto w11 = m_Splat->GetVal(wx + 1 + x, wy + 1 + y, mip);
                 // use simd instructions to blend SampleRatio pixels in a row
                 UintBatch r(0), g(0), b(0);
-                const size_t dy = wy * SampleRatio + row;
-                const size_t dx = wx * SampleRatio;
+
                 // for each texture in atlas
                 for (int layer = 0; layer < 4; ++layer)
                 {
@@ -44,8 +43,8 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                         (w11 >> layer * 8 & 0xFF) * row) >> 3;
                     const UintBatch k(0, 1, 2, 3, 4, 5, 6, 7);
                     const auto alpha = ((SampleRatio - k) * w0 + k * w1) >> 3;
-                    const UintBatch src = UintBatch::load_aligned(
-                        &m_Atlas[layer]->GetVal(dx, dy, mip));
+                    const UintBatch src = UintBatch::load_aligned(&m_Atlas[layer]->GetVal(
+                        (wx + x) * SampleRatio, (wy + y) * SampleRatio + row, mip));
                     r += (src & 0xFF) * alpha;
                     g += (src >> 8 & 0xFF) * alpha;
                     b += (src >> 16 & 0xFF) * alpha;
@@ -54,6 +53,8 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                 g = g >> 8 & 0xFF;
                 b = b >> 8 & 0xFF;
                 const auto c = r | g << 8 | b << 16 | 0xFF000000;
+                const size_t dy = wy * SampleRatio + row;
+                const size_t dx = wx * SampleRatio;
                 c.store_aligned(&dst[(dx + dy * dw)]);
             }
         }

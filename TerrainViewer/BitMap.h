@@ -16,16 +16,16 @@ namespace DirectX
         ~BitMap() = default;
         BitMap(const std::filesystem::path& path);
 
-        [[nodiscard]] const T& GetVal(int x, int y, const int m) const
+        [[nodiscard]] T& GetVal(int x, int y, const int m) const
         {
             x = WarpMod(x, GetMipHeight(m));
             y = WarpMod(y, GetMipHeight(m));
             return GetData(m)[y * GetMipHeight(m) + x];
         }
 
-        [[nodiscard]] const T* GetData(const int m) const
+        [[nodiscard]] T* GetData(const int m) const
         {
-            return reinterpret_cast<const T*>(GetImage(m, 0, 0)->pixels);
+            return reinterpret_cast<T*>(GetImage(m, 0, 0)->pixels);
         }
 
         [[nodiscard]] size_t GetMipWidth(const size_t mip) const

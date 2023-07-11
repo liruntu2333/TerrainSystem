@@ -11,7 +11,8 @@ void main(
 
     out float4 positionH : SV_POSITION,
     out float4 color : COLOR,
-    out float3 texCoord : TEXCOORD0    // coordinates for normal & albedo lookup
+    out float3 texCoordF : TEXCOORD0,
+    out float4 texCoordC : TEXCOORD1
     )
 {
     // degenrate triangles into coarser level
@@ -36,22 +37,18 @@ void main(
     // texParams.zw: origin of footprint in coarse texture
     static const float SampleRateFine = 1.0f / 256.0f;
     static const float SampleRateCoarse = 0.5f / 256.0f;
-    const float2 uvf = positionLf * SampleRateFine + texParams.xy;
-    const float2 uvc = positionLc * SampleRateCoarse + texParams.zw;
-    const float2 uv = lerp(uvf, uvc, alpha.x);
-
-    // lvlParams.w : level
-    const float w = lvlParams.w + alpha.x;
+	const float3 uvf = float3(positionLf * SampleRateFine + texParams.xy, lvlParams.w);
+	const float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw, lvlParams.w + 1);
 
     // blend elevation value
-    const float hf = Height.SampleLevel(PointWrap, float3(uvf, lvlParams.w), 0);
-    const float hc = Height.SampleLevel(PointWrap, float3(uvc, lvlParams.w + 1), 0);
-    float h = lerp(hf, hc, alpha.x);
+    // lvlParams.w : level
+	float h = SampleClipmapLevel(Height, PointWrap, uvf, uvc, alpha.x);
     h *= HeightMapScale;
 
     const float3 positionW = float3(xz.x, h, xz.y);
     positionH = float4(positionW, 1);
     positionH = mul(positionH, ViewProjection);
     color = LoadColor(lvlParams.z); // lvlParams.z : color
-	texCoord = float3(xz / 8192, w);
+	texCoordF = uvf;
+	texCoordC = float4(uvc, alpha.x);
 }

@@ -26,7 +26,7 @@ public:
         // ID3D11ShaderResourceView* Height {};
         ID3D11ShaderResourceView* HeightCm {};
         ID3D11ShaderResourceView* Normal {};
-        ID3D11ShaderResourceView* Albedo {};
+        ID3D11ShaderResourceView* AlbedoCm {};
 
         ID3D11Buffer* BlockVb = nullptr;
         ID3D11Buffer* BlockIb = nullptr;
@@ -72,6 +72,7 @@ public:
 
 protected:
     void InitMeshPatches(ID3D11Device* device);
+    void InitClipTextures(ID3D11Device* device);
     void InitClipmapLevels(ID3D11Device* device, const DirectX::SimpleMath::Vector2& view);
 
     std::map<int, std::shared_ptr<Patch>> m_Patches {};

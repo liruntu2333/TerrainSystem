@@ -1,7 +1,7 @@
 #include "ShaderUtil.hlsli"
 
 SamplerState g_AnisotropicClamp : register(s0);
-Texture2D g_Normal : register(t0);
+Texture2D Normal : register(t0);
 Texture2D g_Albedo : register(t1);
 
 cbuffer ObjectConstants : register(b1)
@@ -16,7 +16,7 @@ void main(
     in float2 texCoord : TEXCOORD,
     out float4 color : SV_TARGET)
 {
-    float2 normXz = g_Normal.Sample(g_AnisotropicClamp, texCoord.xy).rg;
+    float2 normXz = Normal.Sample(g_AnisotropicClamp, texCoord.xy).rg;
 	normXz = normXz * 2.0 - 1.0;
 	float normY = sqrt(1.0 - dot(normXz, normXz));
 	const float3 norm = normalize(float3(normXz.x, normY, normXz.y));

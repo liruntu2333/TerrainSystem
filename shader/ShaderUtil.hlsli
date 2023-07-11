@@ -17,7 +17,7 @@ float HeightMapScale;
 float pad;
 }
 
-float4 LoadColor(uint col)
+float4 LoadColor(const uint col)
 {
     float b = (col & 0x000000FF) / 255.0f;
     float g = ((col & 0x0000FF00) >> 8) / 255.0f;
@@ -76,7 +76,7 @@ float3 Shade(
     const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion, const float
     ambientIntensity)
 {
-    return saturate(dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity);
+    return dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity;
 }
 
 float3 ToneMapping(const float3 color)
@@ -86,10 +86,10 @@ float3 ToneMapping(const float3 color)
 
 float3 GammaCorrect(const float3 color)
 {
-    return pow(color, 1.0f / 2.2f);
+	return pow(color, 1.0f / 2.2f);
 }
 
-float Luminance(float3 color)
+float Luminance(const float3 color)
 {
     return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
 }
@@ -99,6 +99,24 @@ float3 MakeSphere(const float2 xz, const float y, const float r)
     const float3 center = float3(0, -r, 0);
     float3 p = center + normalize(float3(xz.x, 0, xz.y) - center) * (r + y);
     return p;
+}
+
+float SampleClipmapLevel(
+    Texture2DArray<float> tex, const SamplerState pw,
+    const float3 uvf, const float3 uvc, const float alpha)
+{
+    const float fine = tex.SampleLevel(pw, uvf, 0);
+    const float coarse = tex.SampleLevel(pw, uvc, 0);
+    return lerp(fine, coarse, alpha);
+}
+
+float4 SampleClipmapLevel(
+    Texture2DArray tex, const SamplerState pw,
+    const float3 uvf, const float3 uvc, const float alpha)
+{
+	const float4 fine = tex.SampleLevel(pw, uvf, 0);
+	const float4 coarse = tex.SampleLevel(pw, uvc, 0);
+    return lerp(fine, coarse, alpha);
 }
 
 #endif

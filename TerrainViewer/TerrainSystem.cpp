@@ -58,6 +58,22 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
     m_BoundTree = std::make_unique<BoundTree>(j);
 }
 
+void TerrainSystem::InitClipTextures(ID3D11Device* device) {
+    m_HeightCm = std::make_shared<ClipmapTexture>(device,
+        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
+            LevelCount, 1));
+    m_HeightCm->CreateViews(device);
+
+    m_AlbedoCm = std::make_shared<ClipmapTexture>(device,
+        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
+            LevelCount, 1));
+    m_AlbedoCm->CreateViews(device);
+}
+
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
@@ -72,19 +88,7 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
         std::make_shared<AlbedoMap>(m_Path / "texture_can/ground.dds"),
     };
 
-    m_HeightCm = std::make_shared<ClipmapTexture>(device,
-        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
-            LevelCount, 1));
-    m_HeightCm->CreateViews(device);
-
-    m_AlbedoCm = std::make_shared<ClipmapTexture>(device,
-        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
-            LevelCount, 1));
-    m_AlbedoCm->CreateViews(device);
+    InitClipTextures(device);
 
     ClipmapLevel::BindSource(hm, sm, albedo, m_HeightCm, m_AlbedoCm);
 
@@ -182,7 +186,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     // r.Height = m_Height->GetSrv();
     r.HeightCm = m_HeightCm->GetSrv();
     r.Normal = m_Normal->GetSrv();
-    r.Albedo = m_Albedo->GetSrv();
+    r.AlbedoCm = m_AlbedoCm->GetSrv();
 
     r.BlockVb = ClipmapLevelBase::BlockVb.Get();
     r.BlockIb = ClipmapLevelBase::BlockIb.Get();

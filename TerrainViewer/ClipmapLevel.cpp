@@ -185,7 +185,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
             GetSourceElevation(currOri.x, currOri.y, rect.W, rect.H));
 
         alRects.emplace_back(rect * TextureScaleAlbedo,
-            BlendSourceAlbedo(currOri.x, currOri.y, TextureN, TextureN));
+            BlendSourceAlbedo(currOri.x, currOri.y, rect.W, rect.H));
     }
     else
     {

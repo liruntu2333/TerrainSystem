@@ -67,21 +67,24 @@ void Camera::Update(const ImGuiIO& io, float spd)
     };
 
     const float dt = io.DeltaTime;
-    const Matrix rot = Matrix::CreateFromYawPitchRoll(m_Rotation);
-    const auto forward = -rot.Forward();
-    forward.Normalize(m_Forward);
-    const auto right = rot.Right();
-    right.Normalize(m_Right);
+    m_Orientation = Quaternion::CreateFromYawPitchRoll(m_Rotation);
+    m_Orientation.Normalize();
+    auto forward = Vector3::Transform(-Vector3::Forward, m_Orientation);
+    forward.Normalize();
+    m_Forward = forward;
+    auto right = Vector3::Transform(Vector3::Right, m_Orientation);
+    right.Normalize();
 
     Vector3 dir;
     if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_W)])
-        dir = forward;
-    if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_S)])
-        dir = -forward;
+        dir += forward;
+    else if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_S)])
+        dir -= forward;
     if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_A)])
-        dir = -right;
-    if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_D)])
-        dir = right;
+        dir -= right;
+    else if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_D)])
+        dir += right;
+    dir.Normalize();
 
     m_DeltaPosition = dir * dt * spd;
     m_Position += m_DeltaPosition;

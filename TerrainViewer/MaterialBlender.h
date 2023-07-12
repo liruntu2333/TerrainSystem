@@ -13,7 +13,6 @@ public:
         int x, int y, unsigned w, unsigned h, unsigned mip) const = 0;
 
 protected:
-    static constexpr unsigned SampleRatio = 8;
     std::shared_ptr<DirectX::SplatMap> m_Splat;
 };
 
@@ -29,6 +28,8 @@ public:
 
     [[nodiscard]] std::vector<uint32_t> Blend(
         int x, int y, unsigned w, unsigned h, unsigned mip) const override;
+
+    static constexpr unsigned SampleRatio = 8;
 
 protected:
     std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_Atlas {};

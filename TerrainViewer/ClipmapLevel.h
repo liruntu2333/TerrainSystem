@@ -4,7 +4,7 @@
 #include <d3d11.h>
 #include <filesystem>
 
-#include "BitMap.h"
+#include "MaterialBlender.h"
 #include "Texture2D.h"
 #include "Vertex.h"
 
@@ -123,7 +123,7 @@ protected:
     inline static constexpr int TextureScaleHeight = 1;
     inline static constexpr int TextureScaleSplat = 1;
     inline static constexpr int TextureScaleNormal = 8;
-    inline static constexpr int TextureScaleAlbedo = 8;
+    inline static constexpr int TextureScaleAlbedo = AlbedoBlender::SampleRatio;
 
     DirectX::SimpleMath::Vector2 m_GridOrigin {};    // * GridSpacing getting world offset
     DirectX::SimpleMath::Vector2 m_TexelOrigin {};    // * TextureSpacing getting texture offset

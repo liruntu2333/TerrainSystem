@@ -23,8 +23,7 @@ void main(
         texCoordC.w).rgb;
     // const float3 al = Albedo.Sample(LinearClamp, texCoordF.xy).rgb;
 
-    float3 col = Shade(float3(0, 1, 0), LightDirection, LightIntensity, oc, Ambient) * al
-        * colorIn.rgb;
+    float3 col = Shade(float3(0, 1, 0), LightDirection, LightIntensity, oc, Ambient) * al;
     col = ToneMapping(col);
     col = GammaCorrect(col);
 

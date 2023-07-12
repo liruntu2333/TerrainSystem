@@ -28,6 +28,7 @@ public:
         ID3D11ShaderResourceView* Normal {};
         ID3D11ShaderResourceView* AlbedoCm {};
 
+
         ID3D11Buffer* BlockVb = nullptr;
         ID3D11Buffer* BlockIb = nullptr;
         ID3D11Buffer* RingVb = nullptr;
@@ -67,7 +68,7 @@ public:
 
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;
-    static constexpr int LevelMax = LevelMin + LevelCount - 2;
+    static constexpr int LevelMax = LevelMin + LevelCount - 1;
     static constexpr float LevelMinScale = 1.0f; // 1 m per grid
 
 protected:

@@ -86,8 +86,7 @@ void DebugRenderer::DrawClippedAlbedo(
     for (int i = 0; i < 1; ++i)
     {
         auto pos = Vector2(260 * i, 260);
-        s_Sprite->Draw(srvs[i], pos, nullptr, Colors::White, 0, Vector2::Zero,
-           1.0f);
+        s_Sprite->Draw(srvs[i], pos);
     }
     s_Sprite->End();
 }

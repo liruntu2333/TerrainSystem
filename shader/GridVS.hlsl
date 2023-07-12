@@ -17,7 +17,9 @@ void main(
 {
     // degenrate triangles into coarser level
     // lvlParams.xy: offset of current footprint in level local space
-    const uint2 positionLc = (positionLf + lvlParams.xy) % 2 ? positionLf + 1 : positionLf;
+    const uint2 positionLc = (positionLf + lvlParams.xy) % 2
+                                 ? positionLf + 1
+                                 : positionLf;
 
     // convert grid xy to world xz coordinates
     // wldParams.xy: grid spacing of current level
@@ -26,7 +28,7 @@ void main(
     const float2 pc = positionLc * wldParams.xy + wldParams.zw;
 
     // compute alpha based on view distance for temporal continuity
-	float2 alpha = saturate((abs(pf - ViewPosition.xz) / wldParams.xy - AlphaOffset) * OneOverWidth);
+    float2 alpha = saturate((abs(pf - ViewPosition.xz) / wldParams.xy - AlphaOffset) * OneOverWidth);
     alpha.x = max(alpha.x, alpha.y);
 
     // blend position xz for space continuity to avoid T-junctions and popping
@@ -37,18 +39,18 @@ void main(
     // texParams.zw: origin of footprint in coarse texture
     static const float SampleRateFine = 1.0f / 256.0f;
     static const float SampleRateCoarse = 0.5f / 256.0f;
-	const float3 uvf = float3(positionLf * SampleRateFine + texParams.xy, lvlParams.w);
-	const float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw, lvlParams.w + 1);
+    const float3 uvf = float3(positionLf * SampleRateFine + texParams.xy, lvlParams.w);
+    const float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw, lvlParams.w + 1);
 
     // blend elevation value
     // lvlParams.w : level
-	float h = SampleClipmapLevel(Height, PointWrap, uvf, uvc, alpha.x);
+    float h = SampleClipmapLevel(Height, PointWrap, uvf, uvc, alpha.x);
     h *= HeightMapScale;
 
     const float3 positionW = float3(xz.x, h, xz.y);
     positionH = float4(positionW, 1);
     positionH = mul(positionH, ViewProjection);
     color = LoadColor(lvlParams.z); // lvlParams.z : color
-	texCoordF = uvf;
-	texCoordC = float4(uvc, alpha.x);
+    texCoordF = uvf;
+    texCoordC = float4(uvc, alpha.x);
 }

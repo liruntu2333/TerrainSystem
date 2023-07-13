@@ -18,9 +18,9 @@ namespace DirectX
 
         [[nodiscard]] T& GetVal(int x, int y, const int m) const
         {
-            x = WarpMod(x, GetMipHeight(m));
+            x = WarpMod(x, GetMipWidth(m));
             y = WarpMod(y, GetMipHeight(m));
-            return GetData(m)[y * GetMipHeight(m) + x];
+            return GetData(m)[y * GetMipWidth(m) + x];
         }
 
         [[nodiscard]] T* GetData(const int m) const

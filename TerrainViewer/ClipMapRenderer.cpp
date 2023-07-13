@@ -107,7 +107,7 @@ void ClipmapRenderer::Render(
     context->OMSetDepthStencilState(s_CommonStates->DepthDefault(), 0);
 
     context->VSSetShaderResources(0, 1, &rr.HeightCm);
-    context->PSSetShaderResources(0, 2, &rr.Normal); // and albedo
+    context->PSSetShaderResources(0, 2, &rr.NormalCm); // and albedo
 
     const auto blkCnt = rr.RingInstanceStart - rr.BlockInstanceStart;
     if (blkCnt > 0)

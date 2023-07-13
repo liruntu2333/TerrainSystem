@@ -18,7 +18,7 @@ DebugRenderer::DebugRenderer(ID3D11DeviceContext* context, ID3D11Device* device)
         m_HTex[i]->CreateViews(device);
 
         m_ATex[i] = std::make_unique<Texture2D>(device,
-            CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 256 * 8, 256 * 8));
+            CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 256, 256));
         m_ATex[i]->CreateViews(device);
     }
 }
@@ -48,14 +48,15 @@ void DebugRenderer::DrawSprite(
 }
 
 void DebugRenderer::DrawClippedHeight(
-    const Texture2D& tex, ID3D11DeviceContext* context) const
+    Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {
     for (int i = 0; i < LevelCount; ++i)
     {
+        D3D11_BOX box = { 0, 0, 0, 256, 256, 1 };
         context->CopySubresourceRegion(m_HTex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
             tex.GetTexture(), D3D11CalcSubresource(0, i, 1),
-            nullptr);
+            &box);
     }
     std::vector<ID3D11ShaderResourceView*> srvs;
     for (auto&& t : m_HTex) srvs.emplace_back(t->GetSrv());
@@ -63,30 +64,32 @@ void DebugRenderer::DrawClippedHeight(
     s_Sprite->Begin();
     for (int i = 0; i < LevelCount; ++i)
     {
-        auto pos = Vector2(260 * i, 0);
-        s_Sprite->Draw(srvs[i], pos);
+        auto pos = origin + Vector2(260 * i, 0);
+        s_Sprite->Draw(srvs[i], pos, nullptr, Colors::Red, 0, Vector2::Zero, 1.0f);
     }
     s_Sprite->End();
 }
 
 void DebugRenderer::DrawClippedAlbedo(
-    const Texture2D& tex, ID3D11DeviceContext* context) const
+    Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {
     for (int i = 0; i < LevelCount; ++i)
     {
+        D3D11_BOX box = { 0, 0, 0, 256, 256, 1 };
         context->CopySubresourceRegion(m_ATex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
             tex.GetTexture(), D3D11CalcSubresource(0, i, 1),
-            nullptr);
+            &box);
     }
     std::vector<ID3D11ShaderResourceView*> srvs;
     for (auto&& t : m_ATex) srvs.emplace_back(t->GetSrv());
-
+    
     s_Sprite->Begin();
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < LevelCount; ++i)
     {
-        auto pos = Vector2(260 * i, 260);
-        s_Sprite->Draw(srvs[i], pos);
+        auto pos = origin + Vector2(260 * i, 0);
+        RECT r = { 0, 0, 256, 256 };
+        s_Sprite->Draw(srvs[i], pos, &r);
     }
     s_Sprite->End();
 }

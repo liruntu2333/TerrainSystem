@@ -146,15 +146,21 @@ ClipmapLevel::ClipmapLevel(const unsigned l, const float gScl) :
     m_Level(l), m_GridSpacing(gScl), m_Mip(l) {}
 
 void ClipmapLevel::BindSource(
-    const std::shared_ptr<HeightMap>& heightSrc,
-    const std::shared_ptr<SplatMap>& splatSrc, const std::vector<std::shared_ptr<AlbedoMap>>& atlas,
-    const std::shared_ptr<ClipmapTexture>& heightTex, const std::shared_ptr<ClipmapTexture>& albedoTex)
+    const std::shared_ptr<HeightMap>& heightSrc, const std::shared_ptr<SplatMap>& splatSrc,
+    const std::shared_ptr<NormalMap>& normalBase, const std::vector<std::shared_ptr<AlbedoMap>>& alb,
+    const std::vector<std::shared_ptr<NormalMap>>& nor,
+    const std::shared_ptr<ClipmapTexture>& heightTex,
+    const std::shared_ptr<ClipmapTexture>& albedoTex,
+    const std::shared_ptr<ClipmapTexture>& normalTex)
 {
     m_HeightSrc = heightSrc;
     m_SplatSrc = splatSrc;
-    m_Atlas = atlas;
+    m_NormalBase = normalBase;
+    m_AlbAtlas = alb;
+    m_NorAtlas = nor;
     m_HeightTex = heightTex;
     m_AlbedoTex = albedoTex;
+    m_NormalTex = normalTex;
 }
 
 void ClipmapLevel::UpdateOffset(const Vector2& view, const Vector2& ofsFiner)
@@ -176,6 +182,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     //     D3D11CalcSubresource(0, m_Mip, 1), D3D11_MAP_WRITE, 0);
     std::vector<HeightRect> htRects;
     std::vector<AlbedoRect> alRects;
+    std::vector<AlbedoRect> nmRects;
+    // TODO
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
         m_TexelOrigin = Vector2::Zero;
@@ -186,6 +194,9 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
         alRects.emplace_back(rect * TextureScaleAlbedo,
             BlendSourceAlbedo(currOri.x, currOri.y, rect.W, rect.H));
+
+        nmRects.emplace_back(rect * TextureScaleNormal,
+            BlendSourceNormal(currOri.x, currOri.y, rect.W, rect.H));
     }
     else
     {
@@ -226,6 +237,14 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
                     dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
                     dwdy.W,
                     dwdy.H));
+
+            nmRects.emplace_back(
+                dwdy * TextureScaleNormal,
+                BlendSourceNormal(
+                    currOri.x,
+                    dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
+                    dwdy.W,
+                    dwdy.H));
         }
 
         // then update dx * (dh - abs(dy))
@@ -250,6 +269,13 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
                     dy >= 0 ? currOri.y : m_MappedOrigin.y,
                     dxdh.W,
                     dxdh.H));
+
+            nmRects.emplace_back(dxdh * TextureScaleNormal,
+                BlendSourceNormal(
+                    dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                    dy >= 0 ? currOri.y : m_MappedOrigin.y,
+                    dxdh.W,
+                    dxdh.H));
         }
 
         m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
@@ -258,6 +284,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
     m_HeightTex->UpdateToroidal(context, m_Mip, htRects);
     m_AlbedoTex->UpdateToroidal(context, m_Mip, alRects);
+    m_NormalTex->UpdateToroidal(context, m_Mip, nmRects);
     m_MappedOrigin = currOri;
 }
 
@@ -375,7 +402,15 @@ std::vector<HeightMap::TexelFormat> ClipmapLevel::GetSourceElevation(
 std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceAlbedo(
     const int splatX, const int splatY, const unsigned w, const unsigned h) const
 {
-    return AlbedoBlender(m_SplatSrc, m_Atlas).Blend(
+    return AlbedoBlender(m_SplatSrc, m_AlbAtlas).Blend(
         splatX * TextureScaleSplat, splatY * TextureScaleSplat,
+        w * TextureScaleSplat, h * TextureScaleSplat, m_Mip);
+}
+
+std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceNormal(
+    int srcX, int srcY, unsigned w, unsigned h) const
+{
+    return NormalBlender(m_SplatSrc, m_NormalBase, m_NorAtlas).Blend(
+        srcX * TextureScaleSplat, srcY * TextureScaleSplat,
         w * TextureScaleSplat, h * TextureScaleSplat, m_Mip);
 }

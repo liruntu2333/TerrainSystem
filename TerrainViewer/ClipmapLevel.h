@@ -60,9 +60,13 @@ public:
     static void BindSource(
         const std::shared_ptr<DirectX::HeightMap>& heightSrc,
         const std::shared_ptr<DirectX::SplatMap>& splatSrc,
-        const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& atlas,
+        const std::shared_ptr<DirectX::NormalMap>& normalBase,
+        const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
+        const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor,
         const std::shared_ptr<DirectX::ClipmapTexture>& heightTex,
-        const std::shared_ptr<DirectX::ClipmapTexture>& albedoTex);
+        const std::shared_ptr<DirectX::ClipmapTexture>& albedoTex,
+        const std::shared_ptr<DirectX::ClipmapTexture>& normalTex
+        );
 
     void UpdateOffset(
         const DirectX::SimpleMath::Vector2& view,
@@ -101,6 +105,9 @@ protected:
     [[nodiscard]] std::vector<DirectX::SplatMap::TexelFormat> BlendSourceAlbedo(
         int srcX, int srcY, unsigned w, unsigned h) const;
 
+    [[nodiscard]] std::vector<DirectX::SplatMap::TexelFormat> BlendSourceNormal(
+        int srcX, int srcY, unsigned w, unsigned h) const;
+
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
         const auto ofs = (finer - GetWorldOffset()) / m_GridSpacing;
@@ -122,7 +129,7 @@ protected:
     inline static constexpr int TextureN = (1 << ClipmapK) - 1; // 1 row 1 col left unused
     inline static constexpr int TextureScaleHeight = 1;
     inline static constexpr int TextureScaleSplat = 1;
-    inline static constexpr int TextureScaleNormal = 8;
+    inline static constexpr int TextureScaleNormal = NormalBlender::SampleRatio;
     inline static constexpr int TextureScaleAlbedo = AlbedoBlender::SampleRatio;
 
     DirectX::SimpleMath::Vector2 m_GridOrigin {};    // * GridSpacing getting world offset
@@ -134,9 +141,12 @@ protected:
 
     inline static std::shared_ptr<DirectX::HeightMap> m_HeightSrc = nullptr;
     inline static std::shared_ptr<DirectX::SplatMap> m_SplatSrc = nullptr;
-    inline static std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_Atlas { nullptr };
+    inline static std::shared_ptr<DirectX::NormalMap> m_NormalBase = nullptr;
+    inline static std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_AlbAtlas { nullptr };
+    inline static std::vector<std::shared_ptr<DirectX::NormalMap>> m_NorAtlas { nullptr };
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_HeightTex = nullptr;
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoTex = nullptr;
+    inline static std::shared_ptr<DirectX::ClipmapTexture> m_NormalTex = nullptr;
 
     const unsigned m_Mip;
     int m_TrimPattern = 0;

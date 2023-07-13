@@ -58,7 +58,8 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
     m_BoundTree = std::make_unique<BoundTree>(j);
 }
 
-void TerrainSystem::InitClipTextures(ID3D11Device* device) {
+void TerrainSystem::InitClipTextures(ID3D11Device* device)
+{
     m_HeightCm = std::make_shared<ClipmapTexture>(device,
         CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
@@ -72,6 +73,13 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device) {
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
             LevelCount, 1));
     m_AlbedoCm->CreateViews(device);
+
+    m_NormalCm = std::make_shared<ClipmapTexture>(device,
+        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
+            LevelCount, 1));
+    m_NormalCm->CreateViews(device);
 }
 
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
@@ -79,6 +87,7 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
     const auto hm = std::make_shared<HeightMap>(m_Path / "height.dds");
     const auto sm = std::make_shared<SplatMap>(m_Path / "splatmap.dds");
+    const auto nm = std::make_shared<NormalMap>(m_Path / "normal.dds");
 
     const std::vector albedo =
     {
@@ -88,9 +97,17 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
         std::make_shared<AlbedoMap>(m_Path / "texture_can/ground.dds"),
     };
 
+    const std::vector normal =
+    {
+        std::make_shared<NormalMap>(m_Path / "texture_can/snow_n.dds"),
+        std::make_shared<NormalMap>(m_Path / "texture_can/rock_n.dds"),
+        std::make_shared<NormalMap>(m_Path / "texture_can/grass_n.dds"),
+        std::make_shared<NormalMap>(m_Path / "texture_can/ground_n.dds"),
+    };
+
     InitClipTextures(device);
 
-    ClipmapLevel::BindSource(hm, sm, albedo, m_HeightCm, m_AlbedoCm);
+    ClipmapLevel::BindSource(hm, sm, nm, albedo, normal, m_HeightCm, m_AlbedoCm, m_NormalCm);
 
     for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
     {
@@ -185,7 +202,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
     r.HeightCm = m_HeightCm->GetSrv();
-    r.Normal = m_Normal->GetSrv();
+    r.NormalCm = m_NormalCm->GetSrv();
     r.AlbedoCm = m_AlbedoCm->GetSrv();
 
     r.BlockVb = ClipmapLevelBase::BlockVb.Get();

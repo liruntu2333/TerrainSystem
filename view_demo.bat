@@ -1,3 +1,3 @@
 @echo off
-path = %path%;.\bin\;
+path = %path%;.\Release\;
 TerrainViewer.exe

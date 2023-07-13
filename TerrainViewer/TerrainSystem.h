@@ -25,7 +25,7 @@ public:
     {
         // ID3D11ShaderResourceView* Height {};
         ID3D11ShaderResourceView* HeightCm {};
-        ID3D11ShaderResourceView* Normal {};
+        ID3D11ShaderResourceView* NormalCm {};
         ID3D11ShaderResourceView* AlbedoCm {};
 
 
@@ -65,10 +65,11 @@ public:
 
     [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
     [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
+    [[nodiscard]] const DirectX::Texture2D& GetNormalClip() const { return *m_NormalCm; }
 
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;
-    static constexpr int LevelMax = LevelMin + LevelCount - 1;
+    static constexpr int LevelMax = LevelMin + LevelCount - 2;
     static constexpr float LevelMinScale = 1.0f; // 1 m per grid
 
 protected:
@@ -82,6 +83,7 @@ protected:
     std::vector<ClipmapLevel> m_Levels {};
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightCm {};
     std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoCm {};
+    std::shared_ptr<DirectX::ClipmapTexture> m_NormalCm {};
 
     std::unique_ptr<DirectX::Texture2D> m_Height {};
     std::unique_ptr<DirectX::Texture2D> m_Normal {};

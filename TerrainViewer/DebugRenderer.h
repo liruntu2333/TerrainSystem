@@ -24,10 +24,10 @@ public:
         float scale = 1.0f);
 
     void DrawClippedHeight(
-        const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
+        DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
 
     void DrawClippedAlbedo(
-        const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
+        DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
 
 protected:
     inline static std::unique_ptr<DirectX::GeometricPrimitive> s_Cube = nullptr;

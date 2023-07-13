@@ -167,7 +167,6 @@ int main(int, char**)
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        ImGui::Text("View Position : %f, %f, %f", view.x, view.y, view.z);
         ImGui::DragFloat("Height Scale", &hScale, 1, 0.0, 10000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
@@ -201,13 +200,14 @@ int main(int, char**)
 
         if (drawClip)
         {
-            g_DebugRenderer->DrawClippedHeight(g_System->GetHeightClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedAlbedo(g_System->GetAlbedoClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedHeight(Vector2::Zero, g_System->GetHeightClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedAlbedo(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedAlbedo(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
         }
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        //g_pSwapChain->Present(1, 0); // Present with vsync
+        // g_pSwapChain->Present(1, 0); // Present with vsync
         g_pSwapChain->Present(0, 0); // Present without vsync
     }
 

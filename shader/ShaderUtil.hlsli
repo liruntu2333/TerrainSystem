@@ -76,12 +76,12 @@ float3 Shade(
     const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion, const float
     ambientIntensity)
 {
-    return dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity;
+	return saturate(dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity);
 }
 
 float3 ToneMapping(const float3 color)
 {
-    return color / (color + float3(1.0f, 1.0f, 1.0f));
+	return color / (color + float3(0.7f, 0.7f, 0.7f));
 }
 
 float3 GammaCorrect(const float3 color)

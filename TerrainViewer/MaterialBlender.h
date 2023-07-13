@@ -6,11 +6,11 @@
 class MaterialBlender
 {
 public:
-    explicit MaterialBlender(const std::shared_ptr<DirectX::SplatMap>& splat) : m_Splat(splat) {}
-    virtual ~MaterialBlender() = default;
+    MaterialBlender(std::shared_ptr<DirectX::SplatMap> splat) : m_Splat(std::move(splat)) {}
+    ~MaterialBlender() = default;
 
-    [[nodiscard]] virtual std::vector<uint32_t> Blend(
-        int x, int y, unsigned w, unsigned h, unsigned mip) const = 0;
+    [[nodiscard]] std::vector<uint32_t> Blend(
+        int x, int y, unsigned w, unsigned h, unsigned mip) const { return {}; }
 
 protected:
     std::shared_ptr<DirectX::SplatMap> m_Splat;
@@ -20,17 +20,38 @@ class AlbedoBlender : public MaterialBlender
 {
 public:
     AlbedoBlender(
-        const std::shared_ptr<DirectX::SplatMap>& splat,
-        const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& atlas) :
-        MaterialBlender(splat), m_Atlas(atlas) {}
+        std::shared_ptr<DirectX::SplatMap> splat,
+        std::vector<std::shared_ptr<DirectX::AlbedoMap>> atlas) :
+        MaterialBlender(std::move(splat)), m_Atlas(std::move(atlas)) {}
 
-    ~AlbedoBlender() override = default;
+    ~AlbedoBlender() = default;
 
     [[nodiscard]] std::vector<uint32_t> Blend(
-        int x, int y, unsigned w, unsigned h, unsigned mip) const override;
+        int x, int y, unsigned w, unsigned h, unsigned mip) const;
 
-    static constexpr unsigned SampleRatio = 8;
+    static constexpr unsigned SampleRatio = 16;
 
 protected:
     std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_Atlas {};
+};
+
+class NormalBlender : public MaterialBlender
+{
+public:
+    NormalBlender(
+        std::shared_ptr<DirectX::SplatMap> splat,
+        std::shared_ptr<DirectX::NormalMap> base,
+        std::vector<std::shared_ptr<DirectX::NormalMap>> atlas) :
+        MaterialBlender(std::move(splat)), m_Base(std::move(base)), m_Atlas(std::move(atlas)) {}
+
+    ~NormalBlender() = default;
+
+    [[nodiscard]] std::vector<uint32_t> Blend(
+        int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip) const;
+
+    static constexpr unsigned SampleRatio = 16;
+
+protected:
+    std::shared_ptr<DirectX::NormalMap> m_Base;
+    std::vector<std::shared_ptr<DirectX::NormalMap>> m_Atlas {};
 };

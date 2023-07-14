@@ -112,7 +112,8 @@ int main(int, char**)
     float spd = 30.0f;
     float hScale = 2600.0f;
     float transition = 25.4f;
-
+    int blendMode = 2;
+    float blendFactor = 0.35f;
     bool done = false;
     // Main loop
     while (!done)
@@ -137,33 +138,7 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        g_Camera->Update(io, spd);
-
-        // Vector3 dView;
-        if (!freezeFrustum)
-        {
-            frustum = g_Camera->GetFrustum();
-            // dView = g_Camera->GetPosition() - view;
-            view = g_Camera->GetPosition();
-        }
-        const auto& cmr = g_System->GetClipmapResources(frustum, hScale, g_pd3dDeviceContext);
-
-        std::vector<DirectX::BoundingBox> bbs;
-        //const auto& pr = g_System->GetPatchResources(
-        // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-
-        Vector3 lDir(
-            std::sin(lTheta) * std::cos(lPhi),
-            std::cos(lTheta),
-            std::sin(lTheta) * std::sin(lPhi));
-        lDir.Normalize();
-
-        g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
-        g_Constants->ViewPosition = view;
-        g_Constants->Light = Vector4(lDir.x, lDir.y, lDir.z, lInt);
-        g_Constants->HeightScale = hScale;
-        g_Constants->AlphaOffset = Vector2(126.0f - transition);
-        g_Constants->OneOverTransition = 1.0f / transition;
+        bool modeChanged = false;
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
@@ -178,7 +153,43 @@ int main(int, char**)
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::Checkbox("Show Clipmap Texture", &drawClip);
+        modeChanged |= ImGui::SliderFloat("Blend Factor", &blendFactor, 0.0, 1.0);
+        modeChanged |= ImGui::RadioButton("Base", &blendMode, 0);
+        modeChanged |= ImGui::RadioButton("Detail", &blendMode, 1);
+        modeChanged |= ImGui::RadioButton("Linear", &blendMode, 2);
+        modeChanged |= ImGui::RadioButton("Partial Derivative", &blendMode, 3);
+        modeChanged |= ImGui::RadioButton("Whiteout", &blendMode, 4);
+        modeChanged |= ImGui::RadioButton("Unreal", &blendMode, 5);
+        modeChanged |= ImGui::RadioButton("Reorient", &blendMode, 6);
+        modeChanged |= ImGui::RadioButton("Unity", &blendMode, 7);
         ImGui::End();
+
+        // Updating
+        g_Camera->Update(io, spd);
+        if (!freezeFrustum)
+        {
+            frustum = g_Camera->GetFrustum();
+            view = g_Camera->GetPosition();
+        }
+        if (modeChanged)
+            g_System->ResetClipmapTexture();
+        const auto& resource = g_System->GetClipmapResources(frustum, hScale,
+            g_pd3dDeviceContext, blendMode, blendFactor);
+        std::vector<DirectX::BoundingBox> bbs;
+        //const auto& pr = g_System->GetPatchResources(
+        // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
+        Vector3 lDir(
+            std::sin(lTheta) * std::cos(lPhi),
+            std::cos(lTheta),
+            std::sin(lTheta) * std::sin(lPhi));
+        lDir.Normalize();
+
+        g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
+        g_Constants->ViewPosition = view;
+        g_Constants->Light = Vector4(lDir.x, lDir.y, lDir.z, lInt);
+        g_Constants->HeightScale = hScale;
+        g_Constants->AlphaOffset = Vector2(126.0f - transition);
+        g_Constants->OneOverTransition = 1.0f / transition;
 
         // Rendering
         ImGui::Render();
@@ -195,8 +206,8 @@ int main(int, char**)
         //     g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         //g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
-        g_GridRenderer->Render(g_pd3dDeviceContext, cmr);
-        if (wireFrame) g_GridRenderer->Render(g_pd3dDeviceContext, cmr, wireFrame);
+        g_GridRenderer->Render(g_pd3dDeviceContext, resource);
+        if (wireFrame) g_GridRenderer->Render(g_pd3dDeviceContext, resource, wireFrame);
 
         if (drawClip)
         {

@@ -28,7 +28,6 @@ public:
         ID3D11ShaderResourceView* NormalCm {};
         ID3D11ShaderResourceView* AlbedoCm {};
 
-
         ID3D11Buffer* BlockVb = nullptr;
         ID3D11Buffer* BlockIb = nullptr;
         ID3D11Buffer* RingVb = nullptr;
@@ -54,6 +53,8 @@ public:
         ID3D11Device* device);
     ~TerrainSystem() = default;
 
+    void ResetClipmapTexture();
+
     [[nodiscard]] PatchRenderResource GetPatchResources(
         const DirectX::XMINT2& camXyForCull,
         const DirectX::BoundingFrustum& frustumLocal, float yScale,
@@ -61,7 +62,7 @@ public:
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
         const DirectX::BoundingFrustum& frustum, float yScale,
-        ID3D11DeviceContext* context);
+        ID3D11DeviceContext* context, int blendMode, float blendT);
 
     [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
     [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
@@ -85,9 +86,9 @@ protected:
     std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoCm {};
     std::shared_ptr<DirectX::ClipmapTexture> m_NormalCm {};
 
-    std::unique_ptr<DirectX::Texture2D> m_Height {};
-    std::unique_ptr<DirectX::Texture2D> m_Normal {};
-    std::unique_ptr<DirectX::Texture2D> m_Albedo {};
+    // std::unique_ptr<DirectX::Texture2D> m_Height {};
+    // std::unique_ptr<DirectX::Texture2D> m_Normal {};
+    // std::unique_ptr<DirectX::Texture2D> m_Albedo {};
 
     const std::filesystem::path m_Path;
 

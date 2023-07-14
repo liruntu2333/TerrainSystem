@@ -170,7 +170,7 @@ void ClipmapLevel::UpdateOffset(const Vector2& view, const Vector2& ofsFiner)
     m_TrimPattern = GetTrimPattern(ofsFiner);
 }
 
-void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
+void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, int blendMode, float blendT)
 {
     const auto currOri = MapToSource(m_GridOrigin);
     const int dx = currOri.x - m_MappedOrigin.x;
@@ -183,7 +183,6 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     std::vector<HeightRect> htRects;
     std::vector<AlbedoRect> alRects;
     std::vector<AlbedoRect> nmRects;
-    // TODO
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
         m_TexelOrigin = Vector2::Zero;
@@ -196,7 +195,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
             BlendSourceAlbedo(currOri.x, currOri.y, rect.W, rect.H));
 
         nmRects.emplace_back(rect * TextureScaleNormal,
-            BlendSourceNormal(currOri.x, currOri.y, rect.W, rect.H));
+            BlendSourceNormal(currOri.x, currOri.y, rect.W, rect.H, blendMode, blendT));
     }
     else
     {
@@ -244,7 +243,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
                     currOri.x,
                     dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
                     dwdy.W,
-                    dwdy.H));
+                    dwdy.H, blendMode, blendT));
         }
 
         // then update dx * (dh - abs(dy))
@@ -275,7 +274,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
                     dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
                     dy >= 0 ? currOri.y : m_MappedOrigin.y,
                     dxdh.W,
-                    dxdh.H));
+                    dxdh.H, blendMode, blendT));
         }
 
         m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
@@ -408,9 +407,10 @@ std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceAlbedo(
 }
 
 std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceNormal(
-    int srcX, int srcY, unsigned w, unsigned h) const
+    int srcX, int srcY, unsigned w, unsigned h, int blendMode, float blendT) const
 {
     return NormalBlender(m_SplatSrc, m_NormalBase, m_NorAtlas).Blend(
         srcX * TextureScaleSplat, srcY * TextureScaleSplat,
-        w * TextureScaleSplat, h * TextureScaleSplat, m_Mip);
+        w * TextureScaleSplat, h * TextureScaleSplat, m_Mip,
+        static_cast<NormalBlender::BlendMethod>(blendMode), blendT);
 }

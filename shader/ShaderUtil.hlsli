@@ -81,7 +81,7 @@ float3 Shade(
 
 float3 ToneMapping(const float3 color)
 {
-	return color / (color + float3(0.7f, 0.7f, 0.7f));
+	return color / (color + float3(1.0f, 1.0f, 1.0f));
 }
 
 float3 GammaCorrect(const float3 color)

@@ -29,7 +29,7 @@ public:
     [[nodiscard]] std::vector<uint32_t> Blend(
         int x, int y, unsigned w, unsigned h, unsigned mip) const;
 
-    static constexpr unsigned SampleRatio = 16;
+    static constexpr unsigned SampleRatio = 8;
 
 protected:
     std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_Atlas {};
@@ -42,16 +42,28 @@ public:
         std::shared_ptr<DirectX::SplatMap> splat,
         std::shared_ptr<DirectX::NormalMap> base,
         std::vector<std::shared_ptr<DirectX::NormalMap>> atlas) :
-        MaterialBlender(std::move(splat)), m_Base(std::move(base)), m_Atlas(std::move(atlas)) {}
+        MaterialBlender(std::move(splat)), m_Base(std::move(base)), m_Detail(std::move(atlas)) {}
 
     ~NormalBlender() = default;
 
-    [[nodiscard]] std::vector<uint32_t> Blend(
-        int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip) const;
+    enum BlendMethod
+    {
+        BaseOnly = 0,
+        DetailOnly,
+        Linear,
+        PartialDerivative,
+        Whiteout,
+        Unreal,
+        Reorient,
+        Unity,
+    };
 
-    static constexpr unsigned SampleRatio = 16;
+    [[nodiscard]] std::vector<uint32_t> Blend(
+        int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip, BlendMethod method, float blendT) const;
+
+    static constexpr unsigned SampleRatio = 8;
 
 protected:
     std::shared_ptr<DirectX::NormalMap> m_Base;
-    std::vector<std::shared_ptr<DirectX::NormalMap>> m_Atlas {};
+    std::vector<std::shared_ptr<DirectX::NormalMap>> m_Detail {};
 };

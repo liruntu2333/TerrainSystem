@@ -4,8 +4,28 @@
 #include <xsimd/xsimd.hpp>
 #include <directxtk/SimpleMath.h>
 
+using DirectX::SimpleMath::Vector3;
+using UintBatch = xsimd::batch<uint32_t, xsimd::default_arch>;
+using FloatBatch = xsimd::batch<float, xsimd::default_arch>;
+
 namespace
 {
+    constexpr size_t Stride = UintBatch::size;
+    constexpr float M = 1.0f / 255.0f;
+    const FloatBatch T[] =
+    {
+        FloatBatch(0.0f / NormalBlender::SampleRatio,
+            1.0f / NormalBlender::SampleRatio, 2.0f / NormalBlender::SampleRatio,
+            3.0f / NormalBlender::SampleRatio, 4.0f / NormalBlender::SampleRatio,
+            5.0f / NormalBlender::SampleRatio, 6.0f / NormalBlender::SampleRatio,
+            7.0f / NormalBlender::SampleRatio),
+        FloatBatch(8.0f / NormalBlender::SampleRatio,
+            9.0f / NormalBlender::SampleRatio, 10.0f / NormalBlender::SampleRatio,
+            11.0f / NormalBlender::SampleRatio, 12.0f / NormalBlender::SampleRatio,
+            13.0f / NormalBlender::SampleRatio, 14.0f / NormalBlender::SampleRatio,
+            15.0f / NormalBlender::SampleRatio),
+    };
+
     template <class T, class U>
     auto Lerp(const T& a, const T& b, const U t)
     {
@@ -36,20 +56,9 @@ namespace
 
         [[nodiscard]] float GetChannel(const int i) const
         {
-            constexpr auto m = 1 / 255.0f;
-            return static_cast<float>(Vec[i]) * m;
+            return static_cast<float>(Vec[i]) * M;
         }
 
-        template <int C>
-        [[nodiscard]] float GetChannel() const
-        {
-            constexpr int channel = C;
-            constexpr auto m = 1 / 255.0f;
-            return static_cast<float>(Vec[channel]) * m;
-        }
-
-        Color() = default;
-        ~Color() = default;
         operator uint32_t() const { return Val; }
 
         operator DirectX::SimpleMath::Vector3() const
@@ -57,30 +66,115 @@ namespace
             return { static_cast<float>(R), static_cast<float>(G), static_cast<float>(B) };
         }
     };
-}
 
+    void Linear(
+        const FloatBatch& baseX, const FloatBatch& baseY, const FloatBatch& baseZ,
+        FloatBatch& x, FloatBatch& y, FloatBatch& z, const float t)
+    {
+        x = Lerp(baseX, x, t);
+        y = Lerp(baseY, y, t);
+        z = Lerp(baseZ, z, t);
+        x = x * (2.0f / 255) + -1.0f;
+        y = y * (2.0f / 255) + -1.0f;
+        z = z * (2.0f / 255) + -1.0f;
+    }
+
+    void PartialDerivative(
+        FloatBatch& xBase, FloatBatch& yBase, FloatBatch& zBase,
+        FloatBatch& x, FloatBatch& y, FloatBatch& z, const float t)
+    {
+        xBase = xBase * (2.0f / 255) + -1;
+        yBase = yBase * (2.0f / 255) + -1;
+        zBase = zBase * (2.0f / 255) + -1;
+        x = x * (2.0f / 255) + -1;
+        y = y * (2.0f / 255) + -1;
+        z = z * (2.0f / 255) + -1;
+        const auto rbz = reciprocal(zBase);
+        const auto rz = reciprocal(z);
+        x = Lerp(xBase * rbz, x * rz, t);
+        z = 1;
+    }
+
+    void Whiteout(
+        const FloatBatch& xBase, const FloatBatch& yBase, FloatBatch& zBase,
+        FloatBatch& x, FloatBatch& y, FloatBatch& z)
+    {
+        // xBase = xBase * (2.0f / 255) + -1;
+        // yBase = yBase * (2.0f / 255) + -1;
+        zBase = zBase * (2.0f / 255) + -1;
+
+        // x = x * (2.0f / 255) + -1;
+        // y = y * (2.0f / 255) + -1;
+        z = z * (2.0f / 255) + -1;
+
+        x = (xBase + x) * (2.0f / 255) + -1;
+        y = (yBase + y) * (2.0f / 255) + -1;
+        z *= zBase;
+    }
+
+    void UnrealDeveloperNetwork(
+        const FloatBatch& xBase, const FloatBatch& yBase, const FloatBatch& zBase,
+        FloatBatch& x, FloatBatch& y, FloatBatch& z)
+    {
+        // xBase = xBase * (2.0f / 255) + -1;
+        // yBase = yBase * (2.0f / 255) + -1;
+        // zBase = zBase * (2.0f / 255) + -1;
+        // x = x * (2.0f / 255) + -1;
+        // y = y * (2.0f / 255) + -1;
+        // z = z * (2.0f / 255) + -1;
+
+        x = xBase + x;
+        y = yBase + y;
+        z = zBase;
+        x = x * (2.0f / 255) + -1;
+        y = y * (2.0f / 255) + -1;
+        z = z * (2.0f / 255) + -1;
+    }
+
+    void Reorient(
+        FloatBatch& xBase, FloatBatch& yBase, FloatBatch& zBase,
+        FloatBatch& x, FloatBatch& y, FloatBatch& z)
+    {
+        xBase = xBase * (2.0f / 255) + -1;
+        yBase = yBase * (2.0f / 255) + -1;
+        zBase = zBase * (2.0f / 255);
+        x = x * (-2.0f / 255) + 1;
+        y = y * (-2.0f / 255) + 1;
+        z = z * (2.0f / 255) + -1;
+        const auto dot = (x * xBase + y * yBase + z * zBase) * reciprocal(zBase);
+        x = xBase * dot - x;
+        y = yBase * dot - y;
+    }
+
+    void Unity(
+        FloatBatch& xBase, FloatBatch& yBase, FloatBatch& zBase,
+        FloatBatch& x, FloatBatch& y, FloatBatch& z)
+    {
+        xBase = xBase * (2.0f / 255) + -1;
+        yBase = yBase * (2.0f / 255) + -1;
+        zBase = zBase * (2.0f / 255) + -1;
+        x = x * (2.0f / 255) + -1;
+        y = y * (2.0f / 255) + -1;
+        z = z * (2.0f / 255) + -1;
+
+        const auto tx = x * zBase + y * xBase + z * xBase;
+        const auto ty = x * yBase + y * zBase + z * yBase;
+        const auto tz = -x * xBase - y * yBase + z * zBase;
+        x = tx;
+        y = ty;
+        z = tz;
+    }
+}
 
 std::vector<uint32_t> AlbedoBlender::Blend(
     const int x, const int y, const unsigned w, const unsigned h, const unsigned mip) const
 {
-    using UintBatch = xsimd::batch<uint32_t, xsimd::default_arch>;
-    using FloatBatch = xsimd::batch<float, xsimd::default_arch>;
-    constexpr size_t stride = UintBatch::size;
-    static_assert(SampleRatio % stride == 0);
-
     // const auto pc = points.size();
     const unsigned dw = w * SampleRatio;
     const unsigned dh = h * SampleRatio;
     std::vector<uint32_t> dst;
     dst.resize(dw * dh);
 
-    const FloatBatch t[] =
-    {
-        FloatBatch(1.0f / SampleRatio, 2.0f / SampleRatio, 3.0f / SampleRatio, 4.0f / SampleRatio,
-            5.0f / SampleRatio, 6.0f / SampleRatio, 7.0f / SampleRatio, 8.0f / SampleRatio),
-        FloatBatch(9.0f / SampleRatio, 10.0f / SampleRatio, 11.0f / SampleRatio, 12.0f / SampleRatio,
-            13.0f / SampleRatio, 14.0f / SampleRatio, 15.0f / SampleRatio, 16.0f / SampleRatio),
-    };
     // each sample in weight map
     for (int wy = 0; wy < h; ++wy)
     {
@@ -94,7 +188,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                 auto w01 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + x, wy + y + 1, mip));
                 auto w11 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + x + 1, wy + y + 1, mip));
 
-                for (int i = 0; i < SampleRatio / stride; ++i)
+                for (int i = 0; i < SampleRatio / Stride; ++i)
                 {
                     // use simd intrinsics to blend SampleRatio pixels in a row
                     FloatBatch r(0.0f), g(0.0f), b(0.0f);
@@ -106,9 +200,9 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                         const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
                         const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
 
-                        const FloatBatch bw = Lerp(w0, w1, t[i]);
+                        const FloatBatch bw = Lerp(w0, w1, T[i]);
                         const UintBatch src = UintBatch::load_aligned(&m_Atlas[l]->GetVal(
-                            (wx + x) * SampleRatio + stride * i, (wy + y) * SampleRatio + row, mip));
+                            (wx + x) * SampleRatio + Stride * i, (wy + y) * SampleRatio + row, mip));
                         const FloatBatch srcR = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcG = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcB = xsimd::batch_cast<float>(src >> 16 & 0xFF);
@@ -120,7 +214,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                         xsimd::batch_cast<uint32_t>(g) << 8 |
                         xsimd::batch_cast<uint32_t>(b) << 16 |
                         0xFF000000;
-                    const size_t dx = wx * SampleRatio + stride * i;
+                    const size_t dx = wx * SampleRatio + Stride * i;
                     const size_t dy = wy * SampleRatio + row;
                     c.store_unaligned(&dst[(dx + dy * dw)]);
                 }
@@ -131,27 +225,16 @@ std::vector<uint32_t> AlbedoBlender::Blend(
     return dst;
 }
 
-std::vector<uint32_t> NormalBlender::Blend(int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip) const
+std::vector<uint32_t> NormalBlender::Blend(
+    int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip,
+    BlendMethod method, float blendT) const
 {
-    using DirectX::SimpleMath::Vector3;
-    using UintBatch = xsimd::batch<uint32_t, xsimd::default_arch>;
-    using FloatBatch = xsimd::batch<float, xsimd::default_arch>;
-    constexpr size_t stride = UintBatch::size;
-    static_assert(SampleRatio % UintBatch::size == 0);
-
     // const auto pc = points.size();
     const unsigned dw = splatW * SampleRatio;
     const unsigned dh = splatH * SampleRatio;
     std::vector<uint32_t> dst;
     dst.resize(dw * dh);
 
-    const FloatBatch t[] =
-    {
-        FloatBatch(1.0f / SampleRatio, 2.0f / SampleRatio, 3.0f / SampleRatio, 4.0f / SampleRatio,
-            5.0f / SampleRatio, 6.0f / SampleRatio, 7.0f / SampleRatio, 8.0f / SampleRatio),
-        FloatBatch(9.0f / SampleRatio, 10.0f / SampleRatio, 11.0f / SampleRatio, 12.0f / SampleRatio,
-            13.0f / SampleRatio, 14.0f / SampleRatio, 15.0f / SampleRatio, 16.0f / SampleRatio),
-    };
     // each sample in weight map
     for (int wy = 0; wy < splatH; ++wy)
     {
@@ -170,13 +253,14 @@ std::vector<uint32_t> NormalBlender::Blend(int splatX, int splatY, unsigned spla
                 const auto b01 = reinterpret_cast<const Color&>(m_Base->GetVal(wx + splatX, wy + splatY + 1, mip));
                 const auto b11 = reinterpret_cast<const Color&>(m_Base->GetVal(wx + splatX + 1, wy + splatY + 1, mip));
 
-                for (int i = 0; i < SampleRatio / stride; ++i)
+                for (int i = 0; i < SampleRatio / Stride; ++i)
                 {
-                    const Vector3 b0 = Vector3::Lerp(b00, b01, ty) * (2.0f / 255) - Vector3(1.0f);
-                    const Vector3 b1 = Vector3::Lerp(b10, b11, ty) * (2.0f / 255) - Vector3(1.0f);
-                    const FloatBatch xBase = Lerp(b0.x, b1.x, t[i]);
-                    const FloatBatch yBase = Lerp(b0.y, b1.y, t[i]);
-                    const FloatBatch zBase = Lerp(b0.z, b1.z, t[i]);
+                    const Vector3 b0 = Vector3::Lerp(b00, b01, ty);
+                    const Vector3 b1 = Vector3::Lerp(b10, b11, ty);
+
+                    FloatBatch xBase = Lerp(b0.x, b1.x, T[i]);
+                    FloatBatch yBase = Lerp(b0.y, b1.y, T[i]);
+                    FloatBatch zBase = Lerp(b0.z, b1.z, T[i]);
 
                     // use simd intrinsics to blend SampleRatio pixels in a row
                     // for each texture in atlas
@@ -187,19 +271,38 @@ std::vector<uint32_t> NormalBlender::Blend(int splatX, int splatY, unsigned spla
                         const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
                         const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
 
-                        const FloatBatch wt = Lerp(w0, w1, t[i]) * 0.3f;
-                        const UintBatch src = UintBatch::load_aligned(&m_Atlas[l]->GetVal(
-                            (wx + splatX) * SampleRatio + i * stride, (wy + splatY) * SampleRatio + row, mip));
-                        const FloatBatch srcX = xsimd::batch_cast<float>(src & 0xFF) * (2.0f / 255) - 1;
-                        const FloatBatch srcY = xsimd::batch_cast<float>(src >> 8 & 0xFF) * (2.0f / 255) - 1;
-                        const FloatBatch srcZ = xsimd::batch_cast<float>(src >> 16 & 0xFF) * (2.0f / 255) - 1;
+                        const auto wt = Lerp(w0, w1, T[i]);
+                        const UintBatch src = UintBatch::load_aligned(&m_Detail[l]->GetVal(
+                            (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const FloatBatch srcX = xsimd::batch_cast<float>(src & 0xFF);
+                        const FloatBatch srcY = xsimd::batch_cast<float>(src >> 8 & 0xFF);
+                        const FloatBatch srcZ = xsimd::batch_cast<float>(src >> 16 & 0xFF);
                         x += srcX * wt;
                         y += srcY * wt;
                         z += srcZ * wt;
                     }
-                    x = Lerp(xBase, x, 0.35f);
-                    y = Lerp(yBase, y, 0.35f);
-                    z = Lerp(zBase, y, 0.35f);
+
+                    switch (method)
+                    {
+                    case BaseOnly: x = xBase;
+                        y = yBase;
+                        z = zBase;
+                        break;
+                    case PartialDerivative: ::PartialDerivative(xBase, yBase, zBase, x, y, z, blendT);
+                        break;
+                    case Linear: ::Linear(xBase, yBase, zBase, x, y, z, blendT);
+                        break;
+                    case Whiteout: ::Whiteout(xBase, yBase, zBase, x, y, z);
+                        break;
+                    case Unreal: ::UnrealDeveloperNetwork(xBase, yBase, zBase, x, y, z);
+                        break;
+                    case Reorient: ::Reorient(xBase, yBase, zBase, x, y, z);
+                        break;
+                    case Unity: ::Unity(xBase, yBase, zBase, x, y, z);
+                        break;
+                    case DetailOnly: break;
+                    }
+
                     Normalize(x, y, z);
                     x = (x + 1) * (0.5f * 255);
                     y = (y + 1) * (0.5f * 255);
@@ -211,7 +314,7 @@ std::vector<uint32_t> NormalBlender::Blend(int splatX, int splatY, unsigned spla
                         xsimd::batch_cast<uint32_t>(z) << 16 |
                         0xFF000000;
                     const size_t dy = wy * SampleRatio + row;
-                    const size_t dx = wx * SampleRatio + +i * stride;
+                    const size_t dx = wx * SampleRatio + i * Stride;
                     c.store_unaligned(&dst[(dx + dy * dw)]);
                 }
             }

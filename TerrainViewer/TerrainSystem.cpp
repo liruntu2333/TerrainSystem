@@ -123,14 +123,22 @@ TerrainSystem::TerrainSystem(
 {
     // InitMeshPatches(device);
 
-    m_Height = std::make_unique<Texture2D>(device, m_Path / "height.dds");
-    m_Height->CreateViews(device);
-    m_Normal = std::make_unique<Texture2D>(device, m_Path / "normal.dds");
-    m_Normal->CreateViews(device);
-    m_Albedo = std::make_unique<Texture2D>(device, m_Path / "albedo.dds");
-    m_Albedo->CreateViews(device);
+    // m_Height = std::make_unique<Texture2D>(device, m_Path / "height.dds");
+    // m_Height->CreateViews(device);
+    // m_Normal = std::make_unique<Texture2D>(device, m_Path / "normal.dds");
+    // m_Normal->CreateViews(device);
+    // m_Albedo = std::make_unique<Texture2D>(device, m_Path / "albedo.dds");
+    // m_Albedo->CreateViews(device);
 
     InitClipmapLevels(device, view);
+}
+
+void TerrainSystem::ResetClipmapTexture()
+{
+    for (auto&& level : m_Levels)
+    {
+        level.m_MappedOrigin = Vector2(static_cast<float>(std::numeric_limits<int>::min() >> 1));
+    }
 }
 
 TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
@@ -178,9 +186,9 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
     recursiveCull(m_BoundTree->m_Root.get());
 
     PatchRenderResource r;
-    r.Height = m_Height->GetSrv();
-    r.Normal = m_Normal->GetSrv();
-    r.Albedo = m_Albedo->GetSrv();
+    // r.Height = m_Height->GetSrv();
+    // r.Normal = m_Normal->GetSrv();
+    // r.Albedo = m_Albedo->GetSrv();
     for (int i = 0; i < visible.size(); ++i)
     {
         const auto id = visible[i];
@@ -197,7 +205,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     const BoundingFrustum& frustum, float yScale,
-    ID3D11DeviceContext* context)
+    ID3D11DeviceContext* context, int blendMode, float blendT)
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -239,7 +247,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
 
     for (int lv = lowestActive; lv < LevelMin + LevelCount; ++lv)
     {
-        m_Levels[lv - LevelMin].UpdateTexture(context);
+        m_Levels[lv - LevelMin].UpdateTexture(context, blendMode, blendT);
     }
 
     {

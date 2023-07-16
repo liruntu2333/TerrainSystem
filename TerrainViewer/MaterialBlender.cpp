@@ -96,39 +96,36 @@ namespace
     }
 
     void Whiteout(
-        const FloatBatch& xBase, const FloatBatch& yBase, FloatBatch& zBase,
+        FloatBatch& xBase, FloatBatch& yBase, FloatBatch& zBase,
         FloatBatch& x, FloatBatch& y, FloatBatch& z)
     {
-        // xBase = xBase * (2.0f / 255) + -1;
-        // yBase = yBase * (2.0f / 255) + -1;
+        xBase = xBase * (2.0f / 255) + -1;
+        yBase = yBase * (2.0f / 255) + -1;
         zBase = zBase * (2.0f / 255) + -1;
 
-        // x = x * (2.0f / 255) + -1;
-        // y = y * (2.0f / 255) + -1;
+        x = x * (2.0f / 255) + -1;
+        y = y * (2.0f / 255) + -1;
         z = z * (2.0f / 255) + -1;
 
-        x = (xBase + x) * (2.0f / 255) + -1;
-        y = (yBase + y) * (2.0f / 255) + -1;
+        x += xBase;
+        y += yBase;
         z *= zBase;
     }
 
     void UnrealDeveloperNetwork(
-        const FloatBatch& xBase, const FloatBatch& yBase, const FloatBatch& zBase,
+        FloatBatch& xBase, FloatBatch& yBase, FloatBatch& zBase,
         FloatBatch& x, FloatBatch& y, FloatBatch& z)
     {
-        // xBase = xBase * (2.0f / 255) + -1;
-        // yBase = yBase * (2.0f / 255) + -1;
-        // zBase = zBase * (2.0f / 255) + -1;
-        // x = x * (2.0f / 255) + -1;
-        // y = y * (2.0f / 255) + -1;
-        // z = z * (2.0f / 255) + -1;
-
-        x = xBase + x;
-        y = yBase + y;
-        z = zBase;
+        xBase = xBase * (2.0f / 255) + -1;
+        yBase = yBase * (2.0f / 255) + -1;
+        zBase = zBase * (2.0f / 255) + -1;
         x = x * (2.0f / 255) + -1;
         y = y * (2.0f / 255) + -1;
         z = z * (2.0f / 255) + -1;
+
+        x += xBase;//Lerp(xBase * 2, x * 2, t);
+        y += yBase;//Lerp(yBase * 2, x * 2, t);
+        z = zBase;
     }
 
     void Reorient(
@@ -284,9 +281,9 @@ std::vector<uint32_t> NormalBlender::Blend(
 
                     switch (method)
                     {
-                    case BaseOnly: x = xBase;
-                        y = yBase;
-                        z = zBase;
+                    case BaseOnly: ::Linear(xBase, yBase, zBase, x, y, z, 0);
+                        break;
+                    case DetailOnly: ::Linear(xBase, yBase, zBase, x, y, z, 1);
                         break;
                     case PartialDerivative: ::PartialDerivative(xBase, yBase, zBase, x, y, z, blendT);
                         break;
@@ -300,7 +297,6 @@ std::vector<uint32_t> NormalBlender::Blend(
                         break;
                     case Unity: ::Unity(xBase, yBase, zBase, x, y, z);
                         break;
-                    case DetailOnly: break;
                     }
 
                     Normalize(x, y, z);

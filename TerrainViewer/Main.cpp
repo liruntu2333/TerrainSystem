@@ -153,7 +153,8 @@ int main(int, char**)
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::Checkbox("Show Clipmap Texture", &drawClip);
-        modeChanged |= ImGui::SliderFloat("Blend Factor", &blendFactor, 0.0, 1.0);
+        modeChanged |= ImGui::SliderFloat("Blend Factor", &blendFactor, 0.0, 1.0) &&
+            (blendMode == 2 || blendMode == 3);
         modeChanged |= ImGui::RadioButton("Base", &blendMode, 0);
         modeChanged |= ImGui::RadioButton("Detail", &blendMode, 1);
         modeChanged |= ImGui::RadioButton("Linear", &blendMode, 2);

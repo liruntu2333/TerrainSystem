@@ -120,8 +120,6 @@ protected:
         return 3;
     }
 
-    //void BlendNormal(Rectangle area, const std::vector<DirectX::SplatMap::TexelFormat>& splatSrc);
-
     const unsigned m_Level;
     const float m_GridSpacing;
     inline static constexpr int TextureSz = 1 << ClipmapK;

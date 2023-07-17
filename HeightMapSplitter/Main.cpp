@@ -2,7 +2,7 @@
 // If you are new to Dear ImGui, read documentation from the docs/ dir + read the top of imgui.cpp.
 // Read online: https://github.com/ocornut/imgui/tree/master/docs
 
-
+#define NOMINMAX
 #include <chrono>
 #include <iostream>
 #include <filesystem>
@@ -14,12 +14,14 @@
 #include "Triangulator.h"
 
 #include <meshoptimizer.h>
+#include <regex>
 #include <unordered_set>
 
 #include "BoundTree.h"
 #include "SideCutter.h"
+#include "DXTexHelper.h"
 
-#define GENERATE_STL 0
+#define GENERATE_STL
 
 ThreadPool g_ThreadPool(std::thread::hardware_concurrency());
 
@@ -218,21 +220,122 @@ void GenerateClipmapFootPrints(const std::filesystem::path& path, const int n = 
         generateGrid(2 * m, 2, m - 1, 3 * (m - 1) + 1));
 }
 
+void CompositeNorAo(const std::filesystem::path& p)
+{
+    if (!is_directory(p)) return;
+
+    std::filesystem::path nmPath, aoPath;
+    for (auto&& entry : std::filesystem::directory_iterator(p))
+    {
+        std::regex rn(R"(.*normal_directx.*)");
+        std::regex ra(R"(.*ao.*)");
+        if (std::regex_match(entry.path().filename().generic_string(), rn))
+            nmPath = entry.path();
+        else if (std::regex_match(entry.path().filename().generic_string(), ra))
+            aoPath = entry.path();
+    }
+
+    if (nmPath.empty() || aoPath.empty()) return;
+    const auto nm = LoadWic(nmPath, true, false);
+    const auto ao = LoadWic(aoPath, false, false);
+    if (nm->GetMetadata().width != ao->GetMetadata().width ||
+        nm->GetMetadata().height != ao->GetMetadata().height ||
+        nm->GetMetadata().format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+        ao->GetMetadata().format != DXGI_FORMAT_R8_UNORM)
+    {
+        std::cerr << "size mismatch" << std::endl;
+        return;
+    }
+
+    const auto w = nm->GetMetadata().width;
+    const auto h = nm->GetMetadata().height;
+    const auto nmData = reinterpret_cast<uint32_t*>(nm->GetPixels());
+    const auto aoData = ao->GetPixels();
+    for (auto y = 0; y < h; ++y)
+    {
+        for (auto x = 0; x < w; ++x)
+        {
+            const auto i = y * w + x;
+            const auto a = aoData[i];
+            nmData[i] = nmData[i] & 0xffffff | a << 24;
+        }
+    }
+
+    SaveDds(p.generic_string() + std::string("_n.dds"),
+        *GenerateMip(*nm->GetImage(0, 0, 0), DirectX::TEX_FILTER_SEPARATE_ALPHA));
+}
+
+void CompositeAlbRf(const std::filesystem::path& p)
+{
+    if (!is_directory(p)) return;
+
+    std::filesystem::path amPath, rfPath;
+    for (auto&& entry : std::filesystem::directory_iterator(p))
+    {
+        std::regex ra(R"(.*color.*)");
+        std::regex rr(R"(.*roughness.*)");
+        if (std::regex_match(entry.path().filename().generic_string(), ra))
+            amPath = entry.path();
+        else if (std::regex_match(entry.path().filename().generic_string(), rr))
+            rfPath = entry.path();
+    }
+
+    if (amPath.empty() || rfPath.empty()) return;
+    const auto am = LoadWic(amPath, true, false);
+    const auto rm = LoadWic(rfPath, false, false);
+    if (am->GetMetadata().width != rm->GetMetadata().width ||
+        am->GetMetadata().height != rm->GetMetadata().height ||
+        am->GetMetadata().format != DXGI_FORMAT_R8G8B8A8_UNORM ||
+        rm->GetMetadata().format != DXGI_FORMAT_R8_UNORM)
+    {
+        std::cerr << "size mismatch" << std::endl;
+        return;
+    }
+
+    const auto w = am->GetMetadata().width;
+    const auto h = am->GetMetadata().height;
+    const auto alData = reinterpret_cast<uint32_t*>(am->GetPixels());
+    const auto rfData = rm->GetPixels();
+    for (auto y = 0; y < h; ++y)
+    {
+        for (auto x = 0; x < w; ++x)
+        {
+            const auto i = y * w + x;
+            const auto a = rfData[i];
+            alData[i] = alData[i] & 0xffffff | a << 24;
+        }
+    }
+
+    SaveDds(p.generic_string() + std::string("_a.dds"),
+        *GenerateMip(*am->GetImage(0, 0, 0), DirectX::TEX_FILTER_SEPARATE_ALPHA));
+}
+
 // Main code
 int main(int argc, char** argv)
 {
+    if (FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))
+    {
+        std::cerr << "failed to initialize COM" << std::endl;
+        return 1;
+    }
     const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
     if (argc < 2) return 1;
     std::string inFile = argv[1];
     const std::wstring parent = std::filesystem::path(inFile).parent_path().wstring();
 
-    const auto clipmapPath = parent + L"/clipmap";
-    std::filesystem::create_directories(clipmapPath);
-    GenerateClipmapFootPrints(clipmapPath);
+    // const auto clipmapPath = parent + L"/clipmap";
+    // std::filesystem::create_directories(clipmapPath);
+    // GenerateClipmapFootPrints(clipmapPath);
 
+    for (auto&& dir : std::filesystem::directory_iterator(parent + L"\\texture_can"))
+    {
+        CompositeNorAo(dir);
+        CompositeAlbRf(dir);
+    }
     //return 0;
 
+    return 0;
     // load heightmap
     const auto hm = std::make_shared<Heightmap>(inFile);
 
@@ -251,7 +354,6 @@ int main(int argc, char** argv)
     hm->SaveDds(parent);
     std::cout << "dds generated" << std::endl;
 
-    return 0;
     const auto patches = hm->SplitIntoPatches(256);
     std::cout << "patches generated" << std::endl;
     std::vector<std::pair<float, float>> bounds;

@@ -200,6 +200,15 @@ void ClipmapTexture::CreateViews(ID3D11Device* device)
     }
 }
 
+void ClipmapTexture::GenerateMips(ID3D11DeviceContext* context)
+{
+    if (m_IsDirty)
+    {
+        context->GenerateMips(m_Srv.Get());
+        m_IsDirty = false;
+    }
+}
+
 // std::unique_ptr<MapGuard> ClipmapTexture::Map(
 //     ID3D11DeviceContext* context, unsigned subresource, D3D11_MAP mapType, unsigned mapFlags)
 // {

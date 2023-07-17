@@ -47,7 +47,7 @@ void DebugRenderer::DrawSprite(
     s_Sprite->End();
 }
 
-void DebugRenderer::DrawClippedHeight(
+void DebugRenderer::DrawClippedR16(
     Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {
     for (int i = 0; i < LevelCount; ++i)
@@ -55,7 +55,7 @@ void DebugRenderer::DrawClippedHeight(
         D3D11_BOX box = { 0, 0, 0, 256, 256, 1 };
         context->CopySubresourceRegion(m_HTex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
-            tex.GetTexture(), D3D11CalcSubresource(0, i, 1),
+            tex.GetTexture(), D3D11CalcSubresource(0, i, tex.GetDesc().MipLevels),
             &box);
     }
     std::vector<ID3D11ShaderResourceView*> srvs;
@@ -70,7 +70,7 @@ void DebugRenderer::DrawClippedHeight(
     s_Sprite->End();
 }
 
-void DebugRenderer::DrawClippedAlbedo(
+void DebugRenderer::DrawClippedRGBA8888(
     Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {
     for (int i = 0; i < LevelCount; ++i)
@@ -78,7 +78,7 @@ void DebugRenderer::DrawClippedAlbedo(
         D3D11_BOX box = { 0, 0, 0, 256, 256, 1 };
         context->CopySubresourceRegion(m_ATex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
-            tex.GetTexture(), D3D11CalcSubresource(0, i, 1),
+            tex.GetTexture(), D3D11CalcSubresource(0, i, tex.GetDesc().MipLevels),
             &box);
     }
     std::vector<ID3D11ShaderResourceView*> srvs;

@@ -42,7 +42,7 @@ namespace
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
     constexpr Vector2 ViewInit2 = Vector2(4096.0f, 4096.0f);
-    constexpr Vector3 ViewInit3 = Vector3(ViewInit2.x, 2000.0f, ViewInit2.y);
+    constexpr Vector3 ViewInit3 = Vector3(ViewInit2.x, 1000.0f, ViewInit2.y);
 }
 
 // Forward declarations of helper functions
@@ -102,7 +102,7 @@ int main(int, char**)
 
     bool wireFrame = false;
     float lPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
-    float lTheta = 0.6f;
+    float lTheta = 1.0f;
     float lInt = 1.0f;
     bool freezeFrustum = false;
     bool drawBb = false;
@@ -112,8 +112,8 @@ int main(int, char**)
     float spd = 30.0f;
     float hScale = 2600.0f;
     float transition = 25.4f;
-    int blendMode = 2;
-    float blendFactor = 0.35f;
+    int blendMode = 6;
+    float blendFactor = 0.5f;
     bool done = false;
     // Main loop
     while (!done)
@@ -212,9 +212,9 @@ int main(int, char**)
 
         if (drawClip)
         {
-            g_DebugRenderer->DrawClippedHeight(Vector2::Zero, g_System->GetHeightClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedAlbedo(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedAlbedo(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedR16(Vector2::Zero, g_System->GetHeightClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
         }
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

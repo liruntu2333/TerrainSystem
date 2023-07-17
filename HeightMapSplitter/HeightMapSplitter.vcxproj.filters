@@ -42,6 +42,9 @@
     <ClInclude Include="SideCutter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DXTexHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="heightmap.cpp">

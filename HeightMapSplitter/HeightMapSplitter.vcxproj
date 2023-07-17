@@ -139,6 +139,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="blur.h" />
+    <ClInclude Include="DXTexHelper.h" />
     <ClInclude Include="heightmap.h" />
     <ClInclude Include="BoundTree.h" />
     <ClInclude Include="SideCutter.h" />

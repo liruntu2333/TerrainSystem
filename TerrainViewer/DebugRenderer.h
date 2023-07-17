@@ -23,10 +23,10 @@ public:
         const DirectX::SimpleMath::Vector2& position,
         float scale = 1.0f);
 
-    void DrawClippedHeight(
+    void DrawClippedR16(
         DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
 
-    void DrawClippedAlbedo(
+    void DrawClippedRGBA8888(
         DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
 
 protected:

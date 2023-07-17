@@ -71,14 +71,16 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
         CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
-            LevelCount, 1));
+            LevelCount, 12, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+            D3D11_USAGE_DEFAULT, 0, 1, 0, D3D11_RESOURCE_MISC_GENERATE_MIPS));
     m_AlbedoCm->CreateViews(device);
 
     m_NormalCm = std::make_shared<ClipmapTexture>(device,
         CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
-            LevelCount, 1));
+            LevelCount, 12, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
+            D3D11_USAGE_DEFAULT, 0, 1, 0, D3D11_RESOURCE_MISC_GENERATE_MIPS));
     m_NormalCm->CreateViews(device);
 }
 
@@ -91,10 +93,10 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
 
     const std::vector albedo =
     {
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/snow.dds"),
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/rock.dds"),
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/grass.dds"),
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/ground.dds"),
+        std::make_shared<AlbedoMap>(m_Path / "texture_can/snow_a.dds"),
+        std::make_shared<AlbedoMap>(m_Path / "texture_can/rock_a.dds"),
+        std::make_shared<AlbedoMap>(m_Path / "texture_can/grass_a.dds"),
+        std::make_shared<AlbedoMap>(m_Path / "texture_can/ground_a.dds"),
     };
 
     const std::vector normal =
@@ -249,6 +251,9 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     {
         m_Levels[lv - LevelMin].UpdateTexture(context, blendMode, blendT);
     }
+
+    m_AlbedoCm->GenerateMips(context);
+    m_NormalCm->GenerateMips(context);
 
     {
         const auto ofsCoarse = m_Levels[lowestActive + 1 - LevelMin].GetFinerOffset();

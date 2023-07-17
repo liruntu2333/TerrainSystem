@@ -4,7 +4,7 @@
 #include <xsimd/xsimd.hpp>
 #include <directxtk/SimpleMath.h>
 
-using DirectX::SimpleMath::Vector3;
+using DirectX::SimpleMath::Vector4;
 using UintBatch = xsimd::batch<uint32_t, xsimd::default_arch>;
 using FloatBatch = xsimd::batch<float, xsimd::default_arch>;
 
@@ -61,9 +61,9 @@ namespace
 
         operator uint32_t() const { return Val; }
 
-        operator DirectX::SimpleMath::Vector3() const
+        operator DirectX::SimpleMath::Vector4() const
         {
-            return { static_cast<float>(R), static_cast<float>(G), static_cast<float>(B) };
+            return { static_cast<float>(R), static_cast<float>(G), static_cast<float>(B), static_cast<float>(A) };
         }
     };
 
@@ -92,6 +92,7 @@ namespace
         const auto rbz = reciprocal(zBase);
         const auto rz = reciprocal(z);
         x = Lerp(xBase * rbz, x * rz, t);
+        y = Lerp(yBase * rbz, y * rz, t);
         z = 1;
     }
 
@@ -141,6 +142,7 @@ namespace
         const auto dot = (x * xBase + y * yBase + z * zBase) * reciprocal(zBase);
         x = xBase * dot - x;
         y = yBase * dot - y;
+        z = zBase * dot - z;
     }
 
     void Unity(
@@ -188,7 +190,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                 for (int i = 0; i < SampleRatio / Stride; ++i)
                 {
                     // use simd intrinsics to blend SampleRatio pixels in a row
-                    FloatBatch r(0.0f), g(0.0f), b(0.0f);
+                    FloatBatch r(0.0f), g(0.0f), b(0.0f), a(0.0f);
                     // for each texture in atlas
                     for (int l = 0; l < 4; ++l)
                     {
@@ -197,20 +199,22 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                         const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
                         const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
 
-                        const FloatBatch bw = Lerp(w0, w1, T[i]);
+                        const auto wt = Lerp(w0, w1, T[i]);
                         const UintBatch src = UintBatch::load_aligned(&m_Atlas[l]->GetVal(
                             (wx + x) * SampleRatio + Stride * i, (wy + y) * SampleRatio + row, mip));
                         const FloatBatch srcR = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcG = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcB = xsimd::batch_cast<float>(src >> 16 & 0xFF);
-                        r += srcR * bw;
-                        g += srcG * bw;
-                        b += srcB * bw;
+                        const FloatBatch srcA = xsimd::batch_cast<float>(src >> 24 & 0xFF);
+                        r += srcR * wt;
+                        g += srcG * wt;
+                        b += srcB * wt;
+                        a += srcA * wt;
                     }
                     const auto c = xsimd::batch_cast<uint32_t>(r) |
                         xsimd::batch_cast<uint32_t>(g) << 8 |
                         xsimd::batch_cast<uint32_t>(b) << 16 |
-                        0xFF000000;
+                        xsimd::batch_cast<uint32_t>(a) << 24;
                     const size_t dx = wx * SampleRatio + Stride * i;
                     const size_t dy = wy * SampleRatio + row;
                     c.store_unaligned(&dst[(dx + dy * dw)]);
@@ -252,16 +256,17 @@ std::vector<uint32_t> NormalBlender::Blend(
 
                 for (int i = 0; i < SampleRatio / Stride; ++i)
                 {
-                    const Vector3 b0 = Vector3::Lerp(b00, b01, ty);
-                    const Vector3 b1 = Vector3::Lerp(b10, b11, ty);
+                    const Vector4 b0 = Vector4::Lerp(b00, b01, ty);
+                    const Vector4 b1 = Vector4::Lerp(b10, b11, ty);
 
                     FloatBatch xBase = Lerp(b0.x, b1.x, T[i]);
                     FloatBatch yBase = Lerp(b0.y, b1.y, T[i]);
                     FloatBatch zBase = Lerp(b0.z, b1.z, T[i]);
+                    FloatBatch wBase = Lerp(b0.w, b1.w, T[i]);
 
                     // use simd intrinsics to blend SampleRatio pixels in a row
                     // for each texture in atlas
-                    FloatBatch x(0), y(0), z(0);
+                    FloatBatch x(0), y(0), z(0), w(0);
                     for (int l = 0; l < 4; ++l)
                     {
                         // trilinear interpolation
@@ -274,9 +279,11 @@ std::vector<uint32_t> NormalBlender::Blend(
                         const FloatBatch srcX = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcY = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcZ = xsimd::batch_cast<float>(src >> 16 & 0xFF);
+                        const FloatBatch srcW = xsimd::batch_cast<float>(src >> 24 & 0xFF);
                         x += srcX * wt;
                         y += srcY * wt;
                         z += srcZ * wt;
+                        w += srcW * wt;
                     }
 
                     switch (method)
@@ -304,11 +311,15 @@ std::vector<uint32_t> NormalBlender::Blend(
                     y = (y + 1) * (0.5f * 255);
                     z = (z + 1) * (0.5f * 255);
 
+                    // blend ao
+                    wBase *= (1.0f / 255);
+                    w *= wBase;
+
                     const auto c =
                         xsimd::batch_cast<uint32_t>(x) |
                         xsimd::batch_cast<uint32_t>(y) << 8 |
                         xsimd::batch_cast<uint32_t>(z) << 16 |
-                        0xFF000000;
+                        xsimd::batch_cast<uint32_t>(w) << 24;
                     const size_t dy = wy * SampleRatio + row;
                     const size_t dx = wx * SampleRatio + i * Stride;
                     c.store_unaligned(&dst[(dx + dy * dw)]);

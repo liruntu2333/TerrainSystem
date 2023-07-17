@@ -121,17 +121,22 @@ namespace DirectX
 
         template <class T>
         void UpdateToroidal(
-            ID3D11DeviceContext* context, unsigned mip, const std::vector<UpdateArea<T>>& areas);
+            ID3D11DeviceContext* context, unsigned arraySlice, const std::vector<UpdateArea<T>>& areas);
+
+        void GenerateMips(ID3D11DeviceContext* context);
+
+    protected:
+        bool m_IsDirty = true;
     };
 
     template <class T>
     void ClipmapTexture::UpdateToroidal(
-        ID3D11DeviceContext* context, const unsigned mip, const std::vector<UpdateArea<T>>& areas)
+        ID3D11DeviceContext* context, const unsigned arraySlice, const std::vector<UpdateArea<T>>& areas)
     {
         std::queue<UpdateArea<T>> jobs;
         for (auto&& area : areas) jobs.push(area);
         const auto texSz = m_Desc.Width;
-        const auto subresource = D3D11CalcSubresource(mip, 0, m_Desc.MipLevels);
+        const auto subresource = D3D11CalcSubresource(0, arraySlice, m_Desc.MipLevels);
         while (!jobs.empty())
         {
             auto& job = jobs.front();
@@ -171,5 +176,7 @@ namespace DirectX
             }
             jobs.pop();
         }
+
+        m_IsDirty = true;
     }
 }

@@ -10,6 +10,7 @@ void main(
     in uint4 lvlParams : TEXCOORD2,
 
     out float4 positionH : SV_POSITION,
+    out float3 positionW : POSITION,
     out float4 color : COLOR,
     out float3 texCoordF : TEXCOORD0,
     out float4 texCoordC : TEXCOORD1
@@ -47,7 +48,7 @@ void main(
     float h = SampleClipmapLevel(Height, PointWrap, uvf, uvc, alpha.x);
     h *= HeightMapScale;
 
-    const float3 positionW = float3(xz.x, h, xz.y);
+    positionW = float3(xz.x, h, xz.y);
     positionH = float4(positionW, 1);
     positionH = mul(positionH, ViewProjection);
     color = LoadColor(lvlParams.z); // lvlParams.z : color

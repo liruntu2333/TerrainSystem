@@ -146,6 +146,6 @@ protected:
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoTex = nullptr;
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_NormalTex = nullptr;
 
-    const unsigned m_Mip;
+    const unsigned m_Lod;
     int m_TrimPattern = 0;
 };

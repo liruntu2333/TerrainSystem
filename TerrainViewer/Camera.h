@@ -29,7 +29,7 @@ private:
     // int m_PatchX = 0;
     // int m_PatchY = 0;
     // DirectX::SimpleMath::Vector3 m_LocalPosition { 0, 2000, 0 };
-    DirectX::SimpleMath::Vector3 m_Position { 0, 1000, 0 };
+    DirectX::SimpleMath::Vector3 m_Position {};
     DirectX::SimpleMath::Vector3 m_DeltaPosition;
     DirectX::SimpleMath::Vector3 m_Rotation { DirectX::XM_PIDIV4, 0, 0.0f }; // row pitch yaw
     DirectX::SimpleMath::Vector3 m_Forward;

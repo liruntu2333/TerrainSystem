@@ -143,7 +143,7 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 
 
 ClipmapLevel::ClipmapLevel(const unsigned l, const float gScl) :
-    m_Level(l), m_GridSpacing(gScl), m_Mip(l) {}
+    m_Level(l), m_GridSpacing(gScl), m_Lod(l) {}
 
 void ClipmapLevel::BindSource(
     const std::shared_ptr<HeightMap>& heightSrc, const std::shared_ptr<SplatMap>& splatSrc,
@@ -179,7 +179,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, int blendMode, fl
 
     // can't use Map method for resource that arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),
-    //     D3D11CalcSubresource(0, m_Mip, 1), D3D11_MAP_WRITE, 0);
+    //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
     std::vector<HeightRect> htRects;
     std::vector<AlbedoRect> alRects;
     std::vector<AlbedoRect> nmRects;
@@ -281,9 +281,9 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, int blendMode, fl
         m_TexelOrigin.y = WarpMod(dy + static_cast<int>(m_TexelOrigin.y), TextureSz);
     }
 
-    m_HeightTex->UpdateToroidal(context, m_Mip, htRects);
-    m_AlbedoTex->UpdateToroidal(context, m_Mip, alRects);
-    m_NormalTex->UpdateToroidal(context, m_Mip, nmRects);
+    m_HeightTex->UpdateToroidal(context, m_Lod, htRects);
+    m_AlbedoTex->UpdateToroidal(context, m_Lod, alRects);
+    m_NormalTex->UpdateToroidal(context, m_Lod, nmRects);
     m_MappedOrigin = currOri;
 }
 
@@ -395,7 +395,7 @@ std::vector<HeightMap::TexelFormat> ClipmapLevel::GetSourceElevation(
 {
     return m_HeightSrc->CopyRectangle(
         srcX * TextureScaleHeight, srcY * TextureScaleHeight,
-        w * TextureScaleHeight, h * TextureScaleHeight, m_Mip);
+        w * TextureScaleHeight, h * TextureScaleHeight, m_Lod);
 }
 
 std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceAlbedo(
@@ -403,7 +403,7 @@ std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceAlbedo(
 {
     return AlbedoBlender(m_SplatSrc, m_AlbAtlas).Blend(
         splatX * TextureScaleSplat, splatY * TextureScaleSplat,
-        w * TextureScaleSplat, h * TextureScaleSplat, m_Mip);
+        w * TextureScaleSplat, h * TextureScaleSplat, m_Lod);
 }
 
 std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceNormal(
@@ -411,6 +411,6 @@ std::vector<SplatMap::TexelFormat> ClipmapLevel::BlendSourceNormal(
 {
     return NormalBlender(m_SplatSrc, m_NormalBase, m_NorAtlas).Blend(
         srcX * TextureScaleSplat, srcY * TextureScaleSplat,
-        w * TextureScaleSplat, h * TextureScaleSplat, m_Mip,
+        w * TextureScaleSplat, h * TextureScaleSplat, m_Lod,
         static_cast<NormalBlender::BlendMethod>(blendMode), blendT);
 }

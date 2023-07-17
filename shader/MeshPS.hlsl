@@ -17,13 +17,12 @@ void main(
     out float4 color : SV_TARGET)
 {
     float2 normXz = Normal.Sample(g_AnisotropicClamp, texCoord.xy).rg;
-	normXz = normXz * 2.0 - 1.0;
-	float normY = sqrt(1.0 - dot(normXz, normXz));
-	const float3 norm = normalize(float3(normXz.x, normY, normXz.y));
+    normXz = normXz * 2.0 - 1.0;
+    float normY = sqrt(1.0 - dot(normXz, normXz));
+    const float3 norm = normalize(float3(normXz.x, normY, normXz.y));
 
-	const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, texCoord.xy).rgb;
+    const float3 albedo = g_Albedo.Sample(g_AnisotropicClamp, texCoord.xy).rgb;
 
-    float3 col = Shade(norm, LightDirection, LightIntensity, 1, Ambient)
-        * albedo /** LoadColor(g_PatchColor).rgb*/;
+    float3 col = Shade(norm, LightDirection, LightIntensity, 1) * albedo /** LoadColor(g_PatchColor).rgb*/;
     color = float4(col, 1.0f);
 }

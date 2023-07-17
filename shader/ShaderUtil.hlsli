@@ -2,8 +2,8 @@
 #define SHADER_UTIL
 
 static const uint PatchScale = 255;
-static const float Ambient = 0.1f;
 static const float SphereRadius = 200000.0f;
+static const float Pi = 3.1415926535897932384626433832795f;
 
 cbuffer PassConstants : register(b0)
 {
@@ -72,21 +72,19 @@ float3 EvalSh(float3 _dir)
     return rgb;
 }
 
-float3 Shade(
-    const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion, const float
-    ambientIntensity)
+float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion)
 {
-	return saturate(dot(normal, lightDir) * lightIntensity + occlusion * ambientIntensity);
+    return dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal);
 }
 
 float3 ToneMapping(const float3 color)
 {
-	return color / (color + float3(1.0f, 1.0f, 1.0f));
+    return color / (color + float3(1.0f, 1.0f, 1.0f));
 }
 
 float3 GammaCorrect(const float3 color)
 {
-	return pow(color, 1.0f / 2.2f);
+    return pow(color, 1.0f / 2.2f);
 }
 
 float Luminance(const float3 color)
@@ -111,12 +109,70 @@ float SampleClipmapLevel(
 }
 
 float4 SampleClipmapLevel(
-    Texture2DArray tex, const SamplerState pw,
+    Texture2DArray tex, const SamplerState aw,
     const float3 uvf, const float3 uvc, const float alpha)
 {
-	const float4 fine = tex.SampleLevel(pw, uvf, 0);
-	const float4 coarse = tex.SampleLevel(pw, uvc, 0);
+    const float4 fine = tex.Sample(aw, uvf);
+    const float4 coarse = tex.Sample(aw, uvc);
     return lerp(fine, coarse, alpha);
+}
+
+float DTerm(const float nh, const float roughness)
+{
+    const float a = roughness * roughness;
+    const float a2 = a * a;
+    const float d = (nh * a2 - nh) * nh + 1.0;
+    return a2 / (Pi * d * d);
+}
+
+float GTerm(const float nl, const float nv, const float roughness)
+{
+    const float a = roughness + 1.0f;
+    const float k = (a * a) / 8.0f;
+    const float gl = nl / (nl * (1.0 - k) + k);
+    const float gv = nv / (nv * (1.0 - k) + k);
+    return gl * gv;
+}
+
+float Pow5(const float x)
+{
+    return x * x * x * x * x;
+}
+
+float3 FTerm(const float cosTheta, const float3 f0)
+{
+    return f0 + (1.0f - f0) * Pow5(1.0f - cosTheta);
+}
+
+float3 FTermR(const float cosTheta, const float3 f0, const float roughness)
+{
+    return f0 + (max(float3(1.0f - roughness, 1.0f - roughness, 1.0f - roughness), f0) - f0) * Pow5(1.0f - cosTheta);
+}
+
+float3 Brdf(
+    const float3 l, const float3 v, const float3 n,
+    const float3 f0, const float3 alb, const float metallic, const float roughness)
+{
+    const float3 h = normalize(l + v);
+    const float nl = saturate(dot(n, l));
+    const float nv = saturate(dot(n, v));
+    const float nh = saturate(dot(n, h));
+    const float lh = saturate(dot(l, h));
+    const float rroughness = max(0.05f, roughness);
+
+    const float3 f = FTerm(lh, f0);
+    const float d = DTerm(nh, rroughness);
+    const float g = GTerm(nl, nv, rroughness);
+
+    const float3 nominator = f * d * g;
+    const float denominator = 4.0f * nl * nv;
+    float3 specular = nominator / max(denominator, 0.001f);
+
+	const float3 kD = (1.0f - f) * (1.0f - metallic);
+    const float3 diffuse = kD * alb / Pi;
+	specular *= 1.0f - kD;
+
+    return diffuse + specular;
 }
 
 #endif

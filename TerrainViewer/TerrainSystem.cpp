@@ -67,7 +67,7 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
             LevelCount, 1));
     m_HeightCm->CreateViews(device);
 
-    CD3D11_TEXTURE2D_DESC desc(DXGI_FORMAT_R8G8B8A8_UNORM,
+    CD3D11_TEXTURE2D_DESC desc(DXGI_FORMAT_BC3_UNORM,
         ClipmapLevel::TextureSz, ClipmapLevel::TextureSz, LevelCount, 1);
 #ifdef HARDWARE_FILTERING
     desc.BindFlags |= D3D11_BIND_RENDER_TARGET;

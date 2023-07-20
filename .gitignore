@@ -366,3 +366,13 @@ FodyWeavers.xsd
 *.cso
 *.ini
 /shader/WireFramePS.cso
+/ispc_texcomp/kernel_astc_ispc.h
+/ispc_texcomp/kernel_astc_ispc_avx.h
+/ispc_texcomp/kernel_astc_ispc_avx2.h
+/ispc_texcomp/kernel_astc_ispc_sse2.h
+/ispc_texcomp/kernel_astc_ispc_sse4.h
+/ispc_texcomp/kernel_ispc.h
+/ispc_texcomp/kernel_ispc_avx.h
+/ispc_texcomp/kernel_ispc_avx2.h
+/ispc_texcomp/kernel_ispc_sse2.h
+/ispc_texcomp/kernel_ispc_sse4.h

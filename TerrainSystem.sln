@@ -4,8 +4,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.5.33627.172
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TerrainViewer", "TerrainViewer\TerrainViewer.vcxproj", "{5C2820CA-8C43-4F94-A5C2-65915187F6E8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{01D521C2-1616-4931-B253-179A8C6082C2} = {01D521C2-1616-4931-B253-179A8C6082C2}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HeightMapSplitter", "HeightMapSplitter\HeightMapSplitter.vcxproj", "{70CB0809-7C45-4192-89D4-6C16AFAA3DCF}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ispc_texcomp", "ispc_texcomp\ispc_texcomp.vcxproj", "{01D521C2-1616-4931-B253-179A8C6082C2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,6 +36,14 @@ Global
 		{70CB0809-7C45-4192-89D4-6C16AFAA3DCF}.Release|x64.Build.0 = Release|x64
 		{70CB0809-7C45-4192-89D4-6C16AFAA3DCF}.Release|x86.ActiveCfg = Release|Win32
 		{70CB0809-7C45-4192-89D4-6C16AFAA3DCF}.Release|x86.Build.0 = Release|Win32
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Debug|x64.ActiveCfg = Debug|x64
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Debug|x64.Build.0 = Debug|x64
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Debug|x86.ActiveCfg = Debug|Win32
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Debug|x86.Build.0 = Debug|Win32
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Release|x64.ActiveCfg = Release|x64
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Release|x64.Build.0 = Release|x64
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Release|x86.ActiveCfg = Release|Win32
+		{01D521C2-1616-4931-B253-179A8C6082C2}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

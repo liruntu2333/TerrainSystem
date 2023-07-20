@@ -4,7 +4,8 @@
 #include <wrl/client.h>
 #include  <filesystem>
 #include <queue>
-#include <directxtk/DirectXHelpers.h>
+
+#include "ispc_texcomp.h"
 
 namespace DirectX
 {
@@ -133,6 +134,8 @@ namespace DirectX
     void ClipmapTexture::UpdateToroidal(
         ID3D11DeviceContext* context, const unsigned arraySlice, const std::vector<UpdateArea<T>>& areas)
     {
+        // TODO : support other block compression formats
+        const bool needCompression = m_Desc.Format == DXGI_FORMAT_BC3_UNORM;
         std::queue<UpdateArea<T>> jobs;
         for (auto&& area : areas) jobs.push(area);
         const auto texSz = m_Desc.Width;
@@ -171,8 +174,25 @@ namespace DirectX
             else
             {
                 CD3D11_BOX box(x, y, 0, x + w, y + h, 1);
-                context->UpdateSubresource(GetTexture(), subresource,
-                    &box, src.data(), w * sizeof(T), 0);
+                if (needCompression)
+                {
+                    constexpr size_t blockByteSize = 16;
+                    std::vector<std::uint8_t> bc3Data(blockByteSize * (w >> 2) * (h >> 2));
+                    const auto blockRowPitch = (w >> 2) * blockByteSize;
+                    rgba_surface surface;
+                    surface.width = w;
+                    surface.height = h;
+                    surface.stride = w * sizeof(uint32_t);
+                    surface.ptr = reinterpret_cast<uint8_t*>(src.data());
+                    CompressBlocksBC3(&surface, bc3Data.data());
+                    context->UpdateSubresource(GetTexture(), subresource,
+                        &box, bc3Data.data(), blockRowPitch, 0);
+                }
+                else
+                {
+                    context->UpdateSubresource(GetTexture(), subresource,
+                        &box, src.data(), w * sizeof(T), 0);
+                }
             }
             jobs.pop();
         }

@@ -29,6 +29,9 @@ public:
     void DrawClippedRGBA8888(
         DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
 
+    void DrawClippedBc3(
+        DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;
+
 protected:
     inline static std::unique_ptr<DirectX::GeometricPrimitive> s_Cube = nullptr;
     inline static std::unique_ptr<DirectX::GeometricPrimitive> s_Sphere = nullptr;
@@ -36,5 +39,6 @@ protected:
     static constexpr int LevelCount = 5;
 
     std::unique_ptr<DirectX::Texture2D> m_HTex[LevelCount] = { nullptr };
-    std::unique_ptr<DirectX::Texture2D> m_ATex[LevelCount] = { nullptr };
+    std::unique_ptr<DirectX::Texture2D> m_Rgba8887Tex[LevelCount] = { nullptr };
+    std::unique_ptr<DirectX::Texture2D> m_Bc3Tex[LevelCount] = { nullptr };
 };

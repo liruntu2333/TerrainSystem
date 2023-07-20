@@ -213,8 +213,8 @@ int main(int, char**)
         if (drawClip)
         {
             g_DebugRenderer->DrawClippedR16(Vector2(0.0f), g_System->GetHeightClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedBc3(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedBc3(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
         }
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

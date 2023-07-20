@@ -17,9 +17,13 @@ DebugRenderer::DebugRenderer(ID3D11DeviceContext* context, ID3D11Device* device)
             CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM, 256, 256));
         m_HTex[i]->CreateViews(device);
 
-        m_ATex[i] = std::make_unique<Texture2D>(device,
+        m_Rgba8887Tex[i] = std::make_unique<Texture2D>(device,
             CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM, 256, 256));
-        m_ATex[i]->CreateViews(device);
+        m_Rgba8887Tex[i]->CreateViews(device);
+
+        m_Bc3Tex[i] = std::make_unique<Texture2D>(device,
+            CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_BC3_UNORM, 256, 256));
+        m_Bc3Tex[i]->CreateViews(device);
     }
 }
 
@@ -40,7 +44,7 @@ void DebugRenderer::DrawBounding(
 }
 
 void DebugRenderer::DrawSprite(
-    ID3D11ShaderResourceView* srv, const Vector2& position, float scale)
+    ID3D11ShaderResourceView* srv, const Vector2& position, const float scale)
 {
     s_Sprite->Begin();
     s_Sprite->Draw(srv, position, nullptr, Colors::White, 0, Vector2::Zero, scale);
@@ -48,7 +52,7 @@ void DebugRenderer::DrawSprite(
 }
 
 void DebugRenderer::DrawClippedR16(
-    Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
+    const Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {
     for (int i = 0; i < LevelCount; ++i)
     {
@@ -71,19 +75,43 @@ void DebugRenderer::DrawClippedR16(
 }
 
 void DebugRenderer::DrawClippedRGBA8888(
-    Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
+    const Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {
     for (int i = 0; i < LevelCount; ++i)
     {
         D3D11_BOX box = { 896, 896, 0, 1152, 1152, 1 };
-        context->CopySubresourceRegion(m_ATex[i]->GetTexture(),
+        context->CopySubresourceRegion(m_Rgba8887Tex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
             tex.GetTexture(), D3D11CalcSubresource(0, i, tex.GetDesc().MipLevels),
             &box);
     }
     std::vector<ID3D11ShaderResourceView*> srvs;
-    for (auto&& t : m_ATex) srvs.emplace_back(t->GetSrv());
-    
+    for (auto&& t : m_Rgba8887Tex) srvs.emplace_back(t->GetSrv());
+
+    s_Sprite->Begin();
+    for (int i = 0; i < LevelCount; ++i)
+    {
+        auto pos = origin + Vector2(260 * i, 0);
+        RECT r = { 0, 0, 256, 256 };
+        s_Sprite->Draw(srvs[i], pos, &r);
+    }
+    s_Sprite->End();
+}
+
+void DebugRenderer::DrawClippedBc3(
+    const Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
+{
+    for (int i = 0; i < LevelCount; ++i)
+    {
+        D3D11_BOX box = { 896, 896, 0, 1152, 1152, 1 };
+        context->CopySubresourceRegion(m_Bc3Tex[i]->GetTexture(),
+            D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
+            tex.GetTexture(), D3D11CalcSubresource(0, i, tex.GetDesc().MipLevels),
+            &box);
+    }
+    std::vector<ID3D11ShaderResourceView*> srvs;
+    for (auto&& t : m_Bc3Tex) srvs.emplace_back(t->GetSrv());
+
     s_Sprite->Begin();
     for (int i = 0; i < LevelCount; ++i)
     {

@@ -122,7 +122,7 @@ namespace DirectX
 
         template <class T>
         void UpdateToroidal(
-            ID3D11DeviceContext* context, unsigned arraySlice, const std::vector<UpdateArea<T>>& areas);
+            ID3D11DeviceContext* context, unsigned arraySlice, const UpdateArea<T>& area);
 
         void GenerateMips(ID3D11DeviceContext* context);
 
@@ -132,12 +132,12 @@ namespace DirectX
 
     template <class T>
     void ClipmapTexture::UpdateToroidal(
-        ID3D11DeviceContext* context, const unsigned arraySlice, const std::vector<UpdateArea<T>>& areas)
+        ID3D11DeviceContext* context, const unsigned arraySlice, const UpdateArea<T>& area)
     {
         // TODO : support other block compression formats
         const bool needCompression = m_Desc.Format == DXGI_FORMAT_BC3_UNORM;
         std::queue<UpdateArea<T>> jobs;
-        for (auto&& area : areas) jobs.push(area);
+        jobs.push(area);
         const auto texSz = m_Desc.Width;
         const auto subresource = D3D11CalcSubresource(0, arraySlice, m_Desc.MipLevels);
         while (!jobs.empty())

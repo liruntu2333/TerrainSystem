@@ -180,22 +180,22 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, int blendMode)
     // can't use Map method for resource that arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),
     //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
-    std::vector<HeightRect> htRects;
-    std::vector<AlbedoRect> alRects;
-    std::vector<AlbedoRect> nmRects;
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
         m_TexelOrigin = Vector2::Zero;
         const Rect rect(0, 0, TextureN, TextureN);
 
-        htRects.emplace_back(rect * TextureScaleHeight,
-            GetSourceElevation(currOri.x, currOri.y, rect.W, rect.H));
+        m_HeightTex->UpdateToroidal(context, m_Level,
+            ClipmapTexture::UpdateArea(rect * TextureScaleHeight,
+                GetSourceElevation(currOri.x, currOri.y, rect.W, rect.H)));
 
-        alRects.emplace_back(rect * TextureScaleAlbedo,
-            BlendSourceAlbedo(currOri.x, currOri.y, rect.W, rect.H));
+        m_AlbedoTex->UpdateToroidal(context, m_Level,
+            ClipmapTexture::UpdateArea(rect * TextureScaleAlbedo,
+                BlendSourceAlbedo(currOri.x, currOri.y, rect.W, rect.H)));
 
-        nmRects.emplace_back(rect * TextureScaleNormal,
-            BlendSourceNormal(currOri.x, currOri.y, rect.W, rect.H, blendMode));
+        m_NormalTex->UpdateToroidal(context, m_Level,
+            ClipmapTexture::UpdateArea(rect * TextureScaleNormal,
+                BlendSourceNormal(currOri.x, currOri.y, rect.W, rect.H, blendMode)));
     }
     else
     {
@@ -220,29 +220,32 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, int blendMode)
             TextureN,
             std::abs(dy)); !dwdy.IsEmpty())
         {
-            htRects.emplace_back(
-                dwdy * TextureScaleHeight,
-                GetSourceElevation(
-                    currOri.x,
-                    dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
-                    dwdy.W,
-                    dwdy.H));
+            m_HeightTex->UpdateToroidal(context, m_Level,
+                ClipmapTexture::UpdateArea(
+                    dwdy * TextureScaleHeight,
+                    GetSourceElevation(
+                        currOri.x,
+                        dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
+                        dwdy.W,
+                        dwdy.H)));
 
-            alRects.emplace_back(
-                dwdy * TextureScaleAlbedo,
-                BlendSourceAlbedo(
-                    currOri.x,
-                    dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
-                    dwdy.W,
-                    dwdy.H));
+            m_AlbedoTex->UpdateToroidal(context, m_Level,
+                ClipmapTexture::UpdateArea(
+                    dwdy * TextureScaleAlbedo,
+                    BlendSourceAlbedo(
+                        currOri.x,
+                        dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
+                        dwdy.W,
+                        dwdy.H)));
 
-            nmRects.emplace_back(
-                dwdy * TextureScaleNormal,
-                BlendSourceNormal(
-                    currOri.x,
-                    dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
-                    dwdy.W,
-                    dwdy.H, blendMode));
+            m_NormalTex->UpdateToroidal(context, m_Level,
+                ClipmapTexture::UpdateArea(
+                    dwdy * TextureScaleAlbedo,
+                    BlendSourceNormal(
+                        currOri.x,
+                        dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
+                        dwdy.W,
+                        dwdy.H, blendMode)));
         }
 
         // then update dx * (dh - abs(dy))
@@ -252,35 +255,34 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, int blendMode)
             std::abs(dx),
             TextureN - std::abs(dy)); !dxdh.IsEmpty())
         {
-            htRects.emplace_back(dxdh * TextureScaleHeight,
-                GetSourceElevation(
-                    dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-                    dy >= 0 ? currOri.y : m_MappedOrigin.y,
-                    dxdh.W,
-                    dxdh.H));
+            m_HeightTex->UpdateToroidal(context, m_Level,
+                ClipmapTexture::UpdateArea(dxdh * TextureScaleHeight,
+                    GetSourceElevation(
+                        dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                        dy >= 0 ? currOri.y : m_MappedOrigin.y,
+                        dxdh.W,
+                        dxdh.H)));
 
-            alRects.emplace_back(dxdh * TextureScaleAlbedo,
-                BlendSourceAlbedo(
-                    dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-                    dy >= 0 ? currOri.y : m_MappedOrigin.y,
-                    dxdh.W,
-                    dxdh.H));
+            m_AlbedoTex->UpdateToroidal(context, m_Level,
+                ClipmapTexture::UpdateArea(dxdh * TextureScaleAlbedo,
+                    BlendSourceAlbedo(
+                        dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                        dy >= 0 ? currOri.y : m_MappedOrigin.y,
+                        dxdh.W,
+                        dxdh.H)));
 
-            nmRects.emplace_back(dxdh * TextureScaleNormal,
-                BlendSourceNormal(
-                    dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-                    dy >= 0 ? currOri.y : m_MappedOrigin.y,
-                    dxdh.W,
-                    dxdh.H, blendMode));
+            m_NormalTex->UpdateToroidal(context, m_Level,
+                ClipmapTexture::UpdateArea(dxdh * TextureScaleNormal,
+                    BlendSourceNormal(
+                        dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                        dy >= 0 ? currOri.y : m_MappedOrigin.y,
+                        dxdh.W,
+                        dxdh.H, blendMode)));
         }
 
         m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
         m_TexelOrigin.y = WarpMod(dy + static_cast<int>(m_TexelOrigin.y), TextureSz);
     }
-
-    m_HeightTex->UpdateToroidal(context, m_Level, htRects);
-    m_AlbedoTex->UpdateToroidal(context, m_Level, alRects);
-    m_NormalTex->UpdateToroidal(context, m_Level, nmRects);
     m_MappedOrigin = currOri;
 }
 

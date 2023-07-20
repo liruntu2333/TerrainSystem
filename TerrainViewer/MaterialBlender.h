@@ -59,7 +59,7 @@ public:
     };
 
     [[nodiscard]] std::vector<uint32_t> Blend(
-        int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip, BlendMethod method, float blendT) const;
+        int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip, BlendMethod method) const;
 
     static constexpr unsigned SampleRatio = 8;
 

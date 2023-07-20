@@ -14,7 +14,7 @@ float3 ViewPosition;
 float OneOverWidth;
 float2 AlphaOffset;
 float HeightMapScale;
-float pad;
+float AmbientIntensity;
 }
 
 float4 LoadColor(const uint col)
@@ -112,8 +112,15 @@ float4 SampleClipmapLevel(
     Texture2DArray tex, const SamplerState aw,
     const float3 uvf, const float3 uvc, const float alpha)
 {
-    const float4 fine = tex.Sample(aw, uvf);
-    const float4 coarse = tex.Sample(aw, uvc);
+    float4 fine, coarse;
+#ifdef HARDWARE_FILTERING
+    fine = tex.Sample(aw, uvf);
+    coarse = tex.Sample(aw, uvc);
+#else
+    fine = tex.SampleLevel(aw, uvf, 0);
+    coarse = tex.SampleLevel(aw, uvc, 0);
+#endif
+
     return lerp(fine, coarse, alpha);
 }
 
@@ -168,9 +175,9 @@ float3 Brdf(
     const float denominator = 4.0f * nl * nv;
     float3 specular = nominator / max(denominator, 0.001f);
 
-	const float3 kD = (1.0f - f) * (1.0f - metallic);
+    const float3 kD = (1.0f - f) * (1.0f - metallic);
     const float3 diffuse = kD * alb / Pi;
-	specular *= 1.0f - kD;
+    specular *= 1.0f - kD;
 
     return diffuse + specular;
 }

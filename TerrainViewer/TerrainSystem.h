@@ -62,7 +62,7 @@ public:
 
     [[nodiscard]] ClipmapRenderResource GetClipmapResources(
         const DirectX::BoundingFrustum& frustum, float yScale,
-        ID3D11DeviceContext* context, int blendMode, float blendT);
+        ID3D11DeviceContext* context, int blendMode);
 
     [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
     [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
@@ -71,7 +71,7 @@ public:
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;
     static constexpr int LevelMax = LevelMin + LevelCount - 2;
-    static constexpr float LevelMinScale = 1.0f; // 1 m per grid
+    static constexpr float LevelZeroScale = 1.2109375f; // 1 m per grid
 
 protected:
     void InitMeshPatches(ID3D11Device* device);
@@ -91,6 +91,4 @@ protected:
     // std::unique_ptr<DirectX::Texture2D> m_Albedo {};
 
     const std::filesystem::path m_Path;
-
-    DirectX::SimpleMath::Vector2 m_View {};
 };

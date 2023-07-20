@@ -85,8 +85,8 @@ void ClipmapRenderer::Render(
 
     ID3D11Buffer* cbs[] = { m_Cb0->GetBuffer() };
     context->VSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
-    const auto aw = s_CommonStates->AnisotropicWrap();
-    context->VSSetSamplers(0, 1, &aw);
+    const auto pw = s_CommonStates->PointWrap();
+    context->VSSetSamplers(0, 1, &pw);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
 
     if (wireFrame)
@@ -101,8 +101,15 @@ void ClipmapRenderer::Render(
     }
 
     context->PSSetConstantBuffers(0, _countof(cbs), &cbs[0]);
+
+#ifdef HARDWARE_FILTERING
+    const auto aw = s_CommonStates->AnisotropicWrap();
+    context->PSSetSamplers(0, 1, &aw);
+#else
     const auto lw = s_CommonStates->LinearWrap();
     context->PSSetSamplers(0, 1, &lw);
+#endif
+
     context->OMSetBlendState(s_CommonStates->Opaque(), nullptr, 0xffffffff);
     context->OMSetDepthStencilState(s_CommonStates->DepthDefault(), 0);
 

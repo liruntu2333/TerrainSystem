@@ -101,20 +101,20 @@ int main(int, char**)
     CreateSystem();
 
     bool wireFrame = false;
-    float lPhi = DirectX::XM_PI + DirectX::XM_PIDIV2;
-    float lTheta = 1.0f;
-    float lInt = 1.0f;
+    float lPhi = DirectX::XM_PI;
+    float lTheta = 0.6f;
+    float lInt = 2.0f;
     bool freezeFrustum = false;
     bool drawBb = false;
     bool drawClip = false;
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit3);
     float spd = 30.0f;
-    float hScale = 2600.0f;
+    float hScale = 2129.92f;
     float transition = 25.4f;
     int blendMode = 6;
-    float blendFactor = 0.5f;
     bool done = false;
+    float ambient = 0.1f;
     // Main loop
     while (!done)
     {
@@ -146,15 +146,14 @@ int main(int, char**)
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
-        ImGui::SliderFloat("Sun Intensity", &lInt, 0.0f, 1.0);
+        ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
+        ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
         ImGui::SliderFloat("Transition Width", &transition, 0.1, 26.0);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::Checkbox("Show Clipmap Texture", &drawClip);
-        modeChanged |= ImGui::SliderFloat("Blend Factor", &blendFactor, 0.0, 1.0) &&
-            (blendMode == 2 || blendMode == 3);
         modeChanged |= ImGui::RadioButton("Base", &blendMode, 0);
         modeChanged |= ImGui::RadioButton("Detail", &blendMode, 1);
         modeChanged |= ImGui::RadioButton("Linear", &blendMode, 2);
@@ -175,7 +174,7 @@ int main(int, char**)
         if (modeChanged)
             g_System->ResetClipmapTexture();
         const auto& resource = g_System->GetClipmapResources(frustum, hScale,
-            g_pd3dDeviceContext, blendMode, blendFactor);
+            g_pd3dDeviceContext, blendMode);
         std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
@@ -188,6 +187,7 @@ int main(int, char**)
         g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
         g_Constants->ViewPosition = view;
         g_Constants->Light = Vector4(lDir.x, lDir.y, lDir.z, lInt);
+        g_Constants->AmbientIntensity = ambient;
         g_Constants->HeightScale = hScale;
         g_Constants->AlphaOffset = Vector2(126.0f - transition);
         g_Constants->OneOverTransition = 1.0f / transition;
@@ -208,11 +208,11 @@ int main(int, char**)
 
         //g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
         g_GridRenderer->Render(g_pd3dDeviceContext, resource);
-        if (wireFrame) g_GridRenderer->Render(g_pd3dDeviceContext, resource, wireFrame);
+        if (wireFrame) g_GridRenderer->Render(g_pd3dDeviceContext, resource, true);
 
         if (drawClip)
         {
-            g_DebugRenderer->DrawClippedR16(Vector2::Zero, g_System->GetHeightClip(), g_pd3dDeviceContext);
+            g_DebugRenderer->DrawClippedR16(Vector2(0.0f), g_System->GetHeightClip(), g_pd3dDeviceContext);
             g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
             g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
         }
@@ -243,7 +243,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferCount = 2;
     sd.BufferDesc.Width = 0;
     sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     sd.BufferDesc.RefreshRate.Numerator = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;

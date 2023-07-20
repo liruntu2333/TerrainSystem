@@ -75,7 +75,7 @@ void DebugRenderer::DrawClippedRGBA8888(
 {
     for (int i = 0; i < LevelCount; ++i)
     {
-        D3D11_BOX box = { 0, 0, 0, 256, 256, 1 };
+        D3D11_BOX box = { 896, 896, 0, 1152, 1152, 1 };
         context->CopySubresourceRegion(m_ATex[i]->GetTexture(),
             D3D11CalcSubresource(0, 0, 0), 0, 0, 0,
             tex.GetTexture(), D3D11CalcSubresource(0, i, tex.GetDesc().MipLevels),

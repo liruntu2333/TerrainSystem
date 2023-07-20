@@ -67,21 +67,29 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
             LevelCount, 1));
     m_HeightCm->CreateViews(device);
 
-    m_AlbedoCm = std::make_shared<ClipmapTexture>(device,
-        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
-            LevelCount, 12, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
-            D3D11_USAGE_DEFAULT, 0, 1, 0, D3D11_RESOURCE_MISC_GENERATE_MIPS));
-    m_AlbedoCm->CreateViews(device);
+    CD3D11_TEXTURE2D_DESC desc(DXGI_FORMAT_R8G8B8A8_UNORM,
+        ClipmapLevel::TextureSz, ClipmapLevel::TextureSz, LevelCount, 1);
+#ifdef HARDWARE_FILTERING
+    desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+    desc.MipLevels = 12;
+    desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+#endif
 
-    m_NormalCm = std::make_shared<ClipmapTexture>(device,
-        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R8G8B8A8_UNORM,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
-            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
-            LevelCount, 12, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET,
-            D3D11_USAGE_DEFAULT, 0, 1, 0, D3D11_RESOURCE_MISC_GENERATE_MIPS));
-    m_NormalCm->CreateViews(device);
+    {
+        auto albDesc(desc);
+        albDesc.Width *= ClipmapLevel::TextureScaleAlbedo;
+        albDesc.Height *= ClipmapLevel::TextureScaleAlbedo;
+        m_AlbedoCm = std::make_shared<ClipmapTexture>(device, albDesc);
+        m_AlbedoCm->CreateViews(device);
+    }
+
+    {
+        auto norDesc(desc);
+        norDesc.Width *= ClipmapLevel::TextureScaleNormal;
+        norDesc.Height *= ClipmapLevel::TextureScaleNormal;
+        m_NormalCm = std::make_shared<ClipmapTexture>(device, norDesc);
+        m_NormalCm->CreateViews(device);
+    }
 }
 
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
@@ -113,7 +121,7 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
 
     for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
     {
-        m_Levels.emplace_back(i, LevelMinScale * std::powf(2.0f, i));
+        m_Levels.emplace_back(i, LevelZeroScale * std::powf(2.0f, i));
     }
 }
 
@@ -207,7 +215,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     const BoundingFrustum& frustum, float yScale,
-    ID3D11DeviceContext* context, int blendMode, float blendT)
+    ID3D11DeviceContext* context, int blendMode)
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -249,11 +257,13 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
 
     for (int lv = lowestActive; lv < LevelMin + LevelCount; ++lv)
     {
-        m_Levels[lv - LevelMin].UpdateTexture(context, blendMode, blendT);
+        m_Levels[lv - LevelMin].UpdateTexture(context, blendMode);
     }
 
+#ifdef HARDWARE_FILTERING
     m_AlbedoCm->GenerateMips(context);
     m_NormalCm->GenerateMips(context);
+#endif
 
     {
         const auto ofsCoarse = m_Levels[lowestActive + 1 - LevelMin].GetFinerOffset();

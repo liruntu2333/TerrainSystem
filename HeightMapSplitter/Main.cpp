@@ -324,16 +324,15 @@ int main(int argc, char** argv)
     std::string inFile = argv[1];
     const std::wstring parent = std::filesystem::path(inFile).parent_path().wstring();
 
-    // const auto clipmapPath = parent + L"/clipmap";
-    // std::filesystem::create_directories(clipmapPath);
-    // GenerateClipmapFootPrints(clipmapPath);
+    const auto clipmapPath = parent + L"/clipmap";
+    std::filesystem::create_directories(clipmapPath);
+    GenerateClipmapFootPrints(clipmapPath);
 
     for (auto&& dir : std::filesystem::directory_iterator(parent + L"\\texture_can"))
     {
         CompositeNorAo(dir);
         CompositeAlbRf(dir);
     }
-    //return 0;
 
     return 0;
     // load heightmap
@@ -348,11 +347,6 @@ int main(int argc, char** argv)
     }
 
     printf("  %d x %d = %d pixels\n", w, h, w * h);
-
-    // auto level heightmap
-    hm->AutoLevel();
-    hm->SaveDds(parent);
-    std::cout << "dds generated" << std::endl;
 
     const auto patches = hm->SplitIntoPatches(256);
     std::cout << "patches generated" << std::endl;

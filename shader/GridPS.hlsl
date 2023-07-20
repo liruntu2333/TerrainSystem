@@ -33,12 +33,11 @@ void main(
 
     float3 col = 0.0f;
     col += Brdf(LightDirection, view, normal, f0, albedo, 0.0f, roughness) * LightIntensity * nl;
-    col += 0.3f * ao * albedo;
-    //col += 
+    col += AmbientIntensity * ao * albedo;
 
     //col = Shade(normal, LightDirection, LightIntensity, ao) * alr;
     col = ToneMapping(col);
-    col = GammaCorrect(col);
+    // col = GammaCorrect(col);
 
     colorOut = float4(col, 1.0f);
 }

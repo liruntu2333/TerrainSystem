@@ -71,7 +71,7 @@ public:
     void UpdateOffset(
         const DirectX::SimpleMath::Vector2& view,
         const DirectX::SimpleMath::Vector2& ofsFiner);
-    void UpdateTexture(ID3D11DeviceContext* context, int blendMode, float blendT);
+    void UpdateTexture(ID3D11DeviceContext* context, int blendMode);
     [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] float GetHeight() const;
@@ -106,7 +106,7 @@ protected:
         int srcX, int srcY, unsigned w, unsigned h) const;
 
     [[nodiscard]] std::vector<DirectX::SplatMap::TexelFormat> BlendSourceNormal(
-        int srcX, int srcY, unsigned w, unsigned h, int blendMode, float blendT) const;
+        int srcX, int srcY, unsigned w, unsigned h, int blendMode) const;
 
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
@@ -146,6 +146,5 @@ protected:
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoTex = nullptr;
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_NormalTex = nullptr;
 
-    const unsigned m_Lod;
     int m_TrimPattern = 0;
 };

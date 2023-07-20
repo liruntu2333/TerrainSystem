@@ -211,10 +211,11 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                         b += srcB * wt;
                         a += srcA * wt;
                     }
-                    const auto c = xsimd::batch_cast<uint32_t>(r) |
-                        xsimd::batch_cast<uint32_t>(g) << 8 |
-                        xsimd::batch_cast<uint32_t>(b) << 16 |
-                        xsimd::batch_cast<uint32_t>(a) << 24;
+                    const auto c =
+                        xsimd::batch_cast<uint32_t>(r + 0.01f) |
+                        xsimd::batch_cast<uint32_t>(g + 0.01f) << 8 |
+                        xsimd::batch_cast<uint32_t>(b + 0.01f) << 16 |
+                        xsimd::batch_cast<uint32_t>(a + 0.01f) << 24;
                     const size_t dx = wx * SampleRatio + Stride * i;
                     const size_t dy = wy * SampleRatio + row;
                     c.store_unaligned(&dst[(dx + dy * dw)]);
@@ -228,7 +229,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
 
 std::vector<uint32_t> NormalBlender::Blend(
     int splatX, int splatY, unsigned splatW, unsigned splatH, unsigned mip,
-    BlendMethod method, float blendT) const
+    BlendMethod method) const
 {
     // const auto pc = points.size();
     const unsigned dw = splatW * SampleRatio;
@@ -292,9 +293,9 @@ std::vector<uint32_t> NormalBlender::Blend(
                         break;
                     case DetailOnly: ::Linear(xBase, yBase, zBase, x, y, z, 1);
                         break;
-                    case PartialDerivative: ::PartialDerivative(xBase, yBase, zBase, x, y, z, blendT);
+                    case PartialDerivative: ::PartialDerivative(xBase, yBase, zBase, x, y, z, 0.5f);
                         break;
-                    case Linear: ::Linear(xBase, yBase, zBase, x, y, z, blendT);
+                    case Linear: ::Linear(xBase, yBase, zBase, x, y, z, 0.5f);
                         break;
                     case Whiteout: ::Whiteout(xBase, yBase, zBase, x, y, z);
                         break;
@@ -316,10 +317,10 @@ std::vector<uint32_t> NormalBlender::Blend(
                     w *= wBase;
 
                     const auto c =
-                        xsimd::batch_cast<uint32_t>(x) |
-                        xsimd::batch_cast<uint32_t>(y) << 8 |
-                        xsimd::batch_cast<uint32_t>(z) << 16 |
-                        xsimd::batch_cast<uint32_t>(w) << 24;
+                        xsimd::batch_cast<uint32_t>(x + 0.01f) |
+                        xsimd::batch_cast<uint32_t>(y + 0.01f) << 8 |
+                        xsimd::batch_cast<uint32_t>(z + 0.01f) << 16 |
+                        xsimd::batch_cast<uint32_t>(w + 0.01f) << 24;
                     const size_t dy = wy * SampleRatio + row;
                     const size_t dx = wx * SampleRatio + i * Stride;
                     c.store_unaligned(&dst[(dx + dy * dw)]);

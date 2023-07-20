@@ -11,7 +11,7 @@ struct PassConstants
     float OneOverTransition;
     DirectX::SimpleMath::Vector2 AlphaOffset;
     float HeightScale;
-    float pad;
+    float AmbientIntensity;
 };
 
 class Renderer

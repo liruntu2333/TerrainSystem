@@ -1,5 +1,8 @@
 #include "ShaderUtil.hlsli"
 
+static const float SampleRateFine = 1.0f / 256.0f;
+static const float SampleRateCoarse = 0.5f / 256.0f;
+
 SamplerState PointWrap : register(s0);
 Texture2DArray<float> Height : register(t0);
 
@@ -38,15 +41,17 @@ void main(
     // compute coordinates for vertex texture
     // texParams.xy: origin of footprint in fine texture
     // texParams.zw: origin of footprint in coarse texture
-    static const float SampleRateFine = 1.0f / 256.0f;
-    static const float SampleRateCoarse = 0.5f / 256.0f;
-    const float3 uvf = float3(positionLf * SampleRateFine + texParams.xy, lvlParams.w);
-    const float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw, lvlParams.w + 1);
+    float3 uvf = float3(positionLf * SampleRateFine + texParams.xy, lvlParams.w);
+    float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw, lvlParams.w + 1);
 
     // blend elevation value
     // lvlParams.w : level
     float h = SampleClipmapLevel(Height, PointWrap, uvf, uvc, alpha.x);
     h *= HeightMapScale;
+
+    const float2 pl = lerp(positionLf, positionLc, alpha.x);
+    uvf = float3(pl * SampleRateFine + texParams.xy, lvlParams.w);
+    uvc = float3(pl * SampleRateCoarse + texParams.zw, lvlParams.w + 1);
 
     positionW = float3(xz.x, h, xz.y);
     positionH = float4(positionW, 1);

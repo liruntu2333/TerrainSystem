@@ -99,14 +99,16 @@ protected:
     using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::TexelFormat>;
     using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::TexelFormat>;
 
-    [[nodiscard]] std::vector<DirectX::HeightMap::TexelFormat> GetSourceElevation(
+    [[nodiscard]] std::vector<DirectX::HeightMap::TexelFormat> GetElevation(
         int srcX, int srcY, unsigned w, unsigned h) const;
 
-    [[nodiscard]] std::vector<DirectX::SplatMap::TexelFormat> BlendSourceAlbedo(
+    [[nodiscard]] std::vector<DirectX::AlbedoMap::TexelFormat> BlendAlbedoRoughness(
         int srcX, int srcY, unsigned w, unsigned h) const;
 
-    [[nodiscard]] std::vector<DirectX::SplatMap::TexelFormat> BlendSourceNormal(
+    [[nodiscard]] std::vector<DirectX::NormalMap::TexelFormat> BlendNormalOcclusion(
         int srcX, int srcY, unsigned w, unsigned h, int blendMode) const;
+
+    static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc3(uint32_t* src, unsigned w, unsigned h);
 
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {

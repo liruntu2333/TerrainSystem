@@ -5,8 +5,6 @@
 #include  <filesystem>
 #include <queue>
 
-#include "ispc_texcomp.h"
-
 namespace DirectX
 {
     class Texture2D
@@ -135,7 +133,8 @@ namespace DirectX
         ID3D11DeviceContext* context, const unsigned arraySlice, const UpdateArea<T>& area)
     {
         // TODO : support other block compression formats
-        const bool needCompression = m_Desc.Format == DXGI_FORMAT_BC3_UNORM;
+        const bool isBc3 = m_Desc.Format == DXGI_FORMAT_BC3_UNORM;
+        constexpr size_t bc3BlockSize = 16;
         std::queue<UpdateArea<T>> jobs;
         jobs.push(area);
         const auto texSz = m_Desc.Width;
@@ -152,10 +151,24 @@ namespace DirectX
                 const unsigned w2 = w - w1;
                 std::vector<T> src1(w1 * h);
                 std::vector<T> src2(w2 * h);
-                for (unsigned i = 0; i < h; ++i)
+                if (isBc3)
                 {
-                    std::copy_n(src.begin() + i * w, w1, src1.begin() + i * w1);
-                    std::copy_n(src.begin() + i * w + w1, w2, src2.begin() + i * w2);
+                    const size_t pitch1 = (w1 >> 2) * bc3BlockSize;
+                    const size_t pitch2 = (w2 >> 2) * bc3BlockSize;
+                    const size_t srcPitch = (w >> 2) * bc3BlockSize;
+                    for (unsigned i = 0; i < h >> 2; ++i)
+                    {
+                        std::copy_n(src.begin() + i * srcPitch, pitch1, src1.begin() + i * pitch1);
+                        std::copy_n(src.begin() + i * srcPitch + pitch1, pitch2, src2.begin() + i * pitch2);
+                    }
+                }
+                else
+                {
+                    for (unsigned i = 0; i < h; ++i)
+                    {
+                        std::copy_n(src.begin() + i * w, w1, src1.begin() + i * w1);
+                        std::copy_n(src.begin() + i * w + w1, w2, src2.begin() + i * w2);
+                    }
                 }
                 jobs.push(UpdateArea<T>(Rectangle(x, y, w1, h), std::move(src1)));
                 jobs.push(UpdateArea<T>(Rectangle(0, y, w2, h), std::move(src2)));
@@ -164,35 +177,18 @@ namespace DirectX
             {
                 const unsigned h1 = texSz - y;
                 const unsigned h2 = h - h1;
-                std::vector<T> src1(w * h1);
                 std::vector<T> src2(w * h2);
-                std::copy_n(src.begin(), w * h1, src1.begin());
                 std::copy_n(src.begin() + w * h1, w * h2, src2.begin());
-                jobs.push(UpdateArea<T>(Rectangle(x, y, w, h1), std::move(src1)));
+                src.resize(w * h1);
+                jobs.push(UpdateArea<T>(Rectangle(x, y, w, h1), std::move(src)));
                 jobs.push(UpdateArea<T>(Rectangle(x, 0, w, h2), std::move(src2)));
             }
             else
             {
+                const UINT rowPitch = isBc3 ? bc3BlockSize * (w >> 2) : w * sizeof(T);
                 CD3D11_BOX box(x, y, 0, x + w, y + h, 1);
-                if (needCompression)
-                {
-                    constexpr size_t blockByteSize = 16;
-                    std::vector<std::uint8_t> bc3Data(blockByteSize * (w >> 2) * (h >> 2));
-                    const auto blockRowPitch = (w >> 2) * blockByteSize;
-                    rgba_surface surface;
-                    surface.width = w;
-                    surface.height = h;
-                    surface.stride = w * sizeof(uint32_t);
-                    surface.ptr = reinterpret_cast<uint8_t*>(src.data());
-                    CompressBlocksBC3(&surface, bc3Data.data());
-                    context->UpdateSubresource(GetTexture(), subresource,
-                        &box, bc3Data.data(), blockRowPitch, 0);
-                }
-                else
-                {
-                    context->UpdateSubresource(GetTexture(), subresource,
-                        &box, src.data(), w * sizeof(T), 0);
-                }
+                context->UpdateSubresource(GetTexture(), subresource,
+                    &box, src.data(), rowPitch, 0);
             }
             jobs.pop();
         }

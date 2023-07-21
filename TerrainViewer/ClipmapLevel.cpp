@@ -295,7 +295,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) con
     {
         Vector2(m_GridSpacing),
         Vector2(m_GridSpacing) * m_GridOrigin,
-        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y)) * OneOverSz + Vector2(0.00001f),
+        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y)) * OneOverSz,
         toc,
         XMUINT2(),
         0,
@@ -341,7 +341,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) c
     {
         Vector2(m_GridSpacing),
         (Vector2(m_GridSpacing) * m_GridOrigin),
-        Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz + Vector2(0.00001f),
+        Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz,
         toc,
         XMUINT2(),
         0,
@@ -384,8 +384,7 @@ float ClipmapLevel::GetHeight() const
 
 Vector2 ClipmapLevel::GetFinerOffset() const
 {
-    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern]) * OneOverSz
-        + Vector2(0.00001f);
+    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern]) * OneOverSz;
 }
 
 std::vector<HeightMap::TexelFormat> ClipmapLevel::GetSourceElevation(

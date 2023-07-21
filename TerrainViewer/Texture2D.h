@@ -107,9 +107,17 @@ namespace DirectX
         struct UpdateArea
         {
             Rectangle Rect;
+            unsigned Slice {};
             std::vector<T> Src {};
 
-            UpdateArea(const Rectangle& rect, std::vector<T> src) : Rect(rect), Src(src) { }
+            UpdateArea() = default;
+            UpdateArea(const UpdateArea&) = default;
+            UpdateArea(UpdateArea&&) noexcept = default;
+
+            UpdateArea(const Rectangle& rect, const unsigned slice, const std::vector<T>& Src)
+                : Rect(rect), Slice(slice), Src(Src)
+            {
+            }
         };
 
         // [[nodiscard]] std::unique_ptr<MapGuard> Map(
@@ -119,8 +127,7 @@ namespace DirectX
         //     unsigned int mapFlags);
 
         template <class T>
-        void UpdateToroidal(
-            ID3D11DeviceContext* context, unsigned arraySlice, const UpdateArea<T>& area);
+        void UpdateToroidal(ID3D11DeviceContext* context, UpdateArea<T> area);
 
         void GenerateMips(ID3D11DeviceContext* context);
 
@@ -130,15 +137,15 @@ namespace DirectX
 
     template <class T>
     void ClipmapTexture::UpdateToroidal(
-        ID3D11DeviceContext* context, const unsigned arraySlice, const UpdateArea<T>& area)
+        ID3D11DeviceContext* context, UpdateArea<T> area)
     {
         // TODO : support other block compression formats
         const bool isBc3 = m_Desc.Format == DXGI_FORMAT_BC3_UNORM;
         constexpr size_t bc3BlockSize = 16;
         std::queue<UpdateArea<T>> jobs;
-        jobs.push(area);
+        jobs.push(std::move(area));
         const auto texSz = m_Desc.Width;
-        const auto subresource = D3D11CalcSubresource(0, arraySlice, m_Desc.MipLevels);
+        const auto subresource = D3D11CalcSubresource(0, area.Slice, m_Desc.MipLevels);
         while (!jobs.empty())
         {
             auto& job = jobs.front();
@@ -170,8 +177,8 @@ namespace DirectX
                         std::copy_n(src.begin() + i * w + w1, w2, src2.begin() + i * w2);
                     }
                 }
-                jobs.push(UpdateArea<T>(Rectangle(x, y, w1, h), std::move(src1)));
-                jobs.push(UpdateArea<T>(Rectangle(0, y, w2, h), std::move(src2)));
+                jobs.push(UpdateArea<T>(Rectangle(x, y, w1, h), area.Slice, std::move(src1)));
+                jobs.push(UpdateArea<T>(Rectangle(0, y, w2, h), area.Slice, std::move(src2)));
             }
             else if (y + h > texSz)
             {
@@ -180,8 +187,8 @@ namespace DirectX
                 std::vector<T> src2(w * h2);
                 std::copy_n(src.begin() + w * h1, w * h2, src2.begin());
                 src.resize(w * h1);
-                jobs.push(UpdateArea<T>(Rectangle(x, y, w, h1), std::move(src)));
-                jobs.push(UpdateArea<T>(Rectangle(x, 0, w, h2), std::move(src2)));
+                jobs.push(UpdateArea<T>(Rectangle(x, y, w, h1), area.Slice, std::move(src)));
+                jobs.push(UpdateArea<T>(Rectangle(x, 0, w, h2), area.Slice, std::move(src2)));
             }
             else
             {

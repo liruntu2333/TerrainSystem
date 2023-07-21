@@ -61,33 +61,35 @@ void TerrainSystem::InitMeshPatches(ID3D11Device* device)
 void TerrainSystem::InitClipTextures(ID3D11Device* device)
 {
     m_HeightCm = std::make_shared<ClipmapTexture>(device,
-        CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_R16_UNORM,
+        CD3D11_TEXTURE2D_DESC(ClipmapLevel::HeightFormat,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleHeight,
             LevelCount, 1));
     m_HeightCm->CreateViews(device);
 
-    CD3D11_TEXTURE2D_DESC desc(DXGI_FORMAT_BC3_UNORM,
-        ClipmapLevel::TextureSz, ClipmapLevel::TextureSz, LevelCount, 1);
+    {
+        CD3D11_TEXTURE2D_DESC desc(ClipmapLevel::AlbedoFormat,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo, LevelCount, 1);
 #ifdef HARDWARE_FILTERING
     desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
-    desc.MipLevels = 12;
+    desc.MipLevels = std::log2(ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo);
     desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 #endif
-
-    {
-        auto albDesc(desc);
-        albDesc.Width *= ClipmapLevel::TextureScaleAlbedo;
-        albDesc.Height *= ClipmapLevel::TextureScaleAlbedo;
-        m_AlbedoCm = std::make_shared<ClipmapTexture>(device, albDesc);
+        m_AlbedoCm = std::make_shared<ClipmapTexture>(device, desc);
         m_AlbedoCm->CreateViews(device);
     }
 
     {
-        auto norDesc(desc);
-        norDesc.Width *= ClipmapLevel::TextureScaleNormal;
-        norDesc.Height *= ClipmapLevel::TextureScaleNormal;
-        m_NormalCm = std::make_shared<ClipmapTexture>(device, norDesc);
+        CD3D11_TEXTURE2D_DESC desc(ClipmapLevel::NormalFormat,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
+            ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal, LevelCount, 1);
+#ifdef HARDWARE_FILTERING
+    desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+    desc.MipLevels = std::log2(ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal);
+    desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+#endif
+        m_NormalCm = std::make_shared<ClipmapTexture>(device, desc);
         m_NormalCm->CreateViews(device);
     }
 }
@@ -242,11 +244,10 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
-    Vector2 view = { frustum.Origin.x, frustum.Origin.z };
     Vector2 finer;
     for (int i = 0; i < m_Levels.size(); ++i)
     {
-        m_Levels[i].UpdateOffset(view, finer);
+        m_Levels[i].UpdateTransform(frustum.Origin, finer, blendMode, yScale);
         finer = m_Levels[i].GetWorldOffset();
     }
 
@@ -254,11 +255,6 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     while (lowestActive < LevelMax &&
         !m_Levels[lowestActive - LevelMin].IsActive(frustum.Origin.y, yScale))
         ++lowestActive;
-
-    for (int lv = lowestActive; lv < LevelMin + LevelCount; ++lv)
-    {
-        m_Levels[lv - LevelMin].UpdateTexture(context, blendMode);
-    }
 
 #ifdef HARDWARE_FILTERING
     m_AlbedoCm->GenerateMips(context);
@@ -297,6 +293,8 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     r.TrimInstanceStart[1] = r.TrimInstanceStart[0] + trims[0].size();
     r.TrimInstanceStart[2] = r.TrimInstanceStart[1] + trims[1].size();
     r.TrimInstanceStart[3] = r.TrimInstanceStart[2] + trims[2].size();
+
+    ClipmapLevel::UpdateTexture(context);
 
     return std::move(r);
 }

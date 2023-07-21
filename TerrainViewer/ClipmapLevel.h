@@ -1,21 +1,20 @@
 #pragma once
+
 #include <directxtk/SimpleMath.h>
 #include <wrl/client.h>
 #include <d3d11.h>
 #include <filesystem>
+#include <future>
 
 #include "MaterialBlender.h"
 #include "Texture2D.h"
 #include "Vertex.h"
 
-namespace DirectX
-{
-    class ClipmapTexture;
-}
-
 static constexpr int ClipmapK = 8;
 static constexpr int ClipmapN = (1 << ClipmapK) - 1;
 static constexpr int ClipmapM = (ClipmapN + 1) / 4;
+
+struct rgba_surface;
 
 class ClipmapLevelBase
 {
@@ -54,6 +53,7 @@ protected:
 class ClipmapLevel : public ClipmapLevelBase
 {
 public:
+    ClipmapLevel() = delete;
     ClipmapLevel(unsigned l, float gScl);
     ~ClipmapLevel() = default;
 
@@ -68,10 +68,12 @@ public:
         const std::shared_ptr<DirectX::ClipmapTexture>& normalTex
         );
 
-    void UpdateOffset(
-        const DirectX::SimpleMath::Vector2& view,
-        const DirectX::SimpleMath::Vector2& ofsFiner);
-    void UpdateTexture(ID3D11DeviceContext* context, int blendMode);
+    void UpdateTransform(
+        const DirectX::SimpleMath::Vector3& view,
+        const DirectX::SimpleMath::Vector2& ofsFiner,
+        int blendMode, float hScale);
+    static void UpdateTexture(ID3D11DeviceContext* context);
+
     [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] float GetHeight() const;
@@ -84,7 +86,7 @@ public:
 
     [[nodiscard]] bool IsActive(float hView, float hScale) const
     {
-        return std::abs(hView - hScale * GetHeight()) < 2.5f * 254.0f * m_GridSpacing;
+        return m_IsActive;
     }
 
     static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
@@ -98,6 +100,12 @@ protected:
     using Rect = DirectX::ClipmapTexture::Rectangle;
     using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::TexelFormat>;
     using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::TexelFormat>;
+    using BC15Compression = void(const rgba_surface*, uint8_t*);
+
+    void UpdateOffset(
+        const DirectX::SimpleMath::Vector3& view,
+        const DirectX::SimpleMath::Vector2& ofsFiner, float hScale);
+    void GenerateTextureAsync(int blendMode);
 
     [[nodiscard]] std::vector<DirectX::HeightMap::TexelFormat> GetElevation(
         int srcX, int srcY, unsigned w, unsigned h) const;
@@ -108,7 +116,11 @@ protected:
     [[nodiscard]] std::vector<DirectX::NormalMap::TexelFormat> BlendNormalOcclusion(
         int srcX, int srcY, unsigned w, unsigned h, int blendMode) const;
 
-    static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc3(uint32_t* src, unsigned w, unsigned h);
+    static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc15(
+        uint32_t* src, unsigned w, unsigned h, BC15Compression* func);
+
+    static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc7(
+        uint32_t* src, unsigned w, unsigned h);
 
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
@@ -132,6 +144,10 @@ protected:
     inline static constexpr int TextureScaleNormal = NormalBlender::SampleRatio;
     inline static constexpr int TextureScaleAlbedo = AlbedoBlender::SampleRatio;
 
+    inline static constexpr DXGI_FORMAT HeightFormat = DXGI_FORMAT_R16_UNORM;
+    inline static constexpr DXGI_FORMAT AlbedoFormat = DXGI_FORMAT_BC3_UNORM;
+    inline static constexpr DXGI_FORMAT NormalFormat = DXGI_FORMAT_BC3_UNORM;
+
     DirectX::SimpleMath::Vector2 m_GridOrigin {};    // * GridSpacing getting world offset
     DirectX::SimpleMath::Vector2 m_TexelOrigin {};    // * TextureSpacing getting texture offset
     DirectX::SimpleMath::Vector2 m_MappedOrigin    // * TextureScaleXXX getting xy offset in source texel space
@@ -148,5 +164,12 @@ protected:
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoTex = nullptr;
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_NormalTex = nullptr;
 
+    using ResultR16 = std::future<DirectX::ClipmapTexture::UpdateArea<uint16_t>>;
+    using ResultBC = std::future<DirectX::ClipmapTexture::UpdateArea<uint8_t>>;
+    inline static std::vector<ResultR16> m_HeightStream {};
+    inline static std::vector<ResultBC> m_AlbedoStream {};
+    inline static std::vector<ResultBC> m_NormalStream {};
+
     int m_TrimPattern = 0;
+    bool m_IsActive = true;
 };

@@ -7,12 +7,11 @@
 #include "Vertex.h"
 #include <directxtk/BufferHelpers.h>
 #include <DirectXPackedVector.h>
-#include <queue>
 
 #include "BitMap.h"
-#include "Texture2D.h"
 #include "MaterialBlender.h"
 #include "ispc_texcomp.h"
+#include "../HeightMapSplitter/ThreadPool.h"
 
 using namespace DirectX;
 using namespace SimpleMath;
@@ -86,6 +85,8 @@ namespace
 
         inline static const XMCOLOR Color = XMCOLOR(Colors::Gold);
     };
+
+    const auto CompressFunction = CompressBlocksBC3;
 }
 
 void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, ID3D11Device* device)
@@ -164,41 +165,80 @@ void ClipmapLevel::BindSource(
     m_NormalTex = normalTex;
 }
 
-void ClipmapLevel::UpdateOffset(const Vector2& view, const Vector2& ofsFiner)
+void ClipmapLevel::UpdateTransform(
+    const Vector3& view, const Vector2& ofsFiner,
+    const int blendMode, const float hScale)
 {
-    m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
-    m_GridOrigin.y = std::ceil(view.y / m_GridSpacing * 0.5f) * 2 - 128;
-    m_TrimPattern = GetTrimPattern(ofsFiner);
+    UpdateOffset(view, ofsFiner, hScale);
+    GenerateTextureAsync(blendMode);
 }
 
-void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, const int blendMode)
+void ClipmapLevel::UpdateOffset(const Vector3& view, const Vector2& ofsFiner, const float hScale)
 {
+    m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
+    m_GridOrigin.y = std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128;
+    m_TrimPattern = GetTrimPattern(ofsFiner);
+    m_IsActive = std::abs(view.y - hScale * GetHeight()) < 2.5f * 254.0f * m_GridSpacing;
+}
+
+void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
+{
+    for (auto&& future : m_HeightStream)
+        m_HeightTex->UpdateToroidal(context, future.get());
+    for (auto&& future : m_AlbedoStream)
+        m_AlbedoTex->UpdateToroidal(context, future.get());
+    for (auto&& future : m_NormalStream)
+        m_NormalTex->UpdateToroidal(context, future.get());
+
+    // can't use Map method for resource that arraySlice > 0
+    // const MapGuard hm(context, m_HeightTex->GetTexture(),
+    //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
+
+    m_HeightStream.clear();
+    m_AlbedoStream.clear();
+    m_NormalStream.clear();
+}
+
+void ClipmapLevel::GenerateTextureAsync(const int blendMode)
+{
+    if (!m_IsActive) return;
+
     const auto currOri = MapToSource(m_GridOrigin);
     const int dx = currOri.x - m_MappedOrigin.x;
     const int dy = currOri.y - m_MappedOrigin.y;
     if (dx == 0 && dy == 0) return;
 
-    // can't use Map method for resource that arraySlice > 0
-    // const MapGuard hm(context, m_HeightTex->GetTexture(),
-    //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
+    auto generateHeight = [this](const Rect rect, const int srcX, const int srcY)
+    {
+        return ClipmapTexture::UpdateArea(rect * TextureScaleHeight, m_Level,
+            GetElevation(srcX, srcY, rect.W * TextureScaleHeight, rect.H * TextureScaleHeight));
+    };
+
+    auto generateAlbedo = [this](const Rect rect, const int srcX, const int srcY)
+    {
+        return ClipmapTexture::UpdateArea(rect * TextureScaleAlbedo, m_Level,
+            CompressRgba8ToBc15(BlendAlbedoRoughness(srcX, srcY, rect.W, rect.H).data(),
+                rect.W * TextureScaleAlbedo, rect.H * TextureScaleAlbedo, CompressFunction));
+    };
+
+    auto generateNormal = [this, blendMode](const Rect rect, const int srcX, const int srcY)
+    {
+        return ClipmapTexture::UpdateArea(rect * TextureScaleNormal, m_Level,
+            CompressRgba8ToBc15(BlendNormalOcclusion(srcX, srcY, rect.W, rect.H, blendMode).data(),
+                rect.W * TextureScaleNormal, rect.H * TextureScaleNormal, CompressFunction));
+    };
+
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
         m_TexelOrigin = Vector2::Zero;
         const Rect rect(0, 0, TextureN, TextureN);
 
-        m_HeightTex->UpdateToroidal(context, m_Level,
-            ClipmapTexture::UpdateArea(rect * TextureScaleHeight,
-                GetElevation(currOri.x, currOri.y, rect.W, rect.H)));
-
-        m_AlbedoTex->UpdateToroidal(context, m_Level,
-            ClipmapTexture::UpdateArea(rect * TextureScaleAlbedo,
-                CompressRgba8ToBc3(BlendAlbedoRoughness(currOri.x, currOri.y, rect.W, rect.H).data(),
-                    rect.W * TextureScaleAlbedo, rect.H * TextureScaleAlbedo)));
-
-        m_NormalTex->UpdateToroidal(context, m_Level,
-            ClipmapTexture::UpdateArea(rect * TextureScaleNormal,
-                CompressRgba8ToBc3(BlendNormalOcclusion(currOri.x, currOri.y, rect.W, rect.H, blendMode).data(),
-                    rect.W * TextureScaleNormal, rect.H * TextureScaleNormal)));
+        m_HeightStream.push_back(g_ThreadPool.enqueue(
+            generateHeight, rect, currOri.x, currOri.y));
+        m_AlbedoStream.push_back(g_ThreadPool.enqueue(
+            generateAlbedo, rect, currOri.x, currOri.y));
+        m_NormalStream.push_back(g_ThreadPool.enqueue(
+            generateNormal, rect, currOri.x, currOri.y));
     }
     else
     {
@@ -223,32 +263,12 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, const int blendMo
             TextureN,
             std::abs(dy)); !dwdy.IsEmpty())
         {
-            m_HeightTex->UpdateToroidal(context, m_Level,
-                ClipmapTexture::UpdateArea(
-                    dwdy * TextureScaleHeight,
-                    GetElevation(
-                        currOri.x,
-                        dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
-                        dwdy.W,
-                        dwdy.H)));
-
-            m_AlbedoTex->UpdateToroidal(context, m_Level,
-                ClipmapTexture::UpdateArea(
-                    dwdy * TextureScaleAlbedo,
-                    CompressRgba8ToBc3(BlendAlbedoRoughness(
-                        currOri.x,
-                        dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
-                        dwdy.W,
-                        dwdy.H).data(), dwdy.W * TextureScaleAlbedo, dwdy.H * TextureScaleAlbedo)));
-
-            m_NormalTex->UpdateToroidal(context, m_Level,
-                ClipmapTexture::UpdateArea(
-                    dwdy * TextureScaleAlbedo,
-                    CompressRgba8ToBc3(BlendNormalOcclusion(
-                        currOri.x,
-                        dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y,
-                        dwdy.W,
-                        dwdy.H, blendMode).data(), dwdy.W * TextureScaleNormal, dwdy.H * TextureScaleNormal)));
+            m_HeightStream.push_back(g_ThreadPool.enqueue(generateHeight, dwdy, currOri.x,
+                dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y));
+            m_AlbedoStream.push_back(g_ThreadPool.enqueue(generateAlbedo, dwdy, currOri.x,
+                dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y));
+            m_NormalStream.push_back(g_ThreadPool.enqueue(generateNormal, dwdy, currOri.x,
+                dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y));
         }
 
         // then update dx * (dh - abs(dy))
@@ -258,29 +278,15 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context, const int blendMo
             std::abs(dx),
             TextureN - std::abs(dy)); !dxdh.IsEmpty())
         {
-            m_HeightTex->UpdateToroidal(context, m_Level,
-                ClipmapTexture::UpdateArea(dxdh * TextureScaleHeight,
-                    GetElevation(
-                        dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-                        dy >= 0 ? currOri.y : m_MappedOrigin.y,
-                        dxdh.W,
-                        dxdh.H)));
-
-            m_AlbedoTex->UpdateToroidal(context, m_Level,
-                ClipmapTexture::UpdateArea(dxdh * TextureScaleAlbedo,
-                    CompressRgba8ToBc3(BlendAlbedoRoughness(
-                        dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-                        dy >= 0 ? currOri.y : m_MappedOrigin.y,
-                        dxdh.W,
-                        dxdh.H).data(), dxdh.W * TextureScaleAlbedo, dxdh.H * TextureScaleAlbedo)));
-
-            m_NormalTex->UpdateToroidal(context, m_Level,
-                ClipmapTexture::UpdateArea(dxdh * TextureScaleNormal,
-                    CompressRgba8ToBc3(BlendNormalOcclusion(
-                        dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-                        dy >= 0 ? currOri.y : m_MappedOrigin.y,
-                        dxdh.W,
-                        dxdh.H, blendMode).data(), dxdh.W * TextureScaleNormal, dxdh.H * TextureScaleNormal)));
+            m_HeightStream.push_back(g_ThreadPool.enqueue(generateHeight, dxdh,
+                dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                dy >= 0 ? currOri.y : m_MappedOrigin.y));
+            m_AlbedoStream.push_back(g_ThreadPool.enqueue(generateAlbedo, dxdh,
+                dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                dy >= 0 ? currOri.y : m_MappedOrigin.y));
+            m_NormalStream.push_back(g_ThreadPool.enqueue(generateNormal, dxdh,
+                dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
+                dy >= 0 ? currOri.y : m_MappedOrigin.y));
         }
 
         m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
@@ -401,10 +407,10 @@ std::vector<HeightMap::TexelFormat> ClipmapLevel::GetElevation(
 }
 
 std::vector<AlbedoMap::TexelFormat> ClipmapLevel::BlendAlbedoRoughness(
-    const int splatX, const int splatY, const unsigned w, const unsigned h) const
+    const int srcX, const int srcY, const unsigned w, const unsigned h) const
 {
     return AlbedoBlender(m_SplatSrc, m_AlbAtlas).Blend(
-        splatX * TextureScaleSplat, splatY * TextureScaleSplat,
+        srcX * TextureScaleSplat, srcY * TextureScaleSplat,
         w * TextureScaleSplat, h * TextureScaleSplat, m_Level);
 }
 
@@ -417,7 +423,9 @@ std::vector<NormalMap::TexelFormat> ClipmapLevel::BlendNormalOcclusion(
         static_cast<NormalBlender::BlendMethod>(blendMode));
 }
 
-std::vector<uint8_t> ClipmapLevel::CompressRgba8ToBc3(uint32_t* src, const unsigned w, const unsigned h)
+std::vector<uint8_t> ClipmapLevel::CompressRgba8ToBc15(
+    uint32_t* src, const unsigned w, const unsigned h,
+    BC15Compression* func)
 {
     // 16 bytes per 4x4 pixel <=> 1 bytes per pixel
     std::vector<std::uint8_t> dst(w * h);
@@ -426,6 +434,20 @@ std::vector<uint8_t> ClipmapLevel::CompressRgba8ToBc3(uint32_t* src, const unsig
     surface.height = h;
     surface.stride = w * sizeof(uint32_t);
     surface.ptr = reinterpret_cast<uint8_t*>(src);
-    CompressBlocksBC3(&surface, dst.data());
+    func(&surface, dst.data());
+    return dst;
+}
+
+std::vector<uint8_t> ClipmapLevel::CompressRgba8ToBc7(uint32_t* src, const unsigned w, const unsigned h)
+{
+    std::vector<std::uint8_t> dst(w * h);
+    rgba_surface surface;
+    surface.width = w;
+    surface.height = h;
+    surface.stride = w * sizeof(uint32_t);
+    surface.ptr = reinterpret_cast<uint8_t*>(src);
+    bc7_enc_settings settings;
+    GetProfile_ultrafast(&settings);
+    CompressBlocksBC7(&surface, dst.data(), &settings);
     return dst;
 }

@@ -71,8 +71,8 @@ public:
     static constexpr int LevelCount = 8;
     static constexpr int LevelMin = 0;
     static constexpr int LevelMax = LevelMin + LevelCount - 2;
-    static constexpr float LevelZeroScale = 1.2109375f; // 1 m per grid
-
+    static constexpr float LevelZeroScale = 1.0f; // 1 m per grid
+    
 protected:
     void InitMeshPatches(ID3D11Device* device);
     void InitClipTextures(ID3D11Device* device);

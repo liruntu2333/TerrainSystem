@@ -89,7 +89,6 @@ protected:
     using Rect = DirectX::ClipmapTexture::Rectangle;
     using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::TexelFormat>;
     using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::TexelFormat>;
-    using BC15Compression = void(const rgba_surface*, uint8_t*);
 
     void UpdateOffset(
         const DirectX::SimpleMath::Vector3& view,
@@ -103,8 +102,8 @@ protected:
     [[nodiscard]] std::vector<DirectX::NormalMap::TexelFormat> BlendNormalOcclusion(
         int srcX, int srcY, unsigned w, unsigned h, int blendMode) const;
 
-    static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc15(
-        uint32_t* src, unsigned w, unsigned h, BC15Compression* func);
+    static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc3(
+        uint32_t* src, unsigned w, unsigned h);
     static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc7(
         uint32_t* src, unsigned w, unsigned h);
 

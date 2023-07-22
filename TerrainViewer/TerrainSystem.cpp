@@ -219,12 +219,6 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
     const BoundingFrustum& frustum, const float yScale,
     ID3D11DeviceContext* context, const int blendMode)
 {
-    ClipmapLevel::UpdateTexture(context);
-#ifdef HARDWARE_FILTERING
-    m_AlbedoCm->GenerateMips(context);
-    m_NormalCm->GenerateMips(context);
-#endif
-
     Vector2 finer;
     for (int i = 0; i < m_Levels.size(); ++i)
     {
@@ -237,7 +231,14 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
         !m_Levels[lowestActive - LevelMin].IsActive(frustum.Origin.y, yScale))
         ++lowestActive;
     
-    return GetClipmapRenderResource(lowestActive);
+    auto rr = GetClipmapRenderResource(lowestActive);
+
+    ClipmapLevel::UpdateTexture(context);
+#ifdef HARDWARE_FILTERING
+    m_AlbedoCm->GenerateMips(context);
+    m_NormalCm->GenerateMips(context);
+#endif
+    return rr;
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(int lowestActive) const

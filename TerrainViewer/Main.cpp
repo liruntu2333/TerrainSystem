@@ -173,7 +173,7 @@ int main(int, char**)
         }
         if (modeChanged)
             g_System->ResetClipmapTexture();
-        const auto& resource = g_System->GetClipmapResources(frustum, hScale,
+        const auto& resource = g_System->TickClipmap(frustum, hScale,
             g_pd3dDeviceContext, blendMode);
         std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(
@@ -219,8 +219,8 @@ int main(int, char**)
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        // g_pSwapChain->Present(1, 0); // Present with vsync
-        g_pSwapChain->Present(0, 0); // Present without vsync
+        g_pSwapChain->Present(1, 0); // Present with vsync
+        // g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup

@@ -155,7 +155,7 @@ void TerrainSystem::ResetClipmapTexture()
 
 TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
     const XMINT2& camXyForCull, const BoundingFrustum& frustumLocal,
-    float yScale, std::vector<BoundingBox>& bbs, ID3D11Device* device) const
+    const float yScale, std::vector<BoundingBox>& bbs, ID3D11Device* device) const
 {
     std::vector<int> visible;
     std::vector<int> lods;
@@ -215,9 +215,32 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
     return std::move(r);
 }
 
-TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
-    const BoundingFrustum& frustum, float yScale,
-    ID3D11DeviceContext* context, int blendMode)
+TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
+    const BoundingFrustum& frustum, const float yScale,
+    ID3D11DeviceContext* context, const int blendMode)
+{
+    ClipmapLevel::UpdateTexture(context);
+#ifdef HARDWARE_FILTERING
+    m_AlbedoCm->GenerateMips(context);
+    m_NormalCm->GenerateMips(context);
+#endif
+
+    Vector2 finer;
+    for (int i = 0; i < m_Levels.size(); ++i)
+    {
+        m_Levels[i].UpdateTransform(frustum.Origin, finer, blendMode, yScale);
+        finer = m_Levels[i].GetWorldOffset();
+    }
+
+    int lowestActive = LevelMin;
+    while (lowestActive < LevelMax &&
+        !m_Levels[lowestActive - LevelMin].IsActive(frustum.Origin.y, yScale))
+        ++lowestActive;
+    
+    return GetClipmapRenderResource(lowestActive);
+}
+
+TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(int lowestActive) const
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -243,23 +266,6 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     std::vector<GridInstance> blocks;
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
-
-    Vector2 finer;
-    for (int i = 0; i < m_Levels.size(); ++i)
-    {
-        m_Levels[i].UpdateTransform(frustum.Origin, finer, blendMode, yScale);
-        finer = m_Levels[i].GetWorldOffset();
-    }
-
-    int lowestActive = LevelMin;
-    while (lowestActive < LevelMax &&
-        !m_Levels[lowestActive - LevelMin].IsActive(frustum.Origin.y, yScale))
-        ++lowestActive;
-
-#ifdef HARDWARE_FILTERING
-    m_AlbedoCm->GenerateMips(context);
-    m_NormalCm->GenerateMips(context);
-#endif
 
     {
         const auto ofsCoarse = m_Levels[lowestActive + 1 - LevelMin].GetFinerOffset();
@@ -293,8 +299,6 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapResources(
     r.TrimInstanceStart[1] = r.TrimInstanceStart[0] + trims[0].size();
     r.TrimInstanceStart[2] = r.TrimInstanceStart[1] + trims[1].size();
     r.TrimInstanceStart[3] = r.TrimInstanceStart[2] + trims[2].size();
-
-    ClipmapLevel::UpdateTexture(context);
 
     return std::move(r);
 }

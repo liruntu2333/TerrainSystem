@@ -183,12 +183,17 @@ void ClipmapLevel::UpdateOffset(const Vector3& view, const Vector2& ofsFiner, co
 
 void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 {
+    if (m_HeightStream.empty()) return;
+    
+    const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (auto&& future : m_HeightStream)
         m_HeightTex->UpdateToroidal(context, future.get());
     for (auto&& future : m_AlbedoStream)
         m_AlbedoTex->UpdateToroidal(context, future.get());
     for (auto&& future : m_NormalStream)
         m_NormalTex->UpdateToroidal(context, future.get());
+    const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    printf("UpdateTexture: %f\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     // can't use Map method for resource that arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),

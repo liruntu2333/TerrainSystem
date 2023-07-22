@@ -66,7 +66,7 @@ public:
         const std::shared_ptr<DirectX::ClipmapTexture>& heightTex,
         const std::shared_ptr<DirectX::ClipmapTexture>& albedoTex,
         const std::shared_ptr<DirectX::ClipmapTexture>& normalTex
-        );
+    );
 
     void UpdateTransform(
         const DirectX::SimpleMath::Vector3& view,
@@ -78,20 +78,9 @@ public:
     [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
     [[nodiscard]] float GetHeight() const;
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerOffset() const;
-
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const
-    {
-        return m_GridOrigin * m_GridSpacing;
-    }
-
     [[nodiscard]] bool IsActive(float hView, float hScale) const
     {
         return m_IsActive;
-    }
-
-    static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
-    {
-        return gridOrigin;
     }
 
     friend class TerrainSystem;
@@ -109,19 +98,24 @@ protected:
 
     [[nodiscard]] std::vector<DirectX::HeightMap::TexelFormat> GetElevation(
         int srcX, int srcY, unsigned w, unsigned h) const;
-
     [[nodiscard]] std::vector<DirectX::AlbedoMap::TexelFormat> BlendAlbedoRoughness(
         int srcX, int srcY, unsigned w, unsigned h) const;
-
     [[nodiscard]] std::vector<DirectX::NormalMap::TexelFormat> BlendNormalOcclusion(
         int srcX, int srcY, unsigned w, unsigned h, int blendMode) const;
 
     static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc15(
         uint32_t* src, unsigned w, unsigned h, BC15Compression* func);
-
     static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc7(
         uint32_t* src, unsigned w, unsigned h);
 
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const
+    {
+        return m_GridOrigin * m_GridSpacing;
+    }
+    static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
+    {
+        return gridOrigin;
+    }
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
         const auto ofs = (finer - GetWorldOffset()) / m_GridSpacing;

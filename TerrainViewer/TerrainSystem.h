@@ -60,7 +60,7 @@ public:
         const DirectX::BoundingFrustum& frustumLocal, float yScale,
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
-    [[nodiscard]] ClipmapRenderResource GetClipmapResources(
+    [[nodiscard]] ClipmapRenderResource TickClipmap(
         const DirectX::BoundingFrustum& frustum, float yScale,
         ID3D11DeviceContext* context, int blendMode);
 
@@ -77,6 +77,7 @@ protected:
     void InitMeshPatches(ID3D11Device* device);
     void InitClipTextures(ID3D11Device* device);
     void InitClipmapLevels(ID3D11Device* device, const DirectX::SimpleMath::Vector2& view);
+    [[nodiscard]] ClipmapRenderResource GetClipmapRenderResource(int lowestActive) const;
 
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;

@@ -1,7 +1,6 @@
 #include "ShaderUtil.hlsli"
 
 static const float SampleRateFine = 1.0f / 256.0f;
-static const float SampleRateCoarse = 0.5f / 256.0f;
 
 SamplerState PointWrap : register(s0);
 Texture2DArray<float> Height : register(t0);
@@ -17,7 +16,7 @@ void main(
     out float4 color : COLOR,
     out float3 texCoordF : TEXCOORD0,
     out float4 texCoordC : TEXCOORD1
-    )
+)
 {
     // degenrate triangles into coarser level
     // lvlParams.xy: offset of current footprint in level local space
@@ -41,8 +40,9 @@ void main(
     // compute coordinates for vertex texture
     // texParams.xy: origin of footprint in fine texture
     // texParams.zw: origin of footprint in coarse texture
-	float3 uvf = float3(positionLf * SampleRateFine + texParams.xy + 0.5f / 256, lvlParams.w);
-	float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw + 0.5f / 256, lvlParams.w + 1);
+    const float SampleRateCoarse = lvlParams.w == 2 ? SampleRateFine : 0.5f / 256.0f;
+    float3 uvf = float3(positionLf * SampleRateFine + texParams.xy + 0.5f / 256, lvlParams.w);
+    float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw + 0.5f / 256, lvlParams.w + 1);
 
     // blend elevation value
     // lvlParams.w : level
@@ -50,8 +50,8 @@ void main(
     h *= HeightMapScale;
 
     const float2 pl = lerp(positionLf, positionLc, alpha.x);
-	uvf = float3(pl * SampleRateFine + texParams.xy + 0.5f / 2048, lvlParams.w);
-	uvc = float3(pl * SampleRateCoarse + texParams.zw + 0.5f / 2048, lvlParams.w + 1);
+    uvf = float3(pl * SampleRateFine + texParams.xy + 0.5f / 2048, lvlParams.w);
+    uvc = float3(pl * SampleRateCoarse + texParams.zw + 0.5f / 2048, lvlParams.w + 1);
 
     positionW = float3(xz.x, h, xz.y);
     positionH = float4(positionW, 1);

@@ -176,9 +176,8 @@ void ClipmapLevel::UpdateTransform(
 
     const int dx = static_cast<int>(m_GridOrigin.x - m_MappedOrigin.x);
     const int dy = static_cast<int>(m_GridOrigin.y - m_MappedOrigin.y);
-    const int cost = std::min(
-        TextureN * std::abs(dy) + std::abs(dx) * (TextureN - std::abs(dy)),
-        TextureN * TextureN);
+    const int cost = std::abs(dx) >= TextureN || std::abs(dy) >= TextureN ? TextureN * TextureN :
+        TextureN * std::abs(dy) + std::abs(dx) * (TextureN - std::abs(dy));
 
     if (budget < cost || std::abs(view.y - hScale * GetHeight()) > 2.5f * 254.0f * m_GridSpacing)
     {
@@ -222,7 +221,7 @@ void ClipmapLevel::UpdateTransform(
     {
         m_TexelOrigin = Vector2::Zero;
         const Rect dwdh(0, 0, TextureN, TextureN);
-        generateAsync(dwdh, m_GridOrigin.x, m_GridOrigin.y);
+        generateAsync(dwdh,m_GridOrigin.x, m_GridOrigin.y);
     }
     else
     {
@@ -267,7 +266,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     // can't use Map method for resource that arraySlice > 0
     // const MapGuard hm(context, m_HeightTex->GetTexture(),
     //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
-    
+
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (auto&& future : m_HeightStream)
         m_HeightTex->UpdateToroidal(context, future.get());
@@ -276,8 +275,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     for (auto&& future : m_NormalStream)
         m_NormalTex->UpdateToroidal(context, future.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::printf("UpdateTexture: %f ms\n",
-    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    std::printf("UpdateTexture: %f ms\n",
+        std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     m_HeightStream.clear();
     m_AlbedoStream.clear();
@@ -388,7 +387,7 @@ float ClipmapLevel::GetHeight() const
     return m_HeightSrc->GetPixelHeight(m_GridOrigin.x + 128, m_GridOrigin.y + 128, 0);
 }
 
-Vector2 ClipmapLevel::GetFinerTextureOffset(const Vector2& finer) const
+Vector2 ClipmapLevel::GetFinerUvOffset(const Vector2& finer) const
 {
     return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finer)]) * OneOverSz;
 }

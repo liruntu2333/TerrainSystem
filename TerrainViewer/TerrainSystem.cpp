@@ -219,17 +219,14 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
     const BoundingFrustum& frustum, const Vector3& speed,
     const float yScale, ID3D11DeviceContext* context, const int blendMode)
 {
-
-
+    ClipmapLevel::UpdateTexture(context);
     int budget = ClipmapLevel::TextureN * ClipmapLevel::TextureN;
     for (int i = LevelCount - 1; i >= 0; --i)
     {
         m_Levels[i].UpdateTransform(frustum.Origin, speed, blendMode, yScale, budget);
     }
-    std::printf("budget: %d\n", budget);
 
     auto rr = GetClipmapRenderResource();
-    ClipmapLevel::UpdateTexture(context);
     return std::move(rr);
 }
 
@@ -262,11 +259,11 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource() c
 
     // from coarse to fine
     int lvl = LevelCount - 1;
-    for (; lvl > 0 && m_Levels[lvl].IsActive(); --lvl)
+    for (; lvl > 0 && (m_Levels[lvl].IsActive() && m_Levels[lvl - 1].IsActive()); --lvl)
     {
         const auto ofsCoarse = lvl < LevelCount - 1
-                                   ? m_Levels[lvl + 1].GetFinerTextureOffset(m_Levels[lvl].GetWorldOffset())
-                                   : Vector2::Zero;
+                                   ? m_Levels[lvl + 1].GetFinerUvOffset(m_Levels[lvl].GetWorldOffset())
+                                   : m_Levels[lvl].GetUvOffset(); // TODO
         auto [block, ring, trim, tid] =
             m_Levels[lvl].GetHollowRing(ofsCoarse, m_Levels[lvl - 1].GetWorldOffset());
         for (const auto& b : block) blocks.emplace_back(b);
@@ -276,7 +273,9 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource() c
 
     // finest
     {
-        const auto ofsCoarse = m_Levels[lvl + 1].GetFinerTextureOffset(m_Levels[lvl].GetWorldOffset());
+        const auto ofsCoarse = lvl < LevelCount - 1
+                                   ? m_Levels[lvl + 1].GetFinerUvOffset(m_Levels[lvl].GetWorldOffset())
+                                   : m_Levels[lvl].GetUvOffset(); // TODO
         auto [block, ring, trim] = m_Levels[lvl].GetSolidSquare(ofsCoarse);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);

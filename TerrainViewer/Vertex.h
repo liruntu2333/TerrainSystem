@@ -29,7 +29,7 @@ struct GridVertex
     GridVertex(uint8_t x, uint8_t y) : Position(x, y) { }
 };
 
-struct GridInstance
+struct GridInstance // TODO
 {
     DirectX::SimpleMath::Vector2 GridScale;             // grid spacing
     DirectX::SimpleMath::Vector2 WorldOffset;           // offset in world

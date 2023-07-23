@@ -68,7 +68,7 @@ public:
     [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
     [[nodiscard]] const DirectX::Texture2D& GetNormalClip() const { return *m_NormalCm; }
 
-    static constexpr int LevelCount = 7;
+    static constexpr int LevelCount = 8;
     static constexpr float LevelZeroScale = 1.0f; // 1 m per grid
     
 protected:

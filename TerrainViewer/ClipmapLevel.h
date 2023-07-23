@@ -80,9 +80,16 @@ public:
     [[nodiscard]] SolidSquare GetSolidSquare(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse) const;
     [[nodiscard]] float GetHeight() const;
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerTextureOffset(
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const
+    {
+        return m_GridOrigin * m_GridSpacing;
+    }
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(
         const DirectX::SimpleMath::Vector2& finer) const;
-
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetUvOffset() const
+    {
+        return m_TexelOrigin * OneOverSz;
+    }
     [[nodiscard]] bool IsActive() const
     {
         return m_IsActive == 2;
@@ -106,11 +113,6 @@ protected:
         uint32_t* src, unsigned w, unsigned h);
     static [[nodiscard]] std::vector<uint8_t> CompressRgba8ToBc7(
         uint32_t* src, unsigned w, unsigned h);
-
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const
-    {
-        return m_GridOrigin * m_GridSpacing;
-    }
 
     static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
     {

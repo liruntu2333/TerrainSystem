@@ -54,7 +54,7 @@ class ClipmapLevel : public ClipmapLevelBase
 {
 public:
     ClipmapLevel() = delete;
-    ClipmapLevel(unsigned l, float gScl);
+    ClipmapLevel(unsigned l, float gScl, DirectX::SimpleMath::Vector3 view);
     ~ClipmapLevel() = default;
 
     static void BindSource(
@@ -70,17 +70,22 @@ public:
 
     void UpdateTransform(
         const DirectX::SimpleMath::Vector3& view,
-        const DirectX::SimpleMath::Vector2& ofsFiner,
-        int blendMode, float hScale);
+        const DirectX::SimpleMath::Vector3& speed,
+        int blendMode, float hScale, int& budget);
     static void UpdateTexture(ID3D11DeviceContext* context);
 
-    [[nodiscard]] HollowRing GetHollowRing(const DirectX::SimpleMath::Vector2& toc) const;
-    [[nodiscard]] SolidSquare GetSolidSquare(const DirectX::SimpleMath::Vector2& toc) const;
+    [[nodiscard]] HollowRing GetHollowRing(
+        const DirectX::SimpleMath::Vector2& textureOriginCoarse,
+        const DirectX::SimpleMath::Vector2& worldOriginFiner) const;
+    [[nodiscard]] SolidSquare GetSolidSquare(
+        const DirectX::SimpleMath::Vector2& textureOriginCoarse) const;
     [[nodiscard]] float GetHeight() const;
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerOffset() const;
-    [[nodiscard]] bool IsActive(float hView, float hScale) const
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerTextureOffset(
+        const DirectX::SimpleMath::Vector2& finer) const;
+
+    [[nodiscard]] bool IsActive() const
     {
-        return m_IsActive;
+        return m_IsActive == 2;
     }
 
     friend class TerrainSystem;
@@ -89,11 +94,6 @@ protected:
     using Rect = DirectX::ClipmapTexture::Rectangle;
     using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::TexelFormat>;
     using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::TexelFormat>;
-
-    void UpdateOffset(
-        const DirectX::SimpleMath::Vector3& view,
-        const DirectX::SimpleMath::Vector2& ofsFiner, float hScale);
-    void GenerateTextureAsync(int blendMode);
 
     [[nodiscard]] std::vector<DirectX::HeightMap::TexelFormat> GetElevation(
         int srcX, int srcY, unsigned w, unsigned h) const;
@@ -111,10 +111,12 @@ protected:
     {
         return m_GridOrigin * m_GridSpacing;
     }
+
     static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
     {
         return gridOrigin;
     }
+
     [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
     {
         const auto ofs = (finer - GetWorldOffset()) / m_GridSpacing;
@@ -163,6 +165,5 @@ protected:
     inline static std::vector<ResultBC> m_AlbedoStream {};
     inline static std::vector<ResultBC> m_NormalStream {};
 
-    int m_TrimPattern = 0;
-    bool m_IsActive = true;
+    int m_IsActive = 0; // de-active / updating / active
 };

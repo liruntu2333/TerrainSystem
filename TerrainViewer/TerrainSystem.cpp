@@ -94,7 +94,7 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
     }
 }
 
-void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
+void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector3& view)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
     const auto hm = std::make_shared<HeightMap>(m_Path / "height.dds");
@@ -121,14 +121,14 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector2& view)
 
     ClipmapLevel::BindSource(hm, sm, nm, albedo, normal, m_HeightCm, m_AlbedoCm, m_NormalCm);
 
-    for (int i = LevelMin; i < LevelMin + LevelCount; ++i)
+    for (int i = 0; i < LevelCount; ++i)
     {
-        m_Levels.emplace_back(i, LevelZeroScale * std::powf(2.0f, i));
+        m_Levels.emplace_back(i, LevelZeroScale * std::powf(2.0f, i), view);
     }
 }
 
 TerrainSystem::TerrainSystem(
-    const Vector2& view,
+    const Vector3& view,
     std::filesystem::path path,
     ID3D11Device* device) :
     m_Path(std::move(path))
@@ -216,32 +216,24 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
-    const BoundingFrustum& frustum, const float yScale,
-    ID3D11DeviceContext* context, const int blendMode)
+    const BoundingFrustum& frustum, const Vector3& speed,
+    const float yScale, ID3D11DeviceContext* context, const int blendMode)
 {
-    Vector2 finer;
-    for (int i = 0; i < m_Levels.size(); ++i)
+
+
+    int budget = ClipmapLevel::TextureN * ClipmapLevel::TextureN;
+    for (int i = LevelCount - 1; i >= 0; --i)
     {
-        m_Levels[i].UpdateTransform(frustum.Origin, finer, blendMode, yScale);
-        finer = m_Levels[i].GetWorldOffset();
+        m_Levels[i].UpdateTransform(frustum.Origin, speed, blendMode, yScale, budget);
     }
+    std::printf("budget: %d\n", budget);
 
-    int lowestActive = LevelMin;
-    while (lowestActive < LevelMax &&
-        !m_Levels[lowestActive - LevelMin].IsActive(frustum.Origin.y, yScale))
-        ++lowestActive;
-    
-    auto rr = GetClipmapRenderResource(lowestActive);
-
+    auto rr = GetClipmapRenderResource();
     ClipmapLevel::UpdateTexture(context);
-#ifdef HARDWARE_FILTERING
-    m_AlbedoCm->GenerateMips(context);
-    m_NormalCm->GenerateMips(context);
-#endif
-    return rr;
+    return std::move(rr);
 }
 
-TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(int lowestActive) const
+TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource() const
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -268,21 +260,27 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(int
     std::vector<GridInstance> rings;
     std::vector<GridInstance> trims[4];
 
+    // from coarse to fine
+    int lvl = LevelCount - 1;
+    for (; lvl > 0 && m_Levels[lvl].IsActive(); --lvl)
     {
-        const auto ofsCoarse = m_Levels[lowestActive + 1 - LevelMin].GetFinerOffset();
-        auto [block, ring, trim] = m_Levels[lowestActive].GetSolidSquare(ofsCoarse);
-        for (const auto& b : block) blocks.emplace_back(b);
-        rings.emplace_back(ring);
-        for (int i = 0; i < 2; ++i) trims[i * 2].emplace_back(trim[i]);
-    }
-
-    for (int lv = lowestActive + 1; lv <= LevelMax; ++lv)
-    {
-        const auto ofsCoarse = m_Levels[lv + 1 - LevelMin].GetFinerOffset();
-        auto [block, ring, trim, tid] = m_Levels[lv - LevelMin].GetHollowRing(ofsCoarse);
+        const auto ofsCoarse = lvl < LevelCount - 1
+                                   ? m_Levels[lvl + 1].GetFinerTextureOffset(m_Levels[lvl].GetWorldOffset())
+                                   : Vector2::Zero;
+        auto [block, ring, trim, tid] =
+            m_Levels[lvl].GetHollowRing(ofsCoarse, m_Levels[lvl - 1].GetWorldOffset());
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);
+    }
+
+    // finest
+    {
+        const auto ofsCoarse = m_Levels[lvl + 1].GetFinerTextureOffset(m_Levels[lvl].GetWorldOffset());
+        auto [block, ring, trim] = m_Levels[lvl].GetSolidSquare(ofsCoarse);
+        for (const auto& b : block) blocks.emplace_back(b);
+        rings.emplace_back(ring);
+        for (int i = 0; i < 2; ++i) trims[i * 2].emplace_back(trim[i]);
     }
 
     auto& all = r.Grids;

@@ -40,9 +40,8 @@ namespace
     std::unique_ptr<TerrainSystem> g_System = nullptr;
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
-
-    constexpr Vector2 ViewInit2 = Vector2(4096.0f, 4096.0f);
-    constexpr Vector3 ViewInit3 = Vector3(ViewInit2.x, 1000.0f, ViewInit2.y);
+    
+    constexpr Vector3 ViewInit = Vector3(4096.0f, 1000.0f, 4096.0f);
 }
 
 // Forward declarations of helper functions
@@ -108,7 +107,7 @@ int main(int, char**)
     bool drawBb = false;
     bool drawClip = false;
     DirectX::BoundingFrustum frustum {};
-    Vector3 view(ViewInit3);
+    Vector3 view(ViewInit);
     float spd = 30.0f;
     float hScale = 2129.92f;
     float transition = 25.4f;
@@ -173,8 +172,8 @@ int main(int, char**)
         }
         if (modeChanged)
             g_System->ResetClipmapTexture();
-        const auto& resource = g_System->TickClipmap(frustum, hScale,
-            g_pd3dDeviceContext, blendMode);
+        const auto& resource = g_System->TickClipmap(frustum, g_Camera->GetDeltaPosition() / io.DeltaTime,
+            hScale, g_pd3dDeviceContext, blendMode);
         std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
@@ -219,8 +218,8 @@ int main(int, char**)
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        // g_pSwapChain->Present(1, 0); // Present with vsync
-        g_pSwapChain->Present(0, 0); // Present without vsync
+        g_pSwapChain->Present(1, 0); // Present with vsync
+        // g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup
@@ -331,9 +330,9 @@ void CreateSystem()
     g_GridRenderer = std::make_unique<ClipmapRenderer>(g_pd3dDevice, g_Cb0);
     g_GridRenderer->Initialize("shader");
 
-    g_Camera = std::make_unique<Camera>(ViewInit3);
+    g_Camera = std::make_unique<Camera>(ViewInit);
 
-    g_System = std::make_unique<TerrainSystem>(ViewInit2, "asset", g_pd3dDevice);
+    g_System = std::make_unique<TerrainSystem>(ViewInit, "asset", g_pd3dDevice);
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 }

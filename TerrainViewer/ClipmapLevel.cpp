@@ -142,8 +142,12 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 }
 
 
-ClipmapLevel::ClipmapLevel(const unsigned l, const float gScl) :
-    m_Level(l), m_GridSpacing(gScl) {}
+ClipmapLevel::ClipmapLevel(const unsigned l, const float gScl, DirectX::SimpleMath::Vector3 view) :
+    m_Level(l), m_GridSpacing(gScl)
+{
+    m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
+    m_GridOrigin.y = std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128;
+}
 
 void ClipmapLevel::BindSource(
     const std::shared_ptr<HeightMap>& heightSrc, const std::shared_ptr<SplatMap>& splatSrc,
@@ -164,48 +168,27 @@ void ClipmapLevel::BindSource(
 }
 
 void ClipmapLevel::UpdateTransform(
-    const Vector3& view, const Vector2& ofsFiner,
-    const int blendMode, const float hScale)
-{
-    UpdateOffset(view, ofsFiner, hScale);
-    GenerateTextureAsync(blendMode);
-}
-
-void ClipmapLevel::UpdateOffset(const Vector3& view, const Vector2& ofsFiner, const float hScale)
+    const Vector3& view, const Vector3& speed,
+    const int blendMode, const float hScale, int& budget)
 {
     m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
     m_GridOrigin.y = std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128;
-    m_TrimPattern = GetTrimPattern(ofsFiner);
-    m_IsActive = std::abs(view.y - hScale * GetHeight()) < 2.5f * 254.0f * m_GridSpacing;
-}
 
-void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
-{
-    if (m_HeightStream.empty()) return;
+    const int dx = static_cast<int>(m_GridOrigin.x - m_MappedOrigin.x);
+    const int dy = static_cast<int>(m_GridOrigin.y - m_MappedOrigin.y);
+    const int cost = std::min(
+        TextureN * std::abs(dy) + std::abs(dx) * (TextureN - std::abs(dy)),
+        TextureN * TextureN);
 
-    const std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    for (auto&& future : m_HeightStream)
-        m_HeightTex->UpdateToroidal(context, future.get());
-    for (auto&& future : m_AlbedoStream)
-        m_AlbedoTex->UpdateToroidal(context, future.get());
-    for (auto&& future : m_NormalStream)
-        m_NormalTex->UpdateToroidal(context, future.get());
-    const std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    printf("UpdateTexture: %f\n", std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    if (budget < cost || std::abs(view.y - hScale * GetHeight()) > 2.5f * 254.0f * m_GridSpacing)
+    {
+        m_IsActive = 0;
+        return;
+    }
+    budget -= cost;
+    if (m_IsActive == 0 || m_IsActive == 1) m_IsActive++;
 
-    // can't use Map method for resource that arraySlice > 0
-    // const MapGuard hm(context, m_HeightTex->GetTexture(),
-    //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
-
-    m_HeightStream.clear();
-    m_AlbedoStream.clear();
-    m_NormalStream.clear();
-}
-
-void ClipmapLevel::GenerateTextureAsync(const int blendMode)
-{
-    if (!m_IsActive) return;
-
+    // GenerateTextureAsync
     auto generateHeight = [this](const Rect rect, const int srcX, const int srcY)
     {
         return ClipmapTexture::UpdateArea(rect * TextureScaleHeight, m_Level,
@@ -235,16 +218,11 @@ void ClipmapLevel::GenerateTextureAsync(const int blendMode)
         m_HeightStream.emplace_back(g_ThreadPool.enqueue(generateHeight, rect, srcX, srcY));
     };
 
-    const auto currOri = MapToSource(m_GridOrigin);
-    const int dx = currOri.x - m_MappedOrigin.x;
-    const int dy = currOri.y - m_MappedOrigin.y;
-    if (dx == 0 && dy == 0) return;
-
     if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
     {
         m_TexelOrigin = Vector2::Zero;
         const Rect dwdh(0, 0, TextureN, TextureN);
-        generateAsync(dwdh, currOri.x, currOri.y);
+        generateAsync(dwdh, m_GridOrigin.x, m_GridOrigin.y);
     }
     else
     {
@@ -266,35 +244,65 @@ void ClipmapLevel::GenerateTextureAsync(const int blendMode)
             WarpMod(static_cast<int>(m_TexelOrigin.x) + dx, TextureSz),
             WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? TextureN : dy), TextureSz),
             TextureN, std::abs(dy));
-        generateAsync(dwdy, currOri.x, dy >= 0 ? m_MappedOrigin.y + TextureN : currOri.y);
+        generateAsync(dwdy, m_GridOrigin.x, dy >= 0 ? m_MappedOrigin.y + TextureN : m_GridOrigin.y);
 
         // then update dx * (dh - abs(dy))
         const Rect dxdh(
             WarpMod(static_cast<int>(m_TexelOrigin.x) + (dx >= 0 ? TextureN : dx), TextureSz),
             WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? dy : 0), TextureSz),
             std::abs(dx), TextureN - std::abs(dy));
-        generateAsync(dxdh, dx >= 0 ? m_MappedOrigin.x + TextureN : currOri.x,
-            dy >= 0 ? currOri.y : m_MappedOrigin.y);
+        generateAsync(dxdh, dx >= 0 ? m_MappedOrigin.x + TextureN : m_GridOrigin.x,
+            dy >= 0 ? m_GridOrigin.y : m_MappedOrigin.y);
 
         m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
         m_TexelOrigin.y = WarpMod(dy + static_cast<int>(m_TexelOrigin.y), TextureSz);
     }
-    m_MappedOrigin = currOri;
+    m_MappedOrigin = m_GridOrigin;
 }
 
-ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) const
+void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
+{
+    if (m_HeightStream.empty()) return;
+
+    // can't use Map method for resource that arraySlice > 0
+    // const MapGuard hm(context, m_HeightTex->GetTexture(),
+    //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
+    
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    for (auto&& future : m_HeightStream)
+        m_HeightTex->UpdateToroidal(context, future.get());
+    for (auto&& future : m_AlbedoStream)
+        m_AlbedoTex->UpdateToroidal(context, future.get());
+    for (auto&& future : m_NormalStream)
+        m_NormalTex->UpdateToroidal(context, future.get());
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    // std::printf("UpdateTexture: %f ms\n",
+    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+
+    m_HeightStream.clear();
+    m_AlbedoStream.clear();
+    m_NormalStream.clear();
+
+#ifdef HARDWARE_FILTERING
+    m_AlbedoCm->GenerateMips(context);
+    m_NormalCm->GenerateMips(context);
+#endif
+}
+
+ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
+    const Vector2& textureOriginCoarse, const Vector2& worldOriginFiner) const
 {
     using namespace SimpleMath;
 
     HollowRing hollow;
-    hollow.TrimId = m_TrimPattern;
+    hollow.TrimId = GetTrimPattern(worldOriginFiner);
 
     const GridInstance ins
     {
         Vector2(m_GridSpacing),
         Vector2(m_GridSpacing) * m_GridOrigin,
         (Vector2(m_TexelOrigin.x, m_TexelOrigin.y)) * OneOverSz,
-        toc,
+        textureOriginCoarse,
         XMUINT2(),
         0,
         m_Level
@@ -330,7 +338,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(const Vector2& toc) con
 }
 
 
-ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) const
+ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& textureOriginCoarse) const
 {
     using namespace SimpleMath;
     SolidSquare solid;
@@ -340,7 +348,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& toc) c
         Vector2(m_GridSpacing),
         (Vector2(m_GridSpacing) * m_GridOrigin),
         Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz,
-        toc,
+        textureOriginCoarse,
         XMUINT2(),
         0,
         m_Level
@@ -380,9 +388,9 @@ float ClipmapLevel::GetHeight() const
     return m_HeightSrc->GetPixelHeight(m_GridOrigin.x + 128, m_GridOrigin.y + 128, 0);
 }
 
-Vector2 ClipmapLevel::GetFinerOffset() const
+Vector2 ClipmapLevel::GetFinerTextureOffset(const Vector2& finer) const
 {
-    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[m_TrimPattern]) * OneOverSz;
+    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finer)]) * OneOverSz;
 }
 
 std::vector<HeightMap::TexelFormat> ClipmapLevel::GetElevation(

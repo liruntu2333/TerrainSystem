@@ -48,7 +48,7 @@ public:
     };
 
     TerrainSystem(
-        const DirectX::SimpleMath::Vector2& view,
+        const DirectX::SimpleMath::Vector3& view,
         std::filesystem::path path,
         ID3D11Device* device);
     ~TerrainSystem() = default;
@@ -61,23 +61,21 @@ public:
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;
 
     [[nodiscard]] ClipmapRenderResource TickClipmap(
-        const DirectX::BoundingFrustum& frustum, float yScale,
-        ID3D11DeviceContext* context, int blendMode);
+        const DirectX::BoundingFrustum& frustum, const DirectX::SimpleMath::Vector3& speed,
+        float yScale, ID3D11DeviceContext* context, int blendMode);
 
     [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
     [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
     [[nodiscard]] const DirectX::Texture2D& GetNormalClip() const { return *m_NormalCm; }
 
-    static constexpr int LevelCount = 8;
-    static constexpr int LevelMin = 0;
-    static constexpr int LevelMax = LevelMin + LevelCount - 2;
+    static constexpr int LevelCount = 7;
     static constexpr float LevelZeroScale = 1.0f; // 1 m per grid
     
 protected:
     void InitMeshPatches(ID3D11Device* device);
     void InitClipTextures(ID3D11Device* device);
-    void InitClipmapLevels(ID3D11Device* device, const DirectX::SimpleMath::Vector2& view);
-    [[nodiscard]] ClipmapRenderResource GetClipmapRenderResource(int lowestActive) const;
+    void InitClipmapLevels(ID3D11Device* device, const DirectX::SimpleMath::Vector3& view);
+    [[nodiscard]] ClipmapRenderResource GetClipmapRenderResource() const;
 
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;

@@ -149,7 +149,7 @@ void TerrainSystem::ResetClipmapTexture()
 {
     for (auto&& level : m_Levels)
     {
-        level.m_MappedOrigin = Vector2(static_cast<float>(std::numeric_limits<int>::min() >> 1));
+        level.m_GridOrigin = Vector2(static_cast<float>(std::numeric_limits<int>::min() >> 1));
     }
 }
 
@@ -216,17 +216,17 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
-    const BoundingFrustum& frustum, const Vector3& speed,
+    const BoundingFrustum& frustum,
     const float yScale, ID3D11DeviceContext* context, const int blendMode)
 {
-    ClipmapLevel::UpdateTexture(context);
     int budget = ClipmapLevel::TextureN * ClipmapLevel::TextureN;
     for (int i = LevelCount - 1; i >= 0; --i)
     {
-        m_Levels[i].UpdateTransform(frustum.Origin, speed, blendMode, yScale, budget);
+        m_Levels[i].TickTransform(frustum.Origin, blendMode, yScale, budget);
     }
 
     auto rr = GetClipmapRenderResource();
+    ClipmapLevel::UpdateTexture(context);
     return std::move(rr);
 }
 

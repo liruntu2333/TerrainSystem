@@ -1,6 +1,7 @@
 #include "ShaderUtil.hlsli"
 
 static const float SampleRateFine = 1.0f / 256.0f;
+static const float SampleRateCoarse = 0.5f / 256.0f;
 
 SamplerState PointWrap : register(s0);
 Texture2DArray<float> Height : register(t0);
@@ -40,7 +41,6 @@ void main(
     // compute coordinates for vertex texture
     // texParams.xy: origin of footprint in fine texture
     // texParams.zw: origin of footprint in coarse texture
-    const float SampleRateCoarse = lvlParams.w == 2 ? SampleRateFine : 0.5f / 256.0f;
     float3 uvf = float3(positionLf * SampleRateFine + texParams.xy + 0.5f / 256, lvlParams.w);
     float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw + 0.5f / 256, lvlParams.w + 1);
 

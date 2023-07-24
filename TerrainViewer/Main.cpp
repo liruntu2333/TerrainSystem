@@ -40,7 +40,7 @@ namespace
     std::unique_ptr<TerrainSystem> g_System = nullptr;
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
-    
+
     constexpr Vector3 ViewInit = Vector3(4096.0f, 1000.0f, 4096.0f);
 }
 
@@ -172,8 +172,8 @@ int main(int, char**)
         }
         if (modeChanged)
             g_System->ResetClipmapTexture();
-        const auto& resource = g_System->TickClipmap(frustum, g_Camera->GetDeltaPosition() / io.DeltaTime,
-            hScale, g_pd3dDeviceContext, blendMode);
+        const auto& resource = g_System->TickClipmap(frustum, hScale,
+            g_pd3dDeviceContext, blendMode);
         std::vector<DirectX::BoundingBox> bbs;
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
@@ -181,6 +181,7 @@ int main(int, char**)
             std::sin(lTheta) * std::cos(lPhi),
             std::cos(lTheta),
             std::sin(lTheta) * std::sin(lPhi));
+
         lDir.Normalize();
 
         g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();

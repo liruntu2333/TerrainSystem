@@ -66,12 +66,11 @@ public:
         const std::shared_ptr<DirectX::ClipmapTexture>& heightTex,
         const std::shared_ptr<DirectX::ClipmapTexture>& albedoTex,
         const std::shared_ptr<DirectX::ClipmapTexture>& normalTex
-    );
+        );
 
-    void UpdateTransform(
+    void TickTransform(
         const DirectX::SimpleMath::Vector3& view,
-        const DirectX::SimpleMath::Vector3& speed,
-        int blendMode, float hScale, int& budget);
+        const int blendMode, const float hScale, int& budget);
     static void UpdateTexture(ID3D11DeviceContext* context);
 
     [[nodiscard]] HollowRing GetHollowRing(
@@ -80,19 +79,23 @@ public:
     [[nodiscard]] SolidSquare GetSolidSquare(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse) const;
     [[nodiscard]] float GetHeight() const;
+
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const
     {
         return m_GridOrigin * m_GridSpacing;
     }
+
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(
         const DirectX::SimpleMath::Vector2& finer) const;
+
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetUvOffset() const
     {
         return m_TexelOrigin * OneOverSz;
     }
+
     [[nodiscard]] bool IsActive() const
     {
-        return m_IsActive == 2;
+        return m_IsActive;
     }
 
     friend class TerrainSystem;
@@ -145,12 +148,11 @@ protected:
     inline static constexpr DXGI_FORMAT AlbedoFormat = DXGI_FORMAT_BC3_UNORM;
     inline static constexpr DXGI_FORMAT NormalFormat = DXGI_FORMAT_BC3_UNORM;
 
-    DirectX::SimpleMath::Vector2 m_GridOrigin {};    // * GridSpacing getting world offset
-    DirectX::SimpleMath::Vector2 m_TexelOrigin {};    // * TextureSpacing getting texture offset
-    DirectX::SimpleMath::Vector2 m_MappedOrigin    // * TextureScaleXXX getting xy offset in source texel space
+    DirectX::SimpleMath::Vector2 m_GridOrigin           // * GridSpacing getting world offset
     {
         static_cast<float>(std::numeric_limits<int>::min() >> 1) // prevent overflow
     };
+    DirectX::SimpleMath::Vector2 m_TexelOrigin {};      // * TextureSpacing getting texture offset
 
     inline static std::shared_ptr<DirectX::HeightMap> m_HeightSrc = nullptr;
     inline static std::shared_ptr<DirectX::SplatMap> m_SplatSrc = nullptr;
@@ -162,10 +164,10 @@ protected:
     inline static std::shared_ptr<DirectX::ClipmapTexture> m_NormalTex = nullptr;
 
     using ResultR16 = std::future<DirectX::ClipmapTexture::UpdateArea<uint16_t>>;
-    using ResultBC = std::future<DirectX::ClipmapTexture::UpdateArea<uint8_t>>;
+    using ResultBc = std::future<DirectX::ClipmapTexture::UpdateArea<uint8_t>>;
     inline static std::vector<ResultR16> m_HeightStream {};
-    inline static std::vector<ResultBC> m_AlbedoStream {};
-    inline static std::vector<ResultBC> m_NormalStream {};
+    inline static std::vector<ResultBc> m_AlbedoStream {};
+    inline static std::vector<ResultBc> m_NormalStream {};
 
     int m_IsActive = 0; // de-active / updating / active
 };

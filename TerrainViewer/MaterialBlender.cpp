@@ -313,8 +313,7 @@ std::vector<uint32_t> NormalBlender::Blend(
                     z = (z + 1) * (0.5f * 255);
 
                     // blend ao
-                    wBase *= (1.0f / 255);
-                    w *= wBase;
+                    w *= wBase * (1.0f / 255);
 
                     const auto c =
                         xsimd::batch_cast<uint32_t>(x + 0.01f) |

@@ -143,11 +143,7 @@ void ClipmapLevelBase::LoadFootprintGeometry(const std::filesystem::path& path, 
 
 
 ClipmapLevel::ClipmapLevel(const unsigned l, const float gScl, DirectX::SimpleMath::Vector3 view) :
-    m_Level(l), m_GridSpacing(gScl)
-{
-    m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
-    m_GridOrigin.y = std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128;
-}
+    m_Level(l), m_GridSpacing(gScl) {}
 
 void ClipmapLevel::BindSource(
     const std::shared_ptr<HeightMap>& heightSrc, const std::shared_ptr<SplatMap>& splatSrc,
@@ -167,25 +163,44 @@ void ClipmapLevel::BindSource(
     m_NormalTex = normalTex;
 }
 
-void ClipmapLevel::UpdateTransform(
-    const Vector3& view, const Vector3& speed,
-    const int blendMode, const float hScale, int& budget)
+void ClipmapLevel::TickTransform(const Vector3& view, const int blendMode, const float hScale, int& budget)
 {
-    m_GridOrigin.x = std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128;
-    m_GridOrigin.y = std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128;
+    //  - - - - - - - -
+    //  |             | 
+    //  |   O         | dx
+    //  |     - - - - - - - -
+    //  |     |///////|     |
+    //  |     |///////|  I  |   dh - abs(dy)
+    //  |     |///////|     |
+    //  - - - |- - - - - - -|
+    //        |             |   abs(dy)
+    //        |     I       |   
+    //        - - - - - - - -
+    //              dw
 
-    const int dx = static_cast<int>(m_GridOrigin.x - m_MappedOrigin.x);
-    const int dy = static_cast<int>(m_GridOrigin.y - m_MappedOrigin.y);
-    const int cost = std::abs(dx) >= TextureN || std::abs(dy) >= TextureN ? TextureN * TextureN :
-        TextureN * std::abs(dy) + std::abs(dx) * (TextureN - std::abs(dy));
+    const auto prev = m_GridOrigin;
+    const Vector2 curr(
+        std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128,
+        std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128
+        );
 
+    const int dx = static_cast<int>(curr.x - prev.x);
+    const int dy = static_cast<int>(curr.y - prev.y);
+    const bool whole = std::abs(dx) >= TextureN || std::abs(dy) >= TextureN;
+    const int cost = whole
+                         ? TextureN * TextureN   // update whole tex anyway
+                         : TextureN * std::abs(dy) + std::abs(dx) * (TextureN - std::abs(dy));
+
+    // not enough budget or too high above
     if (budget < cost || std::abs(view.y - hScale * GetHeight()) > 2.5f * 254.0f * m_GridSpacing)
     {
         m_IsActive = 0;
         return;
     }
+
     budget -= cost;
-    if (m_IsActive == 0 || m_IsActive == 1) m_IsActive++;
+    if (m_IsActive == 0/* || m_IsActive == 1*/) m_IsActive++;
+    m_GridOrigin = curr;
 
     // GenerateTextureAsync
     auto generateHeight = [this](const Rect rect, const int srcX, const int srcY)
@@ -217,46 +232,30 @@ void ClipmapLevel::UpdateTransform(
         m_HeightStream.emplace_back(g_ThreadPool.enqueue(generateHeight, rect, srcX, srcY));
     };
 
-    if (std::abs(dx) >= TextureN || std::abs(dy) >= TextureN) // update full tex anyway
+    if (whole)
     {
-        m_TexelOrigin = Vector2::Zero;
         const Rect dwdh(0, 0, TextureN, TextureN);
-        generateAsync(dwdh,m_GridOrigin.x, m_GridOrigin.y);
+        generateAsync(dwdh, curr.x, curr.y);
+        m_TexelOrigin = Vector2::Zero;
+        return;
     }
-    else
-    {
-        //  - - - - - - - -
-        //  |             | 
-        //  |   O         | dx
-        //  |     - - - - - - - -
-        //  |     |///////|     |
-        //  |     |///////|  I  |   dh - abs(dy)
-        //  |     |///////|     |
-        //  - - - |- - - - - - -|
-        //        |             |   abs(dy)
-        //        |     I       |   
-        //        - - - - - - - -
-        //              dw
 
-        // update dy * dw first for cache coherence
-        const Rect dwdy(
-            WarpMod(static_cast<int>(m_TexelOrigin.x) + dx, TextureSz),
-            WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? TextureN : dy), TextureSz),
-            TextureN, std::abs(dy));
-        generateAsync(dwdy, m_GridOrigin.x, dy >= 0 ? m_MappedOrigin.y + TextureN : m_GridOrigin.y);
+    // update dy * dw first for cache coherence
+    const Rect dwdy(
+        WarpMod(static_cast<int>(m_TexelOrigin.x) + dx, TextureSz),
+        WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? TextureN : dy), TextureSz),
+        TextureN, std::abs(dy));
+    generateAsync(dwdy, curr.x, dy >= 0 ? prev.y + TextureN : curr.y);
 
-        // then update dx * (dh - abs(dy))
-        const Rect dxdh(
-            WarpMod(static_cast<int>(m_TexelOrigin.x) + (dx >= 0 ? TextureN : dx), TextureSz),
-            WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? dy : 0), TextureSz),
-            std::abs(dx), TextureN - std::abs(dy));
-        generateAsync(dxdh, dx >= 0 ? m_MappedOrigin.x + TextureN : m_GridOrigin.x,
-            dy >= 0 ? m_GridOrigin.y : m_MappedOrigin.y);
+    // then update dx * (dh - abs(dy))
+    const Rect dxdh(
+        WarpMod(static_cast<int>(m_TexelOrigin.x) + (dx >= 0 ? TextureN : dx), TextureSz),
+        WarpMod(static_cast<int>(m_TexelOrigin.y) + (dy >= 0 ? dy : 0), TextureSz),
+        std::abs(dx), TextureN - std::abs(dy));
+    generateAsync(dxdh, dx >= 0 ? prev.x + TextureN : curr.x, dy >= 0 ? curr.y : prev.y);
 
-        m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
-        m_TexelOrigin.y = WarpMod(dy + static_cast<int>(m_TexelOrigin.y), TextureSz);
-    }
-    m_MappedOrigin = m_GridOrigin;
+    m_TexelOrigin.x = WarpMod(dx + static_cast<int>(m_TexelOrigin.x), TextureSz);
+    m_TexelOrigin.y = WarpMod(dy + static_cast<int>(m_TexelOrigin.y), TextureSz);
 }
 
 void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
@@ -275,8 +274,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     for (auto&& future : m_NormalStream)
         m_NormalTex->UpdateToroidal(context, future.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::printf("UpdateTexture: %f ms\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    // std::printf("UpdateTexture: %f ms\n",
+    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     m_HeightStream.clear();
     m_AlbedoStream.clear();

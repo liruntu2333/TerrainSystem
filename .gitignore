@@ -376,3 +376,4 @@ FodyWeavers.xsd
 /ispc_texcomp/kernel_ispc_avx2.h
 /ispc_texcomp/kernel_ispc_sse2.h
 /ispc_texcomp/kernel_ispc_sse4.h
+/TerrainSystem.sln.DotSettings

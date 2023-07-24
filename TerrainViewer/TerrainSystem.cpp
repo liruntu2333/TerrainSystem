@@ -92,6 +92,8 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
         m_NormalCm = std::make_shared<ClipmapTexture>(device, desc);
         m_NormalCm->CreateViews(device);
     }
+
+    ClipmapLevel::BindTexture(m_HeightCm, m_AlbedoCm, m_NormalCm);
 }
 
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector3& view)
@@ -118,8 +120,8 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector3& view)
     };
 
     InitClipTextures(device);
-
-    ClipmapLevel::BindSource(hm, sm, nm, albedo, normal, m_HeightCm, m_AlbedoCm, m_NormalCm);
+    m_SrcManager->BindSource(hm, sm, nm, albedo, normal);
+    ClipmapLevel::BindSourceManager(m_SrcManager);
 
     for (int i = 0; i < LevelCount; ++i)
     {
@@ -131,7 +133,7 @@ TerrainSystem::TerrainSystem(
     const Vector3& view,
     std::filesystem::path path,
     ID3D11Device* device) :
-    m_Path(std::move(path))
+    m_SrcManager(std::make_unique<BitmapManager>()), m_Path(std::move(path))
 {
     // InitMeshPatches(device);
 
@@ -222,7 +224,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
     int budget = ClipmapLevel::TextureN * ClipmapLevel::TextureN;
     for (int i = LevelCount - 1; i >= 0; --i)
     {
-        m_Levels[i].TickTransform(frustum.Origin, blendMode, yScale, budget);
+        m_Levels[i].TickTransform(frustum.Origin, budget, yScale, blendMode);
     }
 
     auto rr = GetClipmapRenderResource();

@@ -167,6 +167,7 @@
     <ClCompile Include="imgui_impl_win32.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MaterialBlender.cpp" />
+    <ClCompile Include="BitmapManager.cpp" />
     <ClCompile Include="TINRenderer.cpp" />
     <ClCompile Include="Patch.cpp" />
     <ClCompile Include="Renderer.cpp" />
@@ -186,6 +187,7 @@
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />
     <ClInclude Include="MaterialBlender.h" />
+    <ClInclude Include="BitmapManager.h" />
     <ClInclude Include="TINRenderer.h" />
     <ClInclude Include="Patch.h" />
     <ClInclude Include="Renderer.h" />

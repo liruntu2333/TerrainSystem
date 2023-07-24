@@ -115,9 +115,10 @@ namespace DirectX
             UpdateArea(UpdateArea&&) noexcept = default;
 
             UpdateArea(const Rectangle& rect, const unsigned slice, const std::vector<T>& Src)
-                : Rect(rect), Slice(slice), Src(Src)
-            {
-            }
+                : Rect(rect), Slice(slice), Src(Src) { }
+
+            UpdateArea(const Rectangle& rect, const unsigned slice, std::vector<T>&& Src)
+                : Rect(rect), Slice(slice), Src(std::move(Src)) { }
         };
 
         // [[nodiscard]] std::unique_ptr<MapGuard> Map(

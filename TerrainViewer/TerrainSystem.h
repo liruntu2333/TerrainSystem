@@ -81,6 +81,7 @@ protected:
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;
 
     std::vector<ClipmapLevel> m_Levels {};
+    std::shared_ptr<BitmapManager> m_SrcManager = nullptr;
     std::shared_ptr<DirectX::ClipmapTexture> m_HeightCm {};
     std::shared_ptr<DirectX::ClipmapTexture> m_AlbedoCm {};
     std::shared_ptr<DirectX::ClipmapTexture> m_NormalCm {};

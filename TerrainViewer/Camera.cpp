@@ -1,10 +1,25 @@
 #include "Camera.h"
 
 #include <algorithm>
+#include <fstream>
+
 #include "Patch.h"
+#include "D3DHelper.h"
 
 using namespace DirectX;
 using namespace SimpleMath;
+
+template <typename T>
+void SaveBin(const std::filesystem::path& path, const std::vector<T>& data)
+{
+    std::ofstream ofs(path, std::ios::binary | std::ios::out);
+    if (!ofs)
+        throw std::runtime_error("failed to open " + path.u8string());
+    for (const auto& v : data)
+        ofs.write(reinterpret_cast<const char*>(&v), sizeof(T));
+    ofs.close();
+    std::printf("%s generated\n", path.u8string().c_str());
+}
 
 Matrix Camera::GetViewProjection() const
 {
@@ -75,40 +90,92 @@ void Camera::Update(const ImGuiIO& io, float spd)
     auto right = Vector3::Transform(Vector3::Right, m_Orientation);
     right.Normalize();
 
-    Vector3 dir;
-    if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_W)])
-        dir += forward;
-    else if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_S)])
-        dir -= forward;
-    if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_A)])
-        dir -= right;
-    else if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_D)])
-        dir += right;
-    dir.Normalize();
-
-    m_DeltaPosition = dir * dt * spd;
-    m_Position += m_DeltaPosition;
-
-    // Vector2 dxy;
-    // m_LocalPosition.x = std::modf(m_LocalPosition.x / PATCH_SIZE, &dxy.x) * PATCH_SIZE;
-    // m_LocalPosition.z = std::modf(m_LocalPosition.z / PATCH_SIZE, &dxy.y) * PATCH_SIZE;
-    // m_PatchX += static_cast<int>(dxy.x);
-    // m_PatchY += static_cast<int>(dxy.y);
-
-    m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Q)]
-                ? XM_PIDIV4 / 4.0f
-                : io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_E)]
-                      ? XM_PIDIV2
-                      : XM_PIDIV4;
-
-    if (io.MouseDown[ImGuiMouseButton_Right])
+    if (m_IsPlaying)
     {
-        const auto dx = io.MouseDelta.x;
-        const auto dy = io.MouseDelta.y;
-        m_Rotation.x += dy * 0.001f;
-        m_Rotation.y += dx * 0.001f;
-        m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
+        if (m_RcdIndex < m_RcdPositions.size())
+        {
+            m_Position = m_RcdPositions[m_RcdIndex];
+            m_Rotation = m_RcdRotations[m_RcdIndex];
+            m_RcdIndex++;
+        }
+        else
+        {
+            m_IsPlaying = false;
+            m_RcdIndex = 0;
+        }
+    }
+    else
+    {
+        Vector3 dir;
+        if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_W)])
+            dir += forward;
+        else if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_S)])
+            dir -= forward;
+        if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_A)])
+            dir -= right;
+        else if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_D)])
+            dir += right;
+        dir.Normalize();
+
+        m_DeltaPosition = dir * dt * spd;
+        m_Position += m_DeltaPosition;
+
+        // Vector2 dxy;
+        // m_LocalPosition.x = std::modf(m_LocalPosition.x / PATCH_SIZE, &dxy.x) * PATCH_SIZE;
+        // m_LocalPosition.z = std::modf(m_LocalPosition.z / PATCH_SIZE, &dxy.y) * PATCH_SIZE;
+        // m_PatchX += static_cast<int>(dxy.x);
+        // m_PatchY += static_cast<int>(dxy.y);
+
+        m_Fov = io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_Q)]
+                    ? XM_PIDIV4 / 4.0f
+                    : io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_E)]
+                          ? XM_PIDIV2
+                          : XM_PIDIV4;
+
+        if (io.MouseDown[ImGuiMouseButton_Right])
+        {
+            const auto dx = io.MouseDelta.x;
+            const auto dy = io.MouseDelta.y;
+            m_Rotation.x += dy * 0.001f;
+            m_Rotation.y += dx * 0.001f;
+            m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
+        }
+    }
+
+    if (m_IsRecording)
+    {
+        m_RcdPositions.push_back(m_Position);
+        m_RcdRotations.push_back(m_Rotation);
     }
 
     // m_Position = m_LocalPosition + Vector3(m_PatchX * PATCH_SIZE, 0, m_PatchY * PATCH_SIZE);
+}
+
+void Camera::StartRecord()
+{
+    m_IsRecording = true;
+}
+
+void Camera::StopRecord()
+{
+    m_IsRecording = false;
+    m_IsPlaying = false;
+    if (!m_RcdRotations.empty())
+    {
+        SaveBin("CameraPositions.bin", m_RcdPositions);
+        SaveBin("CameraRotations.bin", m_RcdRotations);
+    }
+    m_RcdPositions.clear();
+    m_RcdRotations.clear();
+}
+
+void Camera::PlayRecord()
+{
+    if (m_IsPlaying)
+    {
+        return;
+    }
+    m_IsPlaying = true;
+    m_RcdPositions = LoadBinary<Vector3>("CameraPositions.bin");
+    m_RcdRotations = LoadBinary<Vector3>("CameraRotations.bin");
 }

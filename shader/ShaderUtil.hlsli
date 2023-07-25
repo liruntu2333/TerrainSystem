@@ -92,11 +92,11 @@ float Luminance(const float3 color)
     return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
 }
 
-float3 MakeSphere(const float2 xz, const float y, const float r)
+float3 MakeSphere(const float2 xz, const float y, const float3 view, const float r)
 {
-    const float3 center = float3(0, -r, 0);
+	const float3 center = float3(view.x, -r, view.z);
     float3 p = center + normalize(float3(xz.x, 0, xz.y) - center) * (r + y);
-    return p;
+	return p;
 }
 
 float SampleClipmapLevel(

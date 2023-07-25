@@ -54,6 +54,7 @@ void main(
     uvc = float3(pl * SampleRateCoarse + texParams.zw + 0.5f / 2048, lvlParams.w + 1);
 
     positionW = float3(xz.x, h, xz.y);
+	positionW = MakeSphere(float2(xz.x, xz.y), h, ViewPosition, SphereRadius);
     positionH = float4(positionW, 1);
     positionH = mul(positionH, ViewProjection);
     color = LoadColor(lvlParams.z); // lvlParams.z : color

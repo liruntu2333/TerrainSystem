@@ -24,6 +24,9 @@ public:
     [[nodiscard]] DirectX::SimpleMath::Vector3 GetDeltaPosition() const { return m_DeltaPosition; }
     void SetViewPort(ID3D11DeviceContext* context) const;
     void Update(const ImGuiIO& io, float spd);
+    void StartRecord();
+    void StopRecord();
+    void PlayRecord();
 
 private:
     // int m_PatchX = 0;
@@ -39,4 +42,10 @@ private:
     float m_AspectRatio = 0;
     float m_NearPlane = 1.0f;
     float m_FarPlane = 100000.0f;
+
+    std::vector<DirectX::SimpleMath::Vector3> m_RcdPositions;
+    std::vector<DirectX::SimpleMath::Vector3> m_RcdRotations;
+    bool m_IsRecording = false;
+    bool m_IsPlaying = false;
+    int m_RcdIndex = 0;
 };

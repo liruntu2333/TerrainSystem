@@ -282,8 +282,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     for (auto&& future : s_NormalStream)
         s_NormalTex->UpdateToroidal(context, future.get());
     const auto end = std::chrono::steady_clock::now();
-    std::printf("UpdateTexture: %f ms\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    // std::printf("UpdateTexture: %f ms\n",
+    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     s_HeightStream.clear();
     s_AlbedoStream.clear();
@@ -403,8 +403,8 @@ Vector2 ClipmapLevel::GetFinerUvOffset(const Vector2& finer) const
 bool ClipmapLevel::IsBlockVisible(const Vector2& world, const BoundingFrustum& frustum, float scl) const
 {
     using Trait = FootprintTrait<Block>;
-        constexpr float min = 0.173373;
-        constexpr float max = 0.462440;
+        constexpr float min = 0.1;
+        constexpr float max = 0.5;
     constexpr float avg = (min + max) * 0.5f;
     constexpr float diff = max - min;
     const auto center = Vector3(

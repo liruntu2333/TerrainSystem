@@ -41,7 +41,7 @@ namespace
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(4096.0f, 1000.0f, 4096.0f);
+    constexpr Vector3 ViewInit = Vector3(4096.0f, 10000.0f, 4096.0f);
 }
 
 // Forward declarations of helper functions
@@ -101,19 +101,21 @@ int main(int, char**)
 
     bool wireFrame = false;
     float lPhi = DirectX::XM_PI;
-    float lTheta = 0.6f;
-    float lInt = 2.0f;
+    float lTheta = 1.0f;
+    float lInt = 3.0f;
     bool freezeFrustum = false;
     bool drawBb = false;
     bool drawClip = false;
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit);
-    float spd = 30.0f;
+    float spd = 3000.0f;
     float hScale = 2129.92f;
     float transition = 25.4f;
     int blendMode = 6;
     bool done = false;
-    float ambient = 0.1f;
+    float ambient = 0.2f;
+    bool rcd = false;
+    bool play = false;
     // Main loop
     while (!done)
     {
@@ -153,6 +155,8 @@ int main(int, char**)
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         //ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::Checkbox("Show Clipmap Texture", &drawClip);
+        //ImGui::Checkbox("Record", &rcd);
+        ImGui::Checkbox("Play record", &play);
         modeChanged |= ImGui::RadioButton("Base", &blendMode, 0);
         modeChanged |= ImGui::RadioButton("Detail", &blendMode, 1);
         modeChanged |= ImGui::RadioButton("Linear", &blendMode, 2);
@@ -165,6 +169,15 @@ int main(int, char**)
 
         // Updating
         std::vector<DirectX::BoundingBox> bbs;
+        if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_P)]) play = true;
+        if (rcd) g_Camera->StartRecord();
+        else if (play)
+        {
+            g_Camera->PlayRecord();
+            lPhi += io.DeltaTime * 0.2f;
+            lPhi = std::fmod(lPhi, DirectX::XM_2PI);
+        }
+        else g_Camera->StopRecord();
         g_Camera->Update(io, spd);
         if (!freezeFrustum)
         {
@@ -177,9 +190,7 @@ int main(int, char**)
             g_pd3dDeviceContext, blendMode);
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        const auto dt = io.DeltaTime;
-        lPhi += dt * 0.2f;
-        lPhi = std::fmod(lPhi, DirectX::XM_2PI);
+
         Vector3 lDir(
             std::sin(lTheta) * std::cos(lPhi),
             std::cos(lTheta),

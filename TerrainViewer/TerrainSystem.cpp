@@ -236,7 +236,7 @@ TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
     const BoundingFrustum& frustum,
-    const float yScale, ID3D11DeviceContext* context, const int blendMode, std::vector<BoundingBox>& bounding)
+    const float yScale, ID3D11DeviceContext* context, const int blendMode)
 {
     int budget = ClipmapLevel::TextureN * ClipmapLevel::TextureN;
     for (int i = LevelCount - 1; i >= 0; --i)
@@ -244,13 +244,13 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::TickClipmap(
         m_Levels[i].TickTransform(frustum.Origin, budget, yScale, blendMode);
     }
 
-    auto rr = GetClipmapRenderResource(frustum, yScale, bounding);
+    auto rr = GetClipmapRenderResource(frustum, yScale);
     ClipmapLevel::UpdateTexture(context);
     return std::move(rr);
 }
 
 TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(
-    const BoundingFrustum& frustum, float hScl, std::vector<BoundingBox>& bounding) const
+    const BoundingFrustum& frustum, float hScl) const
 {
     ClipmapRenderResource r;
     // r.Height = m_Height->GetSrv();
@@ -285,7 +285,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(
                                    ? m_Levels[lvl + 1].GetFinerUvOffset(m_Levels[lvl].GetWorldOffset())
                                    : m_Levels[lvl].GetUvOffset(); // TODO
         auto [block, ring, trim, tid] =
-            m_Levels[lvl].GetHollowRing(ofsCoarse, m_Levels[lvl - 1].GetWorldOffset(), frustum, hScl, bounding);
+            m_Levels[lvl].GetHollowRing(ofsCoarse, m_Levels[lvl - 1].GetWorldOffset(), frustum, hScl);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);
@@ -296,7 +296,7 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(
         const auto ofsCoarse = lvl < LevelCount - 1
                                    ? m_Levels[lvl + 1].GetFinerUvOffset(m_Levels[lvl].GetWorldOffset())
                                    : m_Levels[lvl].GetUvOffset(); // TODO
-        auto [block, ring, trim] = m_Levels[lvl].GetSolidSquare(ofsCoarse, frustum, hScl, bounding);
+        auto [block, ring, trim] = m_Levels[lvl].GetSolidSquare(ofsCoarse, frustum, hScl);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         for (int i = 0; i < 2; ++i) trims[i * 2].emplace_back(trim[i]);

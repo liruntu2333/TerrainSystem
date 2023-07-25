@@ -274,16 +274,16 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     // const MapGuard hm(context, s_HeightTex->GetTexture(),
     //     D3D11CalcSubresource(0, m_Lod, 1), D3D11_MAP_WRITE, 0);
 
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    const auto begin = std::chrono::steady_clock::now();
     for (auto&& future : s_HeightStream)
         s_HeightTex->UpdateToroidal(context, future.get());
     for (auto&& future : s_AlbedoStream)
         s_AlbedoTex->UpdateToroidal(context, future.get());
     for (auto&& future : s_NormalStream)
         s_NormalTex->UpdateToroidal(context, future.get());
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::printf("UpdateTexture: %f ms\n",
-    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    const auto end = std::chrono::steady_clock::now();
+    std::printf("UpdateTexture: %f ms\n",
+        std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     s_HeightStream.clear();
     s_AlbedoStream.clear();
@@ -296,8 +296,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 }
 
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
-    const Vector2& textureOriginCoarse, const Vector2& worldOriginFiner, const BoundingFrustum& frustum,
-    float hScl, std::vector<BoundingBox>& bounding) const
+    const Vector2& textureOriginCoarse, const Vector2& worldOriginFiner,
+    const BoundingFrustum& frustum, float hScl) const
 {
     using namespace SimpleMath;
 
@@ -320,21 +320,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
         GridInstance block = ins;
         using Trait = FootprintTrait<Block>;
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
-        constexpr float min = 0.173373;
-        constexpr float max = 0.462440;
-        constexpr float avg = (min + max) * 0.5f;
-        constexpr float diff = max - min;
-        const auto center = Vector3(
-            block.WorldOffset.x + Trait::Extent.x * m_GridSpacing,
-            avg * hScl,
-            block.WorldOffset.y + Trait::Extent.y * m_GridSpacing);
-        const auto extents = Vector3(
-            Trait::Extent.x * m_GridSpacing,
-            diff * 0.5f * hScl,
-            Trait::Extent.y * m_GridSpacing);
-        BoundingBox box(center, extents);
-        bounding.emplace_back(box);
-        if (frustum.Contains(box) == DISJOINT) continue;
+        if (!IsBlockVisible(block.WorldOffset, frustum, hScl)) continue;
 
         block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
         block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
@@ -362,8 +348,7 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
 
 
 ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
-    const Vector2& textureOriginCoarse, const BoundingFrustum& frustum, float hScl,
-    std::vector<BoundingBox>& bounding) const
+    const Vector2& textureOriginCoarse, const BoundingFrustum& frustum, float hScl) const
 {
     using namespace SimpleMath;
     SolidSquare solid;
@@ -384,21 +369,7 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
         GridInstance block = ins;
         using Trait = FootprintTrait<Block>;
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
-        constexpr float min = 0.173373;
-        constexpr float max = 0.462440;
-        constexpr float avg = (min + max) * 0.5f;
-        constexpr float diff = max - min;
-        const auto center = Vector3(
-            block.WorldOffset.x + Trait::Extent.x * m_GridSpacing,
-            avg * hScl,
-            block.WorldOffset.y + Trait::Extent.y * m_GridSpacing);
-        const auto extents = Vector3(
-            Trait::Extent.x * m_GridSpacing,
-            diff * 0.5f * hScl,
-            Trait::Extent.y * m_GridSpacing);
-        BoundingBox box(center, extents);
-        bounding.emplace_back(box);
-        if (frustum.Contains(box) == DISJOINT) continue;
+        if (!IsBlockVisible(block.WorldOffset, frustum, hScl)) continue;
 
         block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
         block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
@@ -427,4 +398,22 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
 Vector2 ClipmapLevel::GetFinerUvOffset(const Vector2& finer) const
 {
     return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finer)]) * OneOverSz;
+}
+
+bool ClipmapLevel::IsBlockVisible(const Vector2& world, const BoundingFrustum& frustum, float scl) const
+{
+    using Trait = FootprintTrait<Block>;
+        constexpr float min = 0.173373;
+        constexpr float max = 0.462440;
+    constexpr float avg = (min + max) * 0.5f;
+    constexpr float diff = max - min;
+    const auto center = Vector3(
+        world.x + Trait::Extent.x * m_GridSpacing,
+        avg * scl,
+        world.y + Trait::Extent.y * m_GridSpacing);
+    const auto extents = Vector3(
+        Trait::Extent.x * m_GridSpacing,
+        diff * 0.5f * scl,
+        Trait::Extent.y * m_GridSpacing);
+    return frustum.Contains(BoundingBox(center, extents)) != DISJOINT;
 }

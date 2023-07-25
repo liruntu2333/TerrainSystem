@@ -70,10 +70,10 @@ public:
     [[nodiscard]] HollowRing GetHollowRing(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse,
         const DirectX::SimpleMath::Vector2& worldOriginFiner,
-        const DirectX::BoundingFrustum& frustum, float hScl, std::vector<DirectX::BoundingBox>& bounding) const;
+        const DirectX::BoundingFrustum& frustum, float hScl) const;
     [[nodiscard]] SolidSquare GetSolidSquare(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse,
-        const DirectX::BoundingFrustum& frustum, float hScl, std::vector<DirectX::BoundingBox>& bounding) const;
+        const DirectX::BoundingFrustum& frustum, float hScl) const;
 
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const { return m_GridOrigin * m_GridSpacing; }
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(const DirectX::SimpleMath::Vector2& finer) const;
@@ -120,6 +120,9 @@ protected:
         /*if (ox == ClipmapM && oy == ClipmapM - 1)*/
         return 3;
     }
+
+    [[nodiscard]] bool IsBlockVisible(
+        const DirectX::SimpleMath::Vector2& world, const DirectX::BoundingFrustum& frustum, float scl) const;
 
     const unsigned m_Level;
     const float m_GridSpacing;

@@ -151,7 +151,7 @@ int main(int, char**)
         ImGui::SliderFloat("Transition Width", &transition, 0.1, 26.0);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-        ImGui::Checkbox("Draw Bounding Box", &drawBb);
+        //ImGui::Checkbox("Draw Bounding Box", &drawBb);
         ImGui::Checkbox("Show Clipmap Texture", &drawClip);
         modeChanged |= ImGui::RadioButton("Base", &blendMode, 0);
         modeChanged |= ImGui::RadioButton("Detail", &blendMode, 1);
@@ -174,9 +174,12 @@ int main(int, char**)
         if (modeChanged)
             g_System->ResetClipmapTexture();
         const auto& resource = g_System->TickClipmap(frustum, hScale,
-            g_pd3dDeviceContext, blendMode, bbs);
+            g_pd3dDeviceContext, blendMode);
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
+        const auto dt = io.DeltaTime;
+        lPhi += dt * 0.2f;
+        lPhi = std::fmod(lPhi, DirectX::XM_2PI);
         Vector3 lDir(
             std::sin(lTheta) * std::cos(lPhi),
             std::cos(lTheta),
@@ -224,8 +227,8 @@ int main(int, char**)
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        // g_pSwapChain->Present(1, 0); // Present with vsync
-        g_pSwapChain->Present(0, 0); // Present without vsync
+        g_pSwapChain->Present(1, 0); // Present with vsync
+        // g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup

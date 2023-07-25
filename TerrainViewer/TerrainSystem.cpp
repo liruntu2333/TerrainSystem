@@ -99,9 +99,26 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
 void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector3& view)
 {
     ClipmapLevelBase::LoadFootprintGeometry(m_Path / "clipmap", device);
-    const auto hm = std::make_shared<HeightMap>(m_Path / "height.dds");
-    const auto sm = std::make_shared<SplatMap>(m_Path / "splatmap.dds");
-    const auto nm = std::make_shared<NormalMap>(m_Path / "normal.dds");
+    const auto hm = std::make_shared<TiledMap<HeightMap>>(std::vector {
+        std::make_shared<HeightMap>(m_Path / "height0.dds"),
+        std::make_shared<HeightMap>(m_Path / "height1.dds"),
+        std::make_shared<HeightMap>(m_Path / "height2.dds"),
+        std::make_shared<HeightMap>(m_Path / "height3.dds"),
+    });
+
+    const auto sm = std::make_shared<TiledMap<SplatMap>>(std::vector {
+        std::make_shared<SplatMap>(m_Path / "splat0.dds"),
+        std::make_shared<SplatMap>(m_Path / "splat1.dds"),
+        std::make_shared<SplatMap>(m_Path / "splat2.dds"),
+        std::make_shared<SplatMap>(m_Path / "splat3.dds"),
+    });
+
+    const auto nm = std::make_shared<TiledMap<NormalMap>>(std::vector {
+        std::make_shared<NormalMap>(m_Path / "normal0.dds"),
+        std::make_shared<NormalMap>(m_Path / "normal1.dds"),
+        std::make_shared<NormalMap>(m_Path / "normal2.dds"),
+        std::make_shared<NormalMap>(m_Path / "normal3.dds"),
+    });
 
     const std::vector albedo =
     {

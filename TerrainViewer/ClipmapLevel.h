@@ -82,8 +82,8 @@ public:
 
 protected:
     using Rect = DirectX::ClipmapTexture::Rectangle;
-    using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::TexelFormat>;
-    using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::TexelFormat>;
+    using HeightRect = DirectX::ClipmapTexture::UpdateArea<DirectX::HeightMap::PixelFormat>;
+    using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::PixelFormat>;
 
     inline static constexpr int TextureSz = 1 << ClipmapK;
     inline static constexpr float OneOverSz = 1.0f / TextureSz;
@@ -94,8 +94,13 @@ protected:
     inline static constexpr int TextureScaleAlbedo = AlbedoBlender::SampleRatio;
 
     inline static constexpr DXGI_FORMAT HeightFormat = DXGI_FORMAT_R16_UNORM;
+#ifdef HARDWARE_FILTERING
+    inline static constexpr DXGI_FORMAT AlbedoFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+    inline static constexpr DXGI_FORMAT NormalFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+#else
     inline static constexpr DXGI_FORMAT AlbedoFormat = DXGI_FORMAT_BC3_UNORM;
     inline static constexpr DXGI_FORMAT NormalFormat = DXGI_FORMAT_BC3_UNORM;
+#endif
 
     static DirectX::SimpleMath::Vector2 MapToSource(const DirectX::SimpleMath::Vector2& gridOrigin)
     {
@@ -131,8 +136,13 @@ protected:
     inline static std::shared_ptr<DirectX::ClipmapTexture> s_AlbedoTex = nullptr;
     inline static std::shared_ptr<DirectX::ClipmapTexture> s_NormalTex = nullptr;
     inline static std::vector<ResultR16> s_HeightStream {};
+#ifdef  HARDWARE_FILTERING
+    inline static std::vector<ResultRgba8888> s_AlbedoStream {};
+    inline static std::vector<ResultRgba8888> s_NormalStream {};
+#else
     inline static std::vector<ResultBc> s_AlbedoStream {};
     inline static std::vector<ResultBc> s_NormalStream {};
+#endif
 
     int m_IsActive = 0; // de-active / updating / active
 };

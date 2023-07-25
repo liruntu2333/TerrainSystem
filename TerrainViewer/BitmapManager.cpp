@@ -7,20 +7,27 @@
 #include "MaterialBlender.h"
 
 void BitmapManager::BindSource(
-    const std::shared_ptr<DirectX::HeightMap>& heightSrc, const std::shared_ptr<DirectX::SplatMap>& splatSrc,
-    const std::shared_ptr<DirectX::NormalMap>& normalBase, const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
+    const std::shared_ptr<DirectX::TiledMap<DirectX::HeightMap>>& heightSrc,
+    const std::shared_ptr<DirectX::TiledMap<DirectX::SplatMap>>& splatSrc,
+    const std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>>& normalBase,
+    const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
     const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor)
 {
-    m_HeightSrc = heightSrc;
-    m_SplatSrc = splatSrc;
-    m_NormalBase = normalBase;
+    m_HeightTiles = heightSrc;
+    m_SplatTiles = splatSrc;
+    m_NormalTiles = normalBase;
     m_AlbAtlas = alb;
     m_NorAtlas = nor;
 }
 
 std::vector<uint16_t> BitmapManager::CopyElevation(int x, int y, unsigned w, unsigned h, int mip) const
 {
-    return m_HeightSrc->CopyRectangle(x, y, w, h, mip);
+    return m_HeightTiles->CopyRectangle(x, y, w, h, mip);
+}
+
+std::vector<uint32_t> BitmapManager::BlendAlbedoRoughness(int x, int y, unsigned w, unsigned h, int mip) const
+{
+    return AlbedoBlender(m_SplatTiles, m_AlbAtlas).Blend(x, y, w, h, mip);
 }
 
 std::vector<uint8_t> BitmapManager::BlendAlbedoRoughnessBc3(int x, int y, unsigned w, unsigned h, int mip) const
@@ -32,7 +39,7 @@ std::vector<uint8_t> BitmapManager::BlendAlbedoRoughnessBc3(int x, int y, unsign
 std::vector<uint32_t> BitmapManager::BlendNormalOcclusion(
     int x, int y, unsigned w, unsigned h, int mip, int method) const
 {
-    return NormalBlender(m_SplatSrc, m_NormalBase, m_NorAtlas).Blend(x, y, w, h, mip,
+    return NormalBlender(m_SplatTiles, m_NormalTiles, m_NorAtlas).Blend(x, y, w, h, mip,
         static_cast<NormalBlender::BlendMethod>(method));
 }
 
@@ -45,12 +52,7 @@ std::vector<uint8_t> BitmapManager::BlendNormalOcclusionBc3(
 
 float BitmapManager::GetPixelHeight(int x, int y, int mip) const
 {
-    return m_HeightSrc->GetPixelHeight(x, y, mip);
-}
-
-std::vector<uint32_t> BitmapManager::BlendAlbedoRoughness(int x, int y, unsigned w, unsigned h, int mip) const
-{
-    return AlbedoBlender(m_SplatSrc, m_AlbAtlas).Blend(x, y, w, h, mip);
+    return static_cast<float>(m_HeightTiles->GetVal(x, y, mip)) * (1.0f / 65535);
 }
 
 std::vector<uint8_t> BitmapManager::CompressRgba8ToBc3(uint32_t* src, unsigned w, unsigned h)

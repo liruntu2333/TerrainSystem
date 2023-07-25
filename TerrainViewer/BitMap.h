@@ -10,7 +10,7 @@ namespace DirectX
     class BitMap : public ScratchImage
     {
     public:
-        using TexelFormat = T;
+        using PixelFormat = T;
 
         BitMap() = default;
         ~BitMap() = default;
@@ -38,13 +38,12 @@ namespace DirectX
             return GetMetadata().height >> mip;
         }
 
-        std::vector<T> CopyRectangle(const int x, const int y, const size_t w, const size_t h, const size_t m)
+        std::vector<T> CopyRectangle(const int x, const int y, const size_t w, const size_t h, const size_t m) const
         {
-            std::vector<T> data;
+            std::vector<T> data(w * h);
             const auto src = GetData(m);
             const auto sw = GetMipWidth(m);
             const auto sh = GetMipHeight(m);
-            data.resize(w * h);
             for (size_t i = 0; i < h; ++i)
             {
                 for (size_t j = 0; j < w; ++j)
@@ -97,5 +96,62 @@ namespace DirectX
         NormalMap() = default;
         ~NormalMap() = default;
         NormalMap(const std::filesystem::path& path) : BitMap(path) { }
+    };
+
+    template <class T>
+    class TiledMap
+    {
+    public:
+        TiledMap(std::vector<std::shared_ptr<T>> src) : m_Sources(std::move(src)),
+            m_Width(m_Sources[0]->GetMetadata().width), m_Height(m_Sources[0]->GetMetadata().height)
+        {
+            if (m_Sources.size() != TILE_X * TILE_Y)
+                throw std::exception("Tiled map size mismatch");
+            for (auto&& map : m_Sources)
+
+                if (map->GetMetadata().width != m_Width || map->GetMetadata().height != m_Height)
+                    throw std::exception("Height map size mismatch");
+        }
+
+        ~TiledMap() = default;
+
+        [[nodiscard]] auto& GetVal(int x, int y, const int m) const
+        {
+            const auto tx = WarpMod(x / GetMipWidth(m), TILE_X);
+            const auto ty = WarpMod(y / GetMipHeight(m), TILE_Y);
+            const auto ti = ty * TILE_X + tx;
+            return m_Sources[ti]->GetVal(x, y, m);
+        }
+
+        [[nodiscard]] size_t GetMipWidth(const size_t mip) const
+        {
+            return m_Width >> mip;
+        }
+
+        [[nodiscard]] size_t GetMipHeight(const size_t mip) const
+        {
+            return m_Height >> mip;
+        }
+
+        [[nodiscard]] auto CopyRectangle(
+            const int x, const int y, const size_t w, const size_t h, const size_t m) const
+        {
+            std::vector<typename T::PixelFormat> data(w * h);
+            for (size_t i = 0; i < h; ++i)
+            {
+                for (size_t j = 0; j < w; ++j)
+                {
+                    data[i * w + j] = GetVal(x + j, y + i, m);
+                }
+            }
+            return data;
+        }
+
+    protected:
+        static constexpr unsigned TILE_X = 2;
+        static constexpr unsigned TILE_Y = 2;
+        std::vector<std::shared_ptr<T>> m_Sources {};
+        unsigned m_Width = 0;
+        unsigned m_Height = 0;
     };
 }

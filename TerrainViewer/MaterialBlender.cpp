@@ -166,26 +166,26 @@ namespace
 }
 
 std::vector<uint32_t> AlbedoBlender::Blend(
-    const int x, const int y, const unsigned w, const unsigned h, const unsigned mip) const
+    const int splatX, const int splatY, const unsigned splatW, const unsigned splatH, const unsigned mip) const
 {
     // const auto pc = points.size();
-    const unsigned dw = w * SampleRatio;
-    const unsigned dh = h * SampleRatio;
+    const unsigned dw = splatW * SampleRatio;
+    const unsigned dh = splatH * SampleRatio;
     std::vector<uint32_t> dst;
     dst.resize(dw * dh);
 
     // each sample in weight map
-    for (int wy = 0; wy < h; ++wy)
+    for (int wy = 0; wy < splatH; ++wy)
     {
-        for (int wx = 0; wx < w; ++wx)
+        for (int wx = 0; wx < splatW; ++wx)
         {
             // one sample in weight map generates SampleRatio * SampleRatio pixels
             for (int row = 0; row < SampleRatio; ++row)
             {
-                auto w00 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + x, wy + y, mip));
-                auto w10 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + x + 1, wy + y, mip));
-                auto w01 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + x, wy + y + 1, mip));
-                auto w11 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + x + 1, wy + y + 1, mip));
+                auto w00 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX, wy + splatY, mip));
+                auto w10 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX + 1, wy + splatY, mip));
+                auto w01 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX, wy + splatY + 1, mip));
+                auto w11 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX + 1, wy + splatY + 1, mip));
 
                 for (int i = 0; i < SampleRatio / Stride; ++i)
                 {
@@ -201,7 +201,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
 
                         const auto wt = Lerp(w0, w1, T[i]);
                         const UintBatch src = UintBatch::load_aligned(&m_Atlas[l]->GetVal(
-                            (wx + x) * SampleRatio + Stride * i, (wy + y) * SampleRatio + row, mip));
+                            (wx + splatX) * SampleRatio + Stride * i, (wy + splatY) * SampleRatio + row, mip));
                         const FloatBatch srcR = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcG = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcB = xsimd::batch_cast<float>(src >> 16 & 0xFF);

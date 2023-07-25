@@ -8,8 +8,6 @@
 #include <directxtk/BufferHelpers.h>
 #include <DirectXPackedVector.h>
 
-#include "BitMap.h"
-#include "MaterialBlender.h"
 #include "ispc_texcomp.h"
 #include "../HeightMapSplitter/ThreadPool.h"
 
@@ -210,14 +208,24 @@ void ClipmapLevel::TickTransform(const Vector3& view, int& budget, const float h
 
     auto generateAlbedo = [this](const Rect rect, const int srcX, const int srcY)
     {
-        return ClipmapTexture::UpdateArea(rect * TextureScaleAlbedo, m_Level,
-            s_SrcManager->BlendAlbedoRoughnessBc3(srcX, srcY, rect.W, rect.H, m_Level));
+        const auto src =
+#ifdef HARDWARE_FILTERING
+            s_SrcManager->BlendAlbedoRoughness(srcX, srcY, rect.W, rect.H, m_Level);
+#else
+            s_SrcManager->BlendAlbedoRoughnessBc3(srcX, srcY, rect.W, rect.H, m_Level);
+#endif
+        return ClipmapTexture::UpdateArea(rect * TextureScaleAlbedo, m_Level, src);
     };
 
     auto generateNormal = [this, blendMode](const Rect rect, const int srcX, const int srcY)
     {
-        return ClipmapTexture::UpdateArea(rect * TextureScaleNormal, m_Level,
-            s_SrcManager->BlendNormalOcclusionBc3(srcX, srcY, rect.W, rect.H, m_Level, blendMode));
+        const auto src =
+#ifdef HARDWARE_FILTERING
+            s_SrcManager->BlendNormalOcclusion(srcX, srcY, rect.W, rect.H, m_Level, blendMode);
+#else
+            s_SrcManager->BlendNormalOcclusionBc3(srcX, srcY, rect.W, rect.H, m_Level, blendMode);
+#endif
+        return ClipmapTexture::UpdateArea(rect * TextureScaleNormal, m_Level, src);
     };
 
     auto generateAsync = [generateNormal, generateAlbedo, generateHeight]
@@ -271,16 +279,16 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     for (auto&& future : s_NormalStream)
         s_NormalTex->UpdateToroidal(context, future.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    // std::printf("UpdateTexture: %f ms\n",
-    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    std::printf("UpdateTexture: %f ms\n",
+        std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     s_HeightStream.clear();
     s_AlbedoStream.clear();
     s_NormalStream.clear();
 
 #ifdef HARDWARE_FILTERING
-    m_AlbedoCm->GenerateMips(context);
-    m_NormalCm->GenerateMips(context);
+    s_AlbedoTex->GenerateMips(context);
+    s_NormalTex->GenerateMips(context);
 #endif
 }
 

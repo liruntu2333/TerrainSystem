@@ -164,6 +164,7 @@ int main(int, char**)
         ImGui::End();
 
         // Updating
+        std::vector<DirectX::BoundingBox> bbs;
         g_Camera->Update(io, spd);
         if (!freezeFrustum)
         {
@@ -173,8 +174,7 @@ int main(int, char**)
         if (modeChanged)
             g_System->ResetClipmapTexture();
         const auto& resource = g_System->TickClipmap(frustum, hScale,
-            g_pd3dDeviceContext, blendMode);
-        std::vector<DirectX::BoundingBox> bbs;
+            g_pd3dDeviceContext, blendMode, bbs);
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
         Vector3 lDir(
@@ -203,8 +203,8 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
-        // if (drawBb)
-        //     g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
+        if (drawBb)
+            g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         //g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
         g_GridRenderer->Render(g_pd3dDeviceContext, resource);
@@ -224,8 +224,8 @@ int main(int, char**)
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        g_pSwapChain->Present(1, 0); // Present with vsync
-        // g_pSwapChain->Present(0, 0); // Present without vsync
+        // g_pSwapChain->Present(1, 0); // Present with vsync
+        g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup

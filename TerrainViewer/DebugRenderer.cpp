@@ -32,7 +32,7 @@ void DebugRenderer::DrawBounding(
 {
     for (auto&& bb : bbs)
         s_Cube->Draw(Matrix::CreateScale(bb.Extents * 2) * Matrix::CreateTranslation(bb.Center),
-            view, proj);
+            view, proj, Colors::DarkRed, nullptr, true);
 }
 
 void DebugRenderer::DrawBounding(

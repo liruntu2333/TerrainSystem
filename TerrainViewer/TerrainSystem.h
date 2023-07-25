@@ -62,7 +62,7 @@ public:
 
     [[nodiscard]] ClipmapRenderResource TickClipmap(
         const DirectX::BoundingFrustum& frustum,
-        float yScale, ID3D11DeviceContext* context, const int blendMode);
+        float yScale, ID3D11DeviceContext* context, const int blendMode, std::vector<DirectX::BoundingBox>& bounding);
 
     [[nodiscard]] const DirectX::Texture2D& GetHeightClip() const { return *m_HeightCm; }
     [[nodiscard]] const DirectX::Texture2D& GetAlbedoClip() const { return *m_AlbedoCm; }
@@ -75,7 +75,7 @@ protected:
     void InitMeshPatches(ID3D11Device* device);
     void InitClipTextures(ID3D11Device* device);
     void InitClipmapLevels(ID3D11Device* device, const DirectX::SimpleMath::Vector3& view);
-    [[nodiscard]] ClipmapRenderResource GetClipmapRenderResource() const;
+    [[nodiscard]] ClipmapRenderResource GetClipmapRenderResource(const DirectX::BoundingFrustum& frustum, float hScl, std::vector<DirectX::BoundingBox>& box) const;
 
     std::map<int, std::shared_ptr<Patch>> m_Patches {};
     std::unique_ptr<BoundTree> m_BoundTree = nullptr;

@@ -57,6 +57,8 @@ namespace
             Vector2(2 * M - 1, 2 * M - 1),
         };
 
+        static constexpr Vector2 Extent = Vector2 { static_cast<float>(M - 1) * 0.5f };
+
         inline static const XMCOLOR Color0 = XMCOLOR(Colors::DarkGreen);
         inline static const XMCOLOR Color1 = XMCOLOR(Colors::Purple);
     };
@@ -159,7 +161,8 @@ void ClipmapLevel::BindTexture(
     s_NormalTex = normal;
 }
 
-void ClipmapLevel::TickTransform(const Vector3& view, int& budget, const float hScale, const int blendMode)
+void ClipmapLevel::TickTransform(
+    const Vector3& view, int& budget, const float hScale, const int blendMode)
 {
     //  - - - - - - - -
     //  |             | 
@@ -279,8 +282,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
     for (auto&& future : s_NormalStream)
         s_NormalTex->UpdateToroidal(context, future.get());
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::printf("UpdateTexture: %f ms\n",
-        std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
+    // std::printf("UpdateTexture: %f ms\n",
+    //     std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000.0f);
 
     s_HeightStream.clear();
     s_AlbedoStream.clear();
@@ -293,7 +296,8 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 }
 
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
-    const Vector2& textureOriginCoarse, const Vector2& worldOriginFiner) const
+    const Vector2& textureOriginCoarse, const Vector2& worldOriginFiner, const BoundingFrustum& frustum,
+    float hScl, std::vector<BoundingBox>& bounding) const
 {
     using namespace SimpleMath;
 
@@ -313,16 +317,32 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
 
     for (int i = 0; i < 12; ++i)
     {
-        GridInstance& block = hollow.Blocks[i];
+        GridInstance block = ins;
         using Trait = FootprintTrait<Block>;
-        block = ins;
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
+        constexpr float min = 0.173373;
+        constexpr float max = 0.462440;
+        constexpr float avg = (min + max) * 0.5f;
+        constexpr float diff = max - min;
+        const auto center = Vector3(
+            block.WorldOffset.x + Trait::Extent.x * m_GridSpacing,
+            avg * hScl,
+            block.WorldOffset.y + Trait::Extent.y * m_GridSpacing);
+        const auto extents = Vector3(
+            Trait::Extent.x * m_GridSpacing,
+            diff * 0.5f * hScl,
+            Trait::Extent.y * m_GridSpacing);
+        BoundingBox box(center, extents);
+        bounding.emplace_back(box);
+        if (frustum.Contains(box) == DISJOINT) continue;
+
         block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
         block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
         block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9
                           ? Trait::Color0
                           : Trait::Color1;
+        hollow.Blocks.emplace_back(std::move(block));
     }
 
     {
@@ -341,7 +361,9 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
 }
 
 
-ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& textureOriginCoarse) const
+ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
+    const Vector2& textureOriginCoarse, const BoundingFrustum& frustum, float hScl,
+    std::vector<BoundingBox>& bounding) const
 {
     using namespace SimpleMath;
     SolidSquare solid;
@@ -359,16 +381,32 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(const Vector2& textur
 
     for (int i = 0; i < 16; ++i)
     {
-        GridInstance& block = solid.Blocks[i];
+        GridInstance block = ins;
         using Trait = FootprintTrait<Block>;
-        block = ins;
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
+        constexpr float min = 0.173373;
+        constexpr float max = 0.462440;
+        constexpr float avg = (min + max) * 0.5f;
+        constexpr float diff = max - min;
+        const auto center = Vector3(
+            block.WorldOffset.x + Trait::Extent.x * m_GridSpacing,
+            avg * hScl,
+            block.WorldOffset.y + Trait::Extent.y * m_GridSpacing);
+        const auto extents = Vector3(
+            Trait::Extent.x * m_GridSpacing,
+            diff * 0.5f * hScl,
+            Trait::Extent.y * m_GridSpacing);
+        BoundingBox box(center, extents);
+        bounding.emplace_back(box);
+        if (frustum.Contains(box) == DISJOINT) continue;
+
         block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
         block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
         block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9 || i == 12 || i == 15
                           ? Trait::Color0
                           : Trait::Color1;
+        solid.Blocks.emplace_back(std::move(block));
     }
 
     {

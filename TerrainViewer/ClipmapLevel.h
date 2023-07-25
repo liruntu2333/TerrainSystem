@@ -22,7 +22,7 @@ class ClipmapLevelBase
 public:
     struct HollowRing
     {
-        GridInstance Blocks[12];
+        std::vector<GridInstance> Blocks;
         GridInstance RingFixUp;
         GridInstance Trim;
         int TrimId;
@@ -30,7 +30,7 @@ public:
 
     struct SolidSquare
     {
-        GridInstance Blocks[16];
+        std::vector<GridInstance> Blocks;
         GridInstance RingFixUp;
         GridInstance Trim[2]; // lt, rb
     };
@@ -69,9 +69,11 @@ public:
 
     [[nodiscard]] HollowRing GetHollowRing(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse,
-        const DirectX::SimpleMath::Vector2& worldOriginFiner) const;
+        const DirectX::SimpleMath::Vector2& worldOriginFiner,
+        const DirectX::BoundingFrustum& frustum, float hScl, std::vector<DirectX::BoundingBox>& bounding) const;
     [[nodiscard]] SolidSquare GetSolidSquare(
-        const DirectX::SimpleMath::Vector2& textureOriginCoarse) const;
+        const DirectX::SimpleMath::Vector2& textureOriginCoarse,
+        const DirectX::BoundingFrustum& frustum, float hScl, std::vector<DirectX::BoundingBox>& bounding) const;
 
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const { return m_GridOrigin * m_GridSpacing; }
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(const DirectX::SimpleMath::Vector2& finer) const;

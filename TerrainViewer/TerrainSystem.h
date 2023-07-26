@@ -54,6 +54,7 @@ public:
     ~TerrainSystem() = default;
 
     void ResetClipmapTexture();
+    void BindMaterials(const std::vector<std::filesystem::path>& mats) const;
 
     [[nodiscard]] PatchRenderResource GetPatchResources(
         const DirectX::XMINT2& camXyForCull,

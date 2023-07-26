@@ -72,9 +72,9 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo, LevelCount, 1);
 #ifdef HARDWARE_FILTERING
-    desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
-    desc.MipLevels = std::log2(ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo);
-    desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+        desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+        desc.MipLevels = std::log2(ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleAlbedo);
+        desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 #endif
         m_AlbedoCm = std::make_shared<ClipmapTexture>(device, desc);
         m_AlbedoCm->CreateViews(device);
@@ -85,9 +85,9 @@ void TerrainSystem::InitClipTextures(ID3D11Device* device)
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal,
             ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal, LevelCount, 1);
 #ifdef HARDWARE_FILTERING
-    desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
-    desc.MipLevels = std::log2(ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal);
-    desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+        desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+        desc.MipLevels = std::log2(ClipmapLevel::TextureSz * ClipmapLevel::TextureScaleNormal);
+        desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 #endif
         m_NormalCm = std::make_shared<ClipmapTexture>(device, desc);
         m_NormalCm->CreateViews(device);
@@ -120,24 +120,8 @@ void TerrainSystem::InitClipmapLevels(ID3D11Device* device, const Vector3& view)
         std::make_shared<NormalMap>(m_Path / "normal3.dds"),
     });
 
-    const std::vector albedo =
-    {
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/snow_a.dds"),
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/rock_a.dds"),
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/grass_a.dds"),
-        std::make_shared<AlbedoMap>(m_Path / "texture_can/ground_a.dds"),
-    };
-
-    const std::vector normal =
-    {
-        std::make_shared<NormalMap>(m_Path / "texture_can/snow_n.dds"),
-        std::make_shared<NormalMap>(m_Path / "texture_can/rock_n.dds"),
-        std::make_shared<NormalMap>(m_Path / "texture_can/grass_n.dds"),
-        std::make_shared<NormalMap>(m_Path / "texture_can/ground_n.dds"),
-    };
-
     InitClipTextures(device);
-    m_SrcManager->BindSource(hm, sm, nm, albedo, normal);
+    m_SrcManager->BindSource(hm, sm, nm);
     ClipmapLevel::BindSourceManager(m_SrcManager);
 
     for (int i = 0; i < LevelCount; ++i)
@@ -170,6 +154,27 @@ void TerrainSystem::ResetClipmapTexture()
     {
         level.m_GridOrigin = Vector2(static_cast<float>(std::numeric_limits<int>::min() >> 1));
     }
+}
+
+void TerrainSystem::BindMaterials(const std::vector<std::filesystem::path>& mats) const
+{
+    const std::vector albedo =
+    {
+        std::make_shared<AlbedoMap>(mats[0] / "albedo.dds"),
+        std::make_shared<AlbedoMap>(mats[1] / "albedo.dds"),
+        std::make_shared<AlbedoMap>(mats[2] / "albedo.dds"),
+        std::make_shared<AlbedoMap>(mats[3] / "albedo.dds"),
+    };
+
+    const std::vector normal =
+    {
+        std::make_shared<NormalMap>(mats[0] / "normal.dds"),
+        std::make_shared<NormalMap>(mats[1] / "normal.dds"),
+        std::make_shared<NormalMap>(mats[2] / "normal.dds"),
+        std::make_shared<NormalMap>(mats[3] / "normal.dds"),
+    };
+
+    m_SrcManager->BindMaterial(albedo, normal);
 }
 
 TerrainSystem::PatchRenderResource TerrainSystem::GetPatchResources(

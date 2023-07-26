@@ -15,10 +15,12 @@ public:
     void BindSource(
         const std::shared_ptr<DirectX::TiledMap<DirectX::HeightMap>>& heightSrc,
         const std::shared_ptr<DirectX::TiledMap<DirectX::SplatMap>>& splatSrc,
-        const std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>>& normalBase,
-        const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
-        const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor
+        const std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>>& normalBase
         );
+
+    void BindMaterial(
+        const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
+        const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor);
 
     [[nodiscard]] std::vector<uint16_t> CopyElevation(
         int x, int y, unsigned w, unsigned h, int mip) const;

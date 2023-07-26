@@ -41,7 +41,46 @@ namespace
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(4096.0f, 10000.0f, 4096.0f);
+    constexpr Vector3 ViewInit = Vector3(4096.0f, 1000.0f, 4096.0f);
+
+    const std::vector<std::filesystem::path> Hill =
+    {
+        "asset/texture_can/snow",
+        "asset/texture_can/rock",
+        "asset/texture_can/grass",
+        "asset/texture_can/ground",
+    };
+
+    const std::vector<std::filesystem::path> Mars =
+    {
+        "asset/texture_can/ice",
+        "asset/texture_can/asteroid",
+        "asset/texture_can/crystal",
+        "asset/texture_can/lava",
+    };
+
+    const std::vector<std::filesystem::path> Artificial =
+    {
+        "asset/texture_can/mosaic",
+        "asset/texture_can/tartan",
+        "asset/texture_can/leather",
+        "asset/texture_can/seawave",
+    };
+
+    enum MaterialPacks
+    {
+        HillPatch,
+        MarsPatch,
+        ArtificialPatch,
+    };
+
+    constexpr MaterialPacks PackIndex = HillPatch;
+    const std::map<MaterialPacks, std::vector<std::filesystem::path>> MaterialPackages =
+    {
+        { HillPatch, Hill },
+        { MarsPatch, Mars },
+        { ArtificialPatch, Artificial },
+    };
 }
 
 // Forward declarations of helper functions
@@ -101,14 +140,14 @@ int main(int, char**)
 
     bool wireFrame = false;
     float lPhi = DirectX::XM_PI;
-    float lTheta = 1.0f;
+    float lTheta = 1.2f;
     float lInt = 3.0f;
     bool freezeFrustum = false;
     bool drawBb = false;
     bool drawClip = false;
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit);
-    float spd = 3000.0f;
+    float spd = 30.0f;
     float hScale = 2129.92f;
     float transition = 25.4f;
     int blendMode = 6;
@@ -116,6 +155,7 @@ int main(int, char**)
     float ambient = 0.2f;
     bool rcd = false;
     bool play = false;
+    auto mats = PackIndex;
     // Main loop
     while (!done)
     {
@@ -143,6 +183,8 @@ int main(int, char**)
 
         ImGui::Begin("Terrain System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
+        auto matChanged = ImGui::Combo("Material Pack", reinterpret_cast<int*>(&mats), "Hill\0Mars\0Artificial\0");
+        modeChanged |= matChanged;
         ImGui::DragFloat("Height Scale", &hScale, 1, 0.0, 10000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
@@ -174,8 +216,6 @@ int main(int, char**)
         else if (play)
         {
             g_Camera->PlayRecord();
-            lPhi += io.DeltaTime * 0.2f;
-            lPhi = std::fmod(lPhi, DirectX::XM_2PI);
         }
         else g_Camera->StopRecord();
         g_Camera->Update(io, spd);
@@ -184,13 +224,20 @@ int main(int, char**)
             frustum = g_Camera->GetFrustum();
             view = g_Camera->GetPosition();
         }
+        if (matChanged)
+        {
+            g_System->BindMaterials(MaterialPackages.at(mats));
+        }
         if (modeChanged)
+        {
             g_System->ResetClipmapTexture();
+        }
         const auto& resource = g_System->TickClipmap(frustum, hScale,
             g_pd3dDeviceContext, blendMode);
         //const auto& pr = g_System->GetPatchResources(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-
+        lPhi += io.DeltaTime * 0.3f;
+        lPhi = std::fmod(lPhi, DirectX::XM_2PI);
         Vector3 lDir(
             std::sin(lTheta) * std::cos(lPhi),
             std::cos(lTheta),
@@ -353,6 +400,7 @@ void CreateSystem()
     g_Camera = std::make_unique<Camera>(ViewInit);
 
     g_System = std::make_unique<TerrainSystem>(ViewInit, "asset", g_pd3dDevice);
+    g_System->BindMaterials(MaterialPackages.at(PackIndex));
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 }

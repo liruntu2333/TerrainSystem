@@ -261,8 +261,10 @@ void CompositeNorAo(const std::filesystem::path& p)
         }
     }
 
-    SaveDds(p.generic_string() + std::string("_n.dds"),
+    SaveDds(p / "normal.dds",
         *GenerateMip(*nm->GetImage(0, 0, 0), DirectX::TEX_FILTER_SEPARATE_ALPHA));
+
+    std::printf("composite %s normal\n", p.u8string().c_str());
 }
 
 void CompositeAlbRf(const std::filesystem::path& p)
@@ -306,8 +308,9 @@ void CompositeAlbRf(const std::filesystem::path& p)
         }
     }
 
-    SaveDds(p.generic_string() + std::string("_a.dds"),
+    SaveDds(p / "albedo.dds",
         *GenerateMip(*am->GetImage(0, 0, 0), DirectX::TEX_FILTER_SEPARATE_ALPHA));
+    std::printf("composite %s albedo\n", p.u8string().c_str());
 }
 
 // Main code
@@ -324,9 +327,9 @@ int main(int argc, char** argv)
     std::string inFile = argv[1];
     const std::wstring parent = std::filesystem::path(inFile).parent_path().wstring();
 
-    const auto clipmapPath = parent + L"/clipmap";
-    std::filesystem::create_directories(clipmapPath);
-    GenerateClipmapFootPrints(clipmapPath);
+    //const auto clipmapPath = parent + L"/clipmap";
+    //std::filesystem::create_directories(clipmapPath);
+    //GenerateClipmapFootPrints(clipmapPath);
 
     for (auto&& dir : std::filesystem::directory_iterator(parent + L"\\texture_can"))
     {

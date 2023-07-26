@@ -9,13 +9,17 @@
 void BitmapManager::BindSource(
     const std::shared_ptr<DirectX::TiledMap<DirectX::HeightMap>>& heightSrc,
     const std::shared_ptr<DirectX::TiledMap<DirectX::SplatMap>>& splatSrc,
-    const std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>>& normalBase,
-    const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
-    const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor)
+    const std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>>& normalBase)
 {
     m_HeightTiles = heightSrc;
     m_SplatTiles = splatSrc;
     m_NormalTiles = normalBase;
+}
+
+void BitmapManager::BindMaterial(
+    const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
+    const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor)
+{
     m_AlbAtlas = alb;
     m_NorAtlas = nor;
 }

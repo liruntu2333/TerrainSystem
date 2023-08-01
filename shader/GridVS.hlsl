@@ -1,7 +1,7 @@
 #include "ShaderUtil.hlsli"
 
 static const float SampleRateFine = 1.0f / 256.0f;
-static const float SampleRateCoarse = 0.5f / 256.0f;
+// static const float SampleRateCoarse = 0.5f / 256.0f;
 
 SamplerState PointWrap : register(s0);
 Texture2DArray<float> Height : register(t0);
@@ -26,13 +26,14 @@ void main(
                                  : positionLf;
 
     // convert grid xy to world xz coordinates
-    // wldParams.xy: grid spacing of current level
+    // wldParams.x: grid spacing of current level
+    // wldParams.y: step rate in coarse level
     // wldParams.zw: origin of current footprint in world space
-    const float2 pf = positionLf * wldParams.xy + wldParams.zw;
-    const float2 pc = positionLc * wldParams.xy + wldParams.zw;
+    const float2 pf = positionLf * wldParams.x + wldParams.zw;
+    const float2 pc = positionLc * wldParams.x + wldParams.zw;
 
     // compute alpha based on view distance for temporal continuity
-    float2 alpha = saturate((abs(pf - ViewPosition.xz) / wldParams.xy - AlphaOffset) * OneOverWidth);
+    float2 alpha = saturate((abs(pf - ViewPosition.xz) / wldParams.x - AlphaOffset) * OneOverWidth);
     alpha.x = max(alpha.x, alpha.y);
 
     // blend position xz for space continuity to avoid T-junctions and popping
@@ -42,7 +43,7 @@ void main(
     // texParams.xy: origin of footprint in fine texture
     // texParams.zw: origin of footprint in coarse texture
     float3 uvf = float3(positionLf * SampleRateFine + texParams.xy + 0.5f / 256, lvlParams.w);
-    float3 uvc = float3(positionLc * SampleRateCoarse + texParams.zw + 0.5f / 256, lvlParams.w + 1);
+	float3 uvc = float3(positionLc * wldParams.y + texParams.zw + 0.5f / 256, lvlParams.w + 1);
 
     // blend elevation value
     // lvlParams.w : level
@@ -51,7 +52,7 @@ void main(
 
     const float2 pl = lerp(positionLf, positionLc, alpha.x);
     uvf = float3(pl * SampleRateFine + texParams.xy + 0.5f / 2048, lvlParams.w);
-    uvc = float3(pl * SampleRateCoarse + texParams.zw + 0.5f / 2048, lvlParams.w + 1);
+	uvc = float3(pl * wldParams.y + texParams.zw + 0.5f / 2048, lvlParams.w + 1);
 
     positionW = float3(xz.x, h, xz.y);
 	positionW = MakeSphere(float2(xz.x, xz.y), h, ViewPosition, SphereRadius);

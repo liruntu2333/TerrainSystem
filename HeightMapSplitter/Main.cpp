@@ -66,15 +66,14 @@ auto OptimizeMeshCache(std::vector<Triangulator::PackedPoint>& vertices, std::ve
 auto OptimizeMeshRedundant(std::vector<Triangulator::PackedPoint>& vertices, std::vector<uint32_t>& indices)
 {
     const size_t indexCount = indices.size();
-    size_t vertexCount = vertices.size();
 
     std::vector<uint32_t> remap(indexCount);
-    vertexCount = meshopt_generateVertexRemap(
+    const size_t vertexCount = meshopt_generateVertexRemap(
         remap.data(),
         indices.data(),
         indexCount,
         vertices.data(),
-        vertexCount,
+        vertices.size(),
         sizeof(Triangulator::PackedPoint));
 
     std::vector<std::uint32_t> oi(indexCount);
@@ -88,7 +87,7 @@ auto OptimizeMeshRedundant(std::vector<Triangulator::PackedPoint>& vertices, std
     meshopt_remapVertexBuffer(
         ov.data(),
         vertices.data(),
-        vertexCount,
+        vertices.size(),
         sizeof(Triangulator::PackedPoint),
         remap.data());
 
@@ -178,6 +177,7 @@ void GenerateClipmapFootPrints(const std::filesystem::path& path, const int n = 
     };
 
     Mesh block = generateGrid(m, m, 0, 0);
+    OptimizeMeshRedundant(block.first, block.second);
     OptimizeMeshCache(block.first, block.second);
     SaveBin(path / "block.vtx", block.first);
     SaveBin(path / "block.idx", std::vector<uint16_t>(block.second.begin(), block.second.end()));
@@ -327,9 +327,9 @@ int main(int argc, char** argv)
     std::string inFile = argv[1];
     const std::wstring parent = std::filesystem::path(inFile).parent_path().wstring();
 
-    //const auto clipmapPath = parent + L"/clipmap";
-    //std::filesystem::create_directories(clipmapPath);
-    //GenerateClipmapFootPrints(clipmapPath);
+    const auto clipmapPath = parent + L"/clipmap";
+    std::filesystem::create_directories(clipmapPath);
+    GenerateClipmapFootPrints(clipmapPath);
 
     for (auto&& dir : std::filesystem::directory_iterator(parent + L"\\texture_can"))
     {

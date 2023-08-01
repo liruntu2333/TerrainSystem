@@ -11,7 +11,7 @@
 class TerrainSystem
 {
 public:
-    struct PatchRenderResource
+    struct PatchRenderResource  // Heightmap to mesh system
     {
         ID3D11ShaderResourceView* Height {};
         ID3D11ShaderResourceView* Normal {};
@@ -56,7 +56,7 @@ public:
     void ResetClipmapTexture();
     void BindMaterials(const std::vector<std::filesystem::path>& mats) const;
 
-    [[nodiscard]] PatchRenderResource GetPatchResources(
+    [[nodiscard]] PatchRenderResource TickMeshTerrain(
         const DirectX::XMINT2& camXyForCull,
         const DirectX::BoundingFrustum& frustumLocal, float yScale,
         std::vector<DirectX::BoundingBox>& bbs, ID3D11Device* device) const;

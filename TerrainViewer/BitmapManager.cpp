@@ -26,6 +26,11 @@ void BitmapManager::BindMaterial(
 
 std::vector<uint16_t> BitmapManager::CopyElevation(int x, int y, unsigned w, unsigned h, int mip) const
 {
+    const auto begin = std::chrono::steady_clock::now();
+    auto res = m_HeightTiles->CopyRectangle(x, y, w, h, mip);
+    const auto end = std::chrono::steady_clock::now();
+    const float pixPerSec = w * h / std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() * 1000000;
+    //std::printf("CopyElevation: %f Mpix/s\n", pixPerSec / 1000000);
     return m_HeightTiles->CopyRectangle(x, y, w, h, mip);
 }
 

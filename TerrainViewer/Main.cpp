@@ -215,6 +215,8 @@ int main(int, char**)
         if (rcd) g_Camera->StartRecord();
         else if (play)
         {
+            lPhi += io.DeltaTime * 0.3f;
+            lPhi = std::fmod(lPhi, DirectX::XM_2PI);
             g_Camera->PlayRecord();
         }
         else g_Camera->StopRecord();
@@ -234,10 +236,9 @@ int main(int, char**)
         }
         const auto& resource = g_System->TickClipmap(frustum, hScale,
             g_pd3dDeviceContext, blendMode);
-        //const auto& pr = g_System->GetPatchResources(
+        //const auto& pr = g_System->TickMeshTerrain(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
-        lPhi += io.DeltaTime * 0.3f;
-        lPhi = std::fmod(lPhi, DirectX::XM_2PI);
+
         Vector3 lDir(
             std::sin(lTheta) * std::cos(lPhi),
             std::cos(lTheta),

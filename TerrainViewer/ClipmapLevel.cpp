@@ -297,7 +297,7 @@ void ClipmapLevel::UpdateTexture(ID3D11DeviceContext* context)
 
 ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
     const Vector2& textureOriginCoarse, const Vector2& worldOriginFiner,
-    const BoundingFrustum& frustum, float hScl) const
+    const BoundingFrustum& frustum, float hScl, bool top) const
 {
     using namespace SimpleMath;
 
@@ -306,9 +306,10 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
 
     const GridInstance ins
     {
-        Vector2(m_GridSpacing),
+        m_GridSpacing,
+        top ? 1.0f / TextureSz : 0.5f / TextureSz,
         Vector2(m_GridSpacing) * m_GridOrigin,
-        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y)) * OneOverSz,
+        (Vector2(m_TexelOrigin.x, m_TexelOrigin.y)) * TextureSzRcp,
         textureOriginCoarse,
         XMUINT2(),
         0,
@@ -322,8 +323,8 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
         if (!IsBlockVisible(block.WorldOffset, frustum, hScl)) continue;
 
-        block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
-        block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
+        block.TextureOffsetFiner += Trait::LocalOffset[i] * TextureSzRcp;
+        block.TextureOffsetCoarser += Trait::LocalOffset[i] * block.CoarserStepRate;
         block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9
                           ? Trait::Color0
@@ -348,16 +349,17 @@ ClipmapLevelBase::HollowRing ClipmapLevel::GetHollowRing(
 
 
 ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
-    const Vector2& textureOriginCoarse, const BoundingFrustum& frustum, float hScl) const
+    const Vector2& textureOriginCoarse, const BoundingFrustum& frustum, float hScl, bool top) const
 {
     using namespace SimpleMath;
     SolidSquare solid;
 
     const GridInstance ins
     {
-        Vector2(m_GridSpacing),
+        m_GridSpacing,
+        top ? 1.0f / TextureSz : 0.5f / TextureSz,
         (Vector2(m_GridSpacing) * m_GridOrigin),
-        Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * OneOverSz,
+        Vector2(m_TexelOrigin.x, m_TexelOrigin.y) * TextureSzRcp,
         textureOriginCoarse,
         XMUINT2(),
         0,
@@ -371,8 +373,8 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
         block.WorldOffset += Trait::LocalOffset[i] * m_GridSpacing;
         if (!IsBlockVisible(block.WorldOffset, frustum, hScl)) continue;
 
-        block.TextureOffsetFiner += Trait::LocalOffset[i] * OneOverSz;
-        block.TextureOffsetCoarser += Trait::LocalOffset[i] * (OneOverSz * 0.5f);
+        block.TextureOffsetFiner += Trait::LocalOffset[i] * TextureSzRcp;
+        block.TextureOffsetCoarser += Trait::LocalOffset[i] * block.CoarserStepRate;
         block.LocalOffset = XMUINT2(Trait::LocalOffset[i].x, Trait::LocalOffset[i].y);
         block.Color = i == 0 || i == 2 || i == 5 || i == 11 || i == 6 || i == 9 || i == 12 || i == 15
                           ? Trait::Color0
@@ -397,14 +399,14 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
 
 Vector2 ClipmapLevel::GetFinerUvOffset(const Vector2& finer) const
 {
-    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finer)]) * OneOverSz;
+    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finer)]) * TextureSzRcp;
 }
 
 bool ClipmapLevel::IsBlockVisible(const Vector2& world, const BoundingFrustum& frustum, float scl) const
 {
     using Trait = FootprintTrait<Block>;
-        constexpr float min = 0.1;
-        constexpr float max = 0.5;
+    constexpr float min = 0.1;
+    constexpr float max = 0.5;
     constexpr float avg = (min + max) * 0.5f;
     constexpr float diff = max - min;
     const auto center = Vector3(

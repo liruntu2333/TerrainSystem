@@ -31,7 +31,8 @@ struct GridVertex
 
 struct GridInstance // TODO
 {
-    DirectX::SimpleMath::Vector2 GridScale;             // grid spacing
+    float GridScale;             // grid spacing
+    float CoarserStepRate;          // 1 / 256 when at the coarsest level
     DirectX::SimpleMath::Vector2 WorldOffset;           // offset in world
     DirectX::SimpleMath::Vector2 TextureOffsetFiner;    // offset in fine texture
     DirectX::SimpleMath::Vector2 TextureOffsetCoarser;  // offset in coarse texture

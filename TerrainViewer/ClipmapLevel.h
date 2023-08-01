@@ -70,14 +70,14 @@ public:
     [[nodiscard]] HollowRing GetHollowRing(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse,
         const DirectX::SimpleMath::Vector2& worldOriginFiner,
-        const DirectX::BoundingFrustum& frustum, float hScl) const;
+        const DirectX::BoundingFrustum& frustum, float hScl, bool top) const;
     [[nodiscard]] SolidSquare GetSolidSquare(
         const DirectX::SimpleMath::Vector2& textureOriginCoarse,
-        const DirectX::BoundingFrustum& frustum, float hScl) const;
+        const DirectX::BoundingFrustum& frustum, float hScl, bool top) const;
 
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const { return m_GridOrigin * m_GridSpacing; }
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(const DirectX::SimpleMath::Vector2& finer) const;
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetUvOffset() const { return m_TexelOrigin * OneOverSz; }
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetUvOffset() const { return m_TexelOrigin * TextureSzRcp; }
     [[nodiscard]] bool IsActive() const { return m_IsActive; }
 
     friend class TerrainSystem;
@@ -88,7 +88,7 @@ protected:
     using AlbedoRect = DirectX::ClipmapTexture::UpdateArea<DirectX::AlbedoMap::PixelFormat>;
 
     inline static constexpr int TextureSz = 1 << ClipmapK;
-    inline static constexpr float OneOverSz = 1.0f / TextureSz;
+    inline static constexpr float TextureSzRcp = 1.0f / TextureSz;
     inline static constexpr int TextureN = (1 << ClipmapK) - 1; // 1 row 1 col left unused
     inline static constexpr int TextureScaleHeight = 1;
     inline static constexpr int TextureScaleSplat = 1;

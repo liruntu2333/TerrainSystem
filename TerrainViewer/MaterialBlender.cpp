@@ -169,6 +169,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
     const int splatX, const int splatY, const unsigned splatW, const unsigned splatH, const unsigned mip) const
 {
     // const auto pc = points.size();
+    const auto begin = std::chrono::high_resolution_clock::now();
     const unsigned dw = splatW * SampleRatio;
     const unsigned dh = splatH * SampleRatio;
     std::vector<uint32_t> dst;
@@ -182,6 +183,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
             // one sample in weight map generates SampleRatio * SampleRatio pixels
             for (int row = 0; row < SampleRatio; ++row)
             {
+                const float ty = 1.0f / SampleRatio * row;
                 auto w00 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX, wy + splatY, mip));
                 auto w10 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX + 1, wy + splatY, mip));
                 auto w01 = reinterpret_cast<const Color&>(m_Splat->GetVal(wx + splatX, wy + splatY + 1, mip));
@@ -191,17 +193,17 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                 {
                     // use simd intrinsics to blend SampleRatio pixels in a row
                     FloatBatch r(0.0f), g(0.0f), b(0.0f), a(0.0f);
+
                     // for each texture in atlas
                     for (int l = 0; l < 4; ++l)
                     {
                         // trilinear interpolation
-                        const float ty = 1.0f / SampleRatio * row;
                         const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
                         const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
 
                         const auto wt = Lerp(w0, w1, T[i]);
                         const UintBatch src = UintBatch::load_aligned(&m_Atlas[l]->GetVal(
-                            (wx + splatX) * SampleRatio + Stride * i, (wy + splatY) * SampleRatio + row, mip));
+                            (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
                         const FloatBatch srcR = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcG = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcB = xsimd::batch_cast<float>(src >> 16 & 0xFF);
@@ -224,6 +226,11 @@ std::vector<uint32_t> AlbedoBlender::Blend(
         }
     }
 
+    const auto end = std::chrono::high_resolution_clock::now();
+    const float pixPerSec = static_cast<float>(dw * dh) / std::chrono::duration_cast<
+            std::chrono::microseconds>(end - begin).count() *
+        1000000;
+    //std::printf("AlbedoBlender::Blend: %f MPixel/s\n", pixPerSec / 1000000);
     return dst;
 }
 
@@ -232,6 +239,7 @@ std::vector<uint32_t> NormalBlender::Blend(
     BlendMethod method) const
 {
     // const auto pc = points.size();
+    const auto begin = std::chrono::high_resolution_clock::now();
     const unsigned dw = splatW * SampleRatio;
     const unsigned dh = splatH * SampleRatio;
     std::vector<uint32_t> dst;
@@ -327,6 +335,10 @@ std::vector<uint32_t> NormalBlender::Blend(
             }
         }
     }
-
+    const auto end = std::chrono::high_resolution_clock::now();
+    const float pixPerSec = static_cast<float>(dw * dh) / std::chrono::duration_cast<
+            std::chrono::microseconds>(end - begin).count() *
+        1000000;
+    // std::printf("NormalBlender::Blend: %f MPixel/s\n", pixPerSec / 1000000);
     return dst;
 }

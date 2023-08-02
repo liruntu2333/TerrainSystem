@@ -180,26 +180,26 @@ void ClipmapLevel::TickTransform(
     const auto prev = m_GridOrigin;
     const Vector2 curr(
         std::ceil(view.x / m_GridSpacing * 0.5f) * 2 - 128,
-        std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128
-        );
+        std::ceil(view.z / m_GridSpacing * 0.5f) * 2 - 128);
 
     const int dx = static_cast<int>(curr.x - prev.x);
     const int dy = static_cast<int>(curr.y - prev.y);
-    const bool whole = std::abs(dx) >= TextureN || std::abs(dy) >= TextureN;
-    const int cost = whole
+    const bool updateWhole = std::abs(dx) >= TextureN || std::abs(dy) >= TextureN;
+    const int cost = updateWhole
                          ? TextureN * TextureN   // update whole tex anyway
                          : TextureN * std::abs(dy) + std::abs(dx) * (TextureN - std::abs(dy));
 
-    // not enough budget or too high above
+    const bool insufficient = budget < cost;
     const auto height = s_SrcManager->GetPixelHeight(m_GridOrigin.x + 128, m_GridOrigin.y + 128, m_Level);
-    if (budget < cost || std::abs(view.y - hScale * height) > 2.5f * 254.0f * m_GridSpacing)
+    const bool farAbove = std::abs(view.y - hScale * height) > 2.5f * 254.0f * m_GridSpacing;
+    if (insufficient || farAbove)
     {
-        m_IsActive = 0;
+        m_IsActive = false;
         return;
     }
 
     budget -= cost;
-    if (m_IsActive == 0/* || m_IsActive == 1*/) m_IsActive++;
+    m_IsActive = true; // update texture before render tick
     m_GridOrigin = curr;
 
     // GenerateTextureAsync
@@ -240,7 +240,7 @@ void ClipmapLevel::TickTransform(
         s_HeightStream.emplace_back(g_ThreadPool.enqueue(generateHeight, rect, srcX, srcY));
     };
 
-    if (whole)
+    if (updateWhole)
     {
         const Rect dwdh(0, 0, TextureN, TextureN);
         generateAsync(dwdh, curr.x, curr.y);
@@ -397,9 +397,9 @@ ClipmapLevelBase::SolidSquare ClipmapLevel::GetSolidSquare(
     return std::move(solid);
 }
 
-Vector2 ClipmapLevel::GetFinerUvOffset(const Vector2& finer) const
+Vector2 ClipmapLevel::GetFinerUvOffset(const Vector2& finerWld) const
 {
-    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finer)]) * TextureSzRcp;
+    return (m_TexelOrigin + FootprintTrait<InteriorTrim>::FinerOffset[GetTrimPattern(finerWld)]) * TextureSzRcp;
 }
 
 bool ClipmapLevel::IsBlockVisible(const Vector2& world, const BoundingFrustum& frustum, float scl) const

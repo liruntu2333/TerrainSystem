@@ -287,13 +287,14 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(
     for (; i > 0 && (m_Levels[i].IsActive() && m_Levels[i - 1].IsActive()); --i)
     {
         const auto& level = m_Levels[i];
-        const auto& finer = m_Levels[i - 1];
         const bool top = i == LevelCount - 1;
-        const auto ofsCoarse = top
-                                   ? level.GetUvOffset()
-                                   : m_Levels[i + 1].GetFinerUvOffset(level.GetWorldOffset());
-        auto [block, ring, trim, tid] = level.GetHollowRing(ofsCoarse, finer.GetWorldOffset(),
-            frustum, hScl, top);
+        const Vector2 xzCurr = level.GetWorldOffset();
+        const Vector2 xzFiner = m_Levels[i - 1].GetWorldOffset();
+        const Vector2 uvCoarse = top // coarsest level blend with its own
+                                     ? level.GetUvOffset()
+                                     // otherwise blend with coarser level
+                                     : m_Levels[i + 1].GetFinerUvOffset(xzCurr);
+        auto [block, ring, trim, tid] = level.GetHollowRing(uvCoarse, xzFiner, frustum, hScl, top);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         trims[tid].emplace_back(trim);
@@ -303,10 +304,12 @@ TerrainSystem::ClipmapRenderResource TerrainSystem::GetClipmapRenderResource(
     {
         const auto& level = m_Levels[i];
         const bool top = i == LevelCount - 1;
-        const auto ofsCoarse = top
-                                   ? level.GetUvOffset()
-                                   : m_Levels[i + 1].GetFinerUvOffset(level.GetWorldOffset());
-        auto [block, ring, trim] = m_Levels[i].GetSolidSquare(ofsCoarse, frustum, hScl, top);
+        const Vector2 xzCurr = level.GetWorldOffset();
+        const Vector2 uvCoarse = top // coarsest level blend with its own
+                                     ? level.GetUvOffset()
+                                     // otherwise blend with coarser level
+                                     : m_Levels[i + 1].GetFinerUvOffset(xzCurr);
+        auto [block, ring, trim] = m_Levels[i].GetSolidSquare(uvCoarse, frustum, hScl, top);
         for (const auto& b : block) blocks.emplace_back(b);
         rings.emplace_back(ring);
         for (int i = 0; i < 2; ++i) trims[i * 2].emplace_back(trim[i]);

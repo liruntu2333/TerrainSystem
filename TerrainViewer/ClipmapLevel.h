@@ -76,7 +76,7 @@ public:
         const DirectX::BoundingFrustum& frustum, float hScl, bool top) const;
 
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetWorldOffset() const { return m_GridOrigin * m_GridSpacing; }
-    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(const DirectX::SimpleMath::Vector2& finer) const;
+    [[nodiscard]] DirectX::SimpleMath::Vector2 GetFinerUvOffset(const DirectX::SimpleMath::Vector2& finerWld) const;
     [[nodiscard]] DirectX::SimpleMath::Vector2 GetUvOffset() const { return m_TexelOrigin * TextureSzRcp; }
     [[nodiscard]] bool IsActive() const { return m_IsActive; }
 
@@ -109,9 +109,9 @@ protected:
         return gridOrigin;
     }
 
-    [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finer) const
+    [[nodiscard]] int GetTrimPattern(const DirectX::SimpleMath::Vector2& finerWld) const
     {
-        const auto ofs = (finer - GetWorldOffset()) / m_GridSpacing;
+        const auto ofs = (finerWld - GetWorldOffset()) / m_GridSpacing;
         const int ox = ofs.x;
         const int oy = ofs.y;
         if (ox == ClipmapM && oy == ClipmapM) return 0;
@@ -149,5 +149,5 @@ protected:
     inline static std::vector<ResultBc> s_NormalStream {};
 #endif
 
-    int m_IsActive = 0; // de-active / updating / active
+    bool m_IsActive = false; // de-active / updating / active
 };

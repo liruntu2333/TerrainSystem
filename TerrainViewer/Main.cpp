@@ -192,7 +192,7 @@ int main(int, char**)
         ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
         ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
-        ImGui::SliderFloat("Transition Width", &transition, 0.1, 26.0);
+        ImGui::SliderFloat("Transition Width", &transition, 0.1, 127.0);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         //ImGui::Checkbox("Draw Bounding Box", &drawBb);

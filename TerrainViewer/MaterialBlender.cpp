@@ -197,7 +197,7 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                     // for each texture in atlas
                     for (int l = 0; l < 4; ++l)
                     {
-                        // trilinear interpolation
+                        // bi-linear interpolation
                         const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
                         const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
 

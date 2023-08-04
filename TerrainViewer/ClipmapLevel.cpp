@@ -191,7 +191,7 @@ void ClipmapLevel::TickTransform(
 
     const bool insufficient = budget < cost;
     const auto height = s_SrcManager->GetPixelHeight(m_GridOrigin.x + 128, m_GridOrigin.y + 128, m_Level);
-    const bool farAbove = std::abs(view.y - hScale * height) > 2.5f * 254.0f * m_GridSpacing;
+    const bool farAbove = std::abs(view.y - hScale * height) > 2.5f * (ClipmapN - 1) * m_GridSpacing;
     if (insufficient || farAbove)
     {
         m_IsActive = false;

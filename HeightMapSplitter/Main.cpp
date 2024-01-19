@@ -313,6 +313,26 @@ void CompositeAlbRf(const std::filesystem::path& p)
     std::printf("composite %s albedo\n", p.u8string().c_str());
 }
 
+void ConvertHeight(const std::filesystem::path& p)
+{
+    if (!is_directory(p)) return;
+
+    std::filesystem::path hPath;
+    for (auto&& entry : std::filesystem::directory_iterator(p))
+    {
+        std::regex rh(R"(.*height.*)");
+        if (std::regex_match(entry.path().filename().generic_string(), rh))
+            hPath = entry.path();
+    }
+
+    const auto hm = LoadWic(hPath, false, true);
+    auto convert = std::make_shared<DirectX::ScratchImage>();
+    DirectX::Convert(*hm->GetImage(0, 0, 0), DXGI_FORMAT_R32_UINT, DirectX::TEX_FILTER_DEFAULT,
+        DirectX::TEX_THRESHOLD_DEFAULT, *convert);
+    SaveDds(p / "height.dds", *hm);
+    std::printf("convert %s height\n", p.u8string().c_str());
+}
+
 // Main code
 int main(int argc, char** argv)
 {
@@ -335,6 +355,7 @@ int main(int argc, char** argv)
     {
         CompositeNorAo(dir);
         CompositeAlbRf(dir);
+        ConvertHeight(dir);
     }
 
     return 0;

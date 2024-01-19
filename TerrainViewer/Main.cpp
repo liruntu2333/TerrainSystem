@@ -41,7 +41,7 @@ namespace
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(4096.0f, 1000.0f, 4096.0f);
+    constexpr Vector3 ViewInit = Vector3(4096.0f, 700.0f, 4096.0f);
 
     const std::vector<std::filesystem::path> Hill =
     {
@@ -286,8 +286,8 @@ int main(int, char**)
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        // g_pSwapChain->Present(1, 0); // Present with vsync
-        g_pSwapChain->Present(0, 0); // Present without vsync
+         g_pSwapChain->Present(1, 0); // Present with vsync
+        //g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup

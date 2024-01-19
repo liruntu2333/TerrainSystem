@@ -194,6 +194,23 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                     // use simd intrinsics to blend SampleRatio pixels in a row
                     FloatBatch r(0.0f), g(0.0f), b(0.0f), a(0.0f);
 
+#if 1
+                    FloatBatch ma(0), bSum(0);
+                    constexpr float depth = 0.2f;
+                    for (int l = 0; l < 4; ++l)
+                    {
+                        const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
+                        const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
+                        const auto wt = Lerp(w0, w1, T[i]);
+                        const UintBatch srcH = UintBatch::load_aligned(&m_HgtAtlas[l]->GetVal(
+                            (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const FloatBatch srcRH = xsimd::batch_cast<float>(srcH) /
+                            std::numeric_limits<uint32_t>::max();
+                        ma = xsimd::max(ma, wt + srcRH);
+                    }
+                    ma = ma - depth;
+#endif
+
                     // for each texture in atlas
                     for (int l = 0; l < 4; ++l)
                     {
@@ -201,18 +218,28 @@ std::vector<uint32_t> AlbedoBlender::Blend(
                         const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
                         const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
 
-                        const auto wt = Lerp(w0, w1, T[i]);
+                        const FloatBatch wt = Lerp(w0, w1, T[i]);
                         const UintBatch src = UintBatch::load_aligned(&m_Atlas[l]->GetVal(
                             (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const UintBatch srcH = UintBatch::load_aligned(&m_HgtAtlas[l]->GetVal(
+                            (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const FloatBatch srcRH = xsimd::batch_cast<float>(srcH) /
+                            std::numeric_limits<uint32_t>::max();
+                        const FloatBatch bb = xsimd::max(srcRH + wt - ma, FloatBatch(0));
+                        bSum += bb;
                         const FloatBatch srcR = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcG = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcB = xsimd::batch_cast<float>(src >> 16 & 0xFF);
                         const FloatBatch srcA = xsimd::batch_cast<float>(src >> 24 & 0xFF);
-                        r += srcR * wt;
-                        g += srcG * wt;
-                        b += srcB * wt;
-                        a += srcA * wt;
+                        r += srcR * bb;
+                        g += srcG * bb;
+                        b += srcB * bb;
+                        a += srcA * bb;
                     }
+                    r /= bSum;
+                    g /= bSum;
+                    b /= bSum;
+                    a /= bSum;
                     const auto c =
                         xsimd::batch_cast<uint32_t>(r + 0.01f) |
                         xsimd::batch_cast<uint32_t>(g + 0.01f) << 8 |
@@ -273,6 +300,23 @@ std::vector<uint32_t> NormalBlender::Blend(
                     FloatBatch zBase = Lerp(b0.z, b1.z, T[i]);
                     FloatBatch wBase = Lerp(b0.w, b1.w, T[i]);
 
+#if 1
+                    FloatBatch ma(0), bSum(0);
+                    constexpr float depth = 0.2f;
+                    for (int l = 0; l < 4; ++l)
+                    {
+                        const float w0 = Lerp(w00.GetChannel(l), w01.GetChannel(l), ty);
+                        const float w1 = Lerp(w10.GetChannel(l), w11.GetChannel(l), ty);
+                        const auto wt = Lerp(w0, w1, T[i]);
+                        const UintBatch srcH = UintBatch::load_aligned(&m_HgtAtlas[l]->GetVal(
+                            (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const FloatBatch srcRH = xsimd::batch_cast<float>(srcH) /
+                            std::numeric_limits<uint32_t>::max();
+                        ma = xsimd::max(ma, wt + srcRH);
+                    }
+                    ma = ma - depth;
+#endif
+
                     // use simd intrinsics to blend SampleRatio pixels in a row
                     // for each texture in atlas
                     FloatBatch x(0), y(0), z(0), w(0);
@@ -285,15 +329,25 @@ std::vector<uint32_t> NormalBlender::Blend(
                         const auto wt = Lerp(w0, w1, T[i]);
                         const UintBatch src = UintBatch::load_aligned(&m_Detail[l]->GetVal(
                             (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const UintBatch srcH = UintBatch::load_aligned(&m_HgtAtlas[l]->GetVal(
+                            (wx + splatX) * SampleRatio + i * Stride, (wy + splatY) * SampleRatio + row, mip));
+                        const FloatBatch srcRH = xsimd::batch_cast<float>(srcH) /
+                            std::numeric_limits<uint32_t>::max();
+                        const FloatBatch bb = xsimd::max(srcRH + wt - ma, FloatBatch(0));
+                        bSum += bb;
                         const FloatBatch srcX = xsimd::batch_cast<float>(src & 0xFF);
                         const FloatBatch srcY = xsimd::batch_cast<float>(src >> 8 & 0xFF);
                         const FloatBatch srcZ = xsimd::batch_cast<float>(src >> 16 & 0xFF);
                         const FloatBatch srcW = xsimd::batch_cast<float>(src >> 24 & 0xFF);
-                        x += srcX * wt;
-                        y += srcY * wt;
-                        z += srcZ * wt;
-                        w += srcW * wt;
+                        x += srcX * bb;
+                        y += srcY * bb;
+                        z += srcZ * bb;
+                        w += srcW * bb;
                     }
+                    x /= bSum;
+                    y /= bSum;
+                    z /= bSum;
+                    w /= bSum;
 
                     switch (method)
                     {

@@ -18,10 +18,12 @@ void BitmapManager::BindSource(
 
 void BitmapManager::BindMaterial(
     const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
-    const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor)
+    const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor, 
+    const std::vector<std::shared_ptr<DirectX::HeightMap>>& hgt)
 {
     m_AlbAtlas = alb;
     m_NorAtlas = nor;
+    m_HgtAtlas = hgt;
 }
 
 std::vector<uint16_t> BitmapManager::CopyElevation(int x, int y, unsigned w, unsigned h, int mip) const
@@ -36,7 +38,7 @@ std::vector<uint16_t> BitmapManager::CopyElevation(int x, int y, unsigned w, uns
 
 std::vector<uint32_t> BitmapManager::BlendAlbedoRoughness(int x, int y, unsigned w, unsigned h, int mip) const
 {
-    return AlbedoBlender(m_SplatTiles, m_AlbAtlas).Blend(x, y, w, h, mip);
+    return AlbedoBlender(m_SplatTiles, m_AlbAtlas, m_HgtAtlas).Blend(x, y, w, h, mip);
 }
 
 std::vector<uint8_t> BitmapManager::BlendAlbedoRoughnessBc3(int x, int y, unsigned w, unsigned h, int mip) const
@@ -48,7 +50,7 @@ std::vector<uint8_t> BitmapManager::BlendAlbedoRoughnessBc3(int x, int y, unsign
 std::vector<uint32_t> BitmapManager::BlendNormalOcclusion(
     int x, int y, unsigned w, unsigned h, int mip, int method) const
 {
-    return NormalBlender(m_SplatTiles, m_NormalTiles, m_NorAtlas).Blend(x, y, w, h, mip,
+    return NormalBlender(m_SplatTiles, m_NormalTiles, m_NorAtlas, m_HgtAtlas).Blend(x, y, w, h, mip,
         static_cast<NormalBlender::BlendMethod>(method));
 }
 

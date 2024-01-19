@@ -20,7 +20,8 @@ public:
 
     void BindMaterial(
         const std::vector<std::shared_ptr<DirectX::AlbedoMap>>& alb,
-        const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor);
+        const std::vector<std::shared_ptr<DirectX::NormalMap>>& nor, const std::vector<std::shared_ptr<DirectX::HeightMap>>&
+        hgt);
 
     [[nodiscard]] std::vector<uint16_t> CopyElevation(
         int x, int y, unsigned w, unsigned h, int mip) const;
@@ -43,4 +44,5 @@ protected:
     std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>> m_NormalTiles = nullptr;
     std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_AlbAtlas { nullptr };
     std::vector<std::shared_ptr<DirectX::NormalMap>> m_NorAtlas { nullptr };
+    std::vector<std::shared_ptr<DirectX::HeightMap>> m_HgtAtlas { nullptr };
 };

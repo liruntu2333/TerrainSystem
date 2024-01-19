@@ -23,8 +23,10 @@ class AlbedoBlender : public MaterialBlender
 public:
     AlbedoBlender(
         std::shared_ptr<DirectX::TiledMap<DirectX::SplatMap>> splat,
-        std::vector<std::shared_ptr<DirectX::AlbedoMap>> atlas) :
-        MaterialBlender(std::move(splat)), m_Atlas(std::move(atlas)) {}
+        std::vector<std::shared_ptr<DirectX::AlbedoMap>> atlas,
+        std::vector<std::shared_ptr<DirectX::HeightMap>> hgtAtlas) :
+        MaterialBlender(std::move(splat)), m_Atlas(std::move(atlas)),
+        m_HgtAtlas(std::move(hgtAtlas)) {}
 
     ~AlbedoBlender() = default;
 
@@ -35,6 +37,7 @@ public:
 
 protected:
     std::vector<std::shared_ptr<DirectX::AlbedoMap>> m_Atlas {};
+    std::vector<std::shared_ptr<DirectX::HeightMap>> m_HgtAtlas {};
 };
 
 class NormalBlender : public MaterialBlender
@@ -43,8 +46,10 @@ public:
     NormalBlender(
         std::shared_ptr<DirectX::TiledMap<DirectX::SplatMap>> splat,
         std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>> base,
-        std::vector<std::shared_ptr<DirectX::NormalMap>> atlas) :
-        MaterialBlender(std::move(splat)), m_Base(std::move(base)), m_Detail(std::move(atlas)) {}
+        std::vector<std::shared_ptr<DirectX::NormalMap>> atlas,
+        std::vector<std::shared_ptr<DirectX::HeightMap>> hgtAtlas) :
+        MaterialBlender(std::move(splat)), m_Base(std::move(base)), m_Detail(std::move(atlas)),
+        m_HgtAtlas(std::move(hgtAtlas)), HgtAtlas(std::move(hgtAtlas)) {}
 
     ~NormalBlender() = default;
 
@@ -68,4 +73,6 @@ public:
 protected:
     std::shared_ptr<DirectX::TiledMap<DirectX::NormalMap>> m_Base;
     std::vector<std::shared_ptr<DirectX::NormalMap>> m_Detail {};
+    std::vector<std::shared_ptr<DirectX::HeightMap>> m_HgtAtlas {};
+    std::vector<std::shared_ptr<DirectX::HeightMap>> HgtAtlas;
 };

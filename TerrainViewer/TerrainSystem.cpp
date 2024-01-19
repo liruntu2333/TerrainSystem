@@ -174,7 +174,15 @@ void TerrainSystem::BindMaterials(const std::vector<std::filesystem::path>& mats
         std::make_shared<NormalMap>(mats[3] / "normal.dds"),
     };
 
-    m_SrcManager->BindMaterial(albedo, normal);
+    const std::vector height =
+    {
+        std::make_shared<HeightMap>(mats[0] / "height.dds"),
+        std::make_shared<HeightMap>(mats[1] / "height.dds"),
+        std::make_shared<HeightMap>(mats[2] / "height.dds"),
+        std::make_shared<HeightMap>(mats[3] / "height.dds"),
+    };
+
+    m_SrcManager->BindMaterial(albedo, normal, height);
 }
 
 TerrainSystem::PatchRenderResource TerrainSystem::TickMeshTerrain(

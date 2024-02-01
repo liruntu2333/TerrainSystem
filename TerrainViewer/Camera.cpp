@@ -28,7 +28,7 @@ Matrix Camera::GetViewProjection() const
 
 Matrix Camera::GetView() const
 {
-    return XMMatrixLookToLH(m_Position, m_Forward, Vector3::Up);
+    return XMMatrixLookToRH(m_Position, m_Forward, m_Up);
 }
 
 // Matrix Camera::GetViewLocal() const
@@ -38,7 +38,7 @@ Matrix Camera::GetView() const
 
 Matrix Camera::GetProjection() const
 {
-    return XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+    return Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
 }
 
 // Matrix Camera::GetProjectionLocal() const
@@ -54,7 +54,7 @@ Matrix Camera::GetProjection() const
 
 BoundingFrustum Camera::GetFrustum() const
 {
-    BoundingFrustum f(XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane));
+    BoundingFrustum f(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane));
     f.Transform(f, Matrix::CreateFromYawPitchRoll(m_Rotation) * Matrix::CreateTranslation(m_Position));
     return f;
 }
@@ -84,11 +84,15 @@ void Camera::Update(const ImGuiIO& io, float spd)
     const float dt = io.DeltaTime;
     m_Orientation = Quaternion::CreateFromYawPitchRoll(m_Rotation);
     m_Orientation.Normalize();
-    auto forward = Vector3::Transform(-Vector3::Forward, m_Orientation);
+    auto forward = Vector3::Transform(Vector3::Forward, Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z));
     forward.Normalize();
     m_Forward = forward;
-    auto right = Vector3::Transform(Vector3::Right, m_Orientation);
+    auto right = Vector3::Transform(Vector3::Right, Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z));
     right.Normalize();
+    m_Right = right;
+    auto up = Vector3::Transform(Vector3::Up, Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z));
+    up.Normalize();
+    m_Up = up;
 
     if (m_IsPlaying)
     {
@@ -136,9 +140,9 @@ void Camera::Update(const ImGuiIO& io, float spd)
         {
             const auto dx = io.MouseDelta.x;
             const auto dy = io.MouseDelta.y;
-            m_Rotation.x += dy * 0.001f;
-            m_Rotation.y += dx * 0.001f;
-            m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
+            m_Rotation.x += dy * -0.001f;
+            m_Rotation.y += dx * -0.001f;
+            //m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
         }
     }
 

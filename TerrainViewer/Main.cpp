@@ -17,12 +17,15 @@
 #include <directxtk/GeometricPrimitive.h>
 #include <d3d11_3.h>
 
+#include "AssetImporter.h"
 #include "DebugRenderer.h"
+#include "ModelRenderer.h"
+#include "StructuredBuffer.h"
 
 // Data
-static ID3D11Device* g_pd3dDevice = NULL;
-static ID3D11DeviceContext* g_pd3dDeviceContext = NULL;
-static IDXGISwapChain* g_pSwapChain = NULL;
+static ID3D11Device* g_pd3dDevice                     = NULL;
+static ID3D11DeviceContext* g_pd3dDeviceContext       = NULL;
+static IDXGISwapChain* g_pSwapChain                   = NULL;
 static ID3D11RenderTargetView* g_mainRenderTargetView = NULL;
 
 using namespace DirectX::SimpleMath;
@@ -31,56 +34,20 @@ ThreadPool g_ThreadPool(std::thread::hardware_concurrency());
 
 namespace
 {
-    std::unique_ptr<DirectX::Texture2D> g_depthStencil = nullptr;
-    std::unique_ptr<TINRenderer> g_MeshRenderer = nullptr;
-    std::unique_ptr<ClipmapRenderer> g_GridRenderer = nullptr;
-    std::shared_ptr<PassConstants> g_Constants = nullptr;
+    std::unique_ptr<DirectX::Texture2D> g_depthStencil            = nullptr;
+    std::shared_ptr<PassConstants> g_Constants                    = nullptr;
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
-    std::unique_ptr<Camera> g_Camera = nullptr;
-    std::unique_ptr<TerrainSystem> g_System = nullptr;
+    std::unique_ptr<Camera> g_Camera                              = nullptr;
+
+    std::unique_ptr<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>> g_Vertices = nullptr;
+    std::unique_ptr<DirectX::StructuredBuffer<uint32_t>> g_Indices                              = nullptr;
+    DirectX::BoundingBox g_Bound;
+    std::unique_ptr<DirectX::Texture2D> g_Albedo   = nullptr;
+    std::unique_ptr<ModelRenderer> g_ModelRenderer = nullptr;
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(4096.0f, 700.0f, 4096.0f);
-
-    const std::vector<std::filesystem::path> Hill =
-    {
-        "asset/texture_can/snow",
-        "asset/texture_can/rock",
-        "asset/texture_can/grass",
-        "asset/texture_can/ground",
-    };
-
-    const std::vector<std::filesystem::path> Mars =
-    {
-        "asset/texture_can/ice",
-        "asset/texture_can/asteroid",
-        "asset/texture_can/crystal",
-        "asset/texture_can/lava",
-    };
-
-    const std::vector<std::filesystem::path> Artificial =
-    {
-        "asset/texture_can/mosaic",
-        "asset/texture_can/tartan",
-        "asset/texture_can/leather",
-        "asset/texture_can/seawave",
-    };
-
-    enum MaterialPacks
-    {
-        HillPatch,
-        MarsPatch,
-        ArtificialPatch,
-    };
-
-    constexpr MaterialPacks PackIndex = HillPatch;
-    const std::map<MaterialPacks, std::vector<std::filesystem::path>> MaterialPackages =
-    {
-        { HillPatch, Hill },
-        { MarsPatch, Mars },
-        { ArtificialPatch, Artificial },
-    };
+    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, 300.0f);
 }
 
 // Forward declarations of helper functions
@@ -138,24 +105,16 @@ int main(int, char**)
 
     CreateSystem();
 
-    bool wireFrame = false;
-    float lPhi = DirectX::XM_PI;
-    float lTheta = 1.2f;
-    float lInt = 3.0f;
+    bool wireFrame     = false;
+    float lPhi         = DirectX::XM_PI;
+    float lTheta       = 1.2f;
+    float lInt         = 3.0f;
     bool freezeFrustum = false;
-    bool drawBb = false;
-    bool drawClip = false;
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit);
-    float spd = 30.0f;
-    float hScale = 2129.92f;
-    float transition = 25.4f;
-    int blendMode = 6;
-    bool done = false;
+    float spd     = 100.0f;
+    bool done     = false;
     float ambient = 0.2f;
-    bool rcd = false;
-    bool play = false;
-    auto mats = PackIndex;
     // Main loop
     while (!done)
     {
@@ -181,61 +140,31 @@ int main(int, char**)
 
         bool modeChanged = false;
 
-        ImGui::Begin("Terrain System");
+        ImGui::Begin("Grass System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        auto matChanged = ImGui::Combo("Material Pack", reinterpret_cast<int*>(&mats), "Hill\0Mars\0Artificial\0");
-        modeChanged |= matChanged;
-        ImGui::DragFloat("Height Scale", &hScale, 1, 0.0, 10000.0);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
         ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
         ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
         ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
         ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
-        ImGui::SliderFloat("Transition Width", &transition, 0.1, 127.0);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-        //ImGui::Checkbox("Draw Bounding Box", &drawBb);
-        ImGui::Checkbox("Show Clipmap Texture", &drawClip);
-        //ImGui::Checkbox("Record", &rcd);
-        ImGui::Checkbox("Play record", &play);
-        modeChanged |= ImGui::RadioButton("Base", &blendMode, 0);
-        modeChanged |= ImGui::RadioButton("Detail", &blendMode, 1);
-        modeChanged |= ImGui::RadioButton("Linear", &blendMode, 2);
-        modeChanged |= ImGui::RadioButton("Partial Derivative", &blendMode, 3);
-        modeChanged |= ImGui::RadioButton("Whiteout", &blendMode, 4);
-        modeChanged |= ImGui::RadioButton("Unreal", &blendMode, 5);
-        modeChanged |= ImGui::RadioButton("Reorient", &blendMode, 6);
-        modeChanged |= ImGui::RadioButton("Unity", &blendMode, 7);
         ImGui::End();
+
+        auto statueWorld = Matrix::CreateScale(1) * Matrix::CreateFromYawPitchRoll(Vector3(-DirectX::XM_PIDIV2, 0, 0)) * Matrix::CreateTranslation(0, -100, 0);
 
         // Updating
         std::vector<DirectX::BoundingBox> bbs;
-        if (io.KeysDown[ImGui::GetKeyIndex(ImGuiKey_P)]) play = true;
-        if (rcd) g_Camera->StartRecord();
-        else if (play)
-        {
-            lPhi += io.DeltaTime * 0.3f;
-            lPhi = std::fmod(lPhi, DirectX::XM_2PI);
-            g_Camera->PlayRecord();
-        }
-        else g_Camera->StopRecord();
+        DirectX::BoundingBox bbWorld;
+        g_Bound.Transform(bbWorld, statueWorld);
+        bbs.emplace_back(bbWorld);
         g_Camera->Update(io, spd);
         if (!freezeFrustum)
         {
             frustum = g_Camera->GetFrustum();
-            view = g_Camera->GetPosition();
+            view    = g_Camera->GetPosition();
         }
-        if (matChanged)
-        {
-            g_System->BindMaterials(MaterialPackages.at(mats));
-        }
-        if (modeChanged)
-        {
-            g_System->ResetClipmapTexture();
-        }
-        const auto& resource = g_System->TickClipmap(frustum, hScale,
-            g_pd3dDeviceContext, blendMode);
         //const auto& pr = g_System->TickMeshTerrain(
         // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
 
@@ -246,13 +175,10 @@ int main(int, char**)
 
         lDir.Normalize();
 
-        g_Constants->ViewProjection = g_Camera->GetViewProjection().Transpose();
-        g_Constants->ViewPosition = view;
-        g_Constants->Light = Vector4(lDir.x, lDir.y, lDir.z, lInt);
+        g_Constants->ViewProjection   = g_Camera->GetViewProjection().Transpose();
+        g_Constants->ViewPosition     = view;
+        g_Constants->Light            = Vector4(lDir.x, lDir.y, lDir.z, lInt);
         g_Constants->AmbientIntensity = ambient;
-        g_Constants->HeightScale = hScale;
-        g_Constants->AlphaOffset = Vector2(126.0f - transition);
-        g_Constants->OneOverTransition = 1.0f / transition;
 
         // Rendering
         ImGui::Render();
@@ -265,28 +191,14 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
-        if (drawBb)
-            g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
-        //g_MeshRenderer->Render(g_pd3dDeviceContext, pr, wireFramed);
-        g_GridRenderer->Render(g_pd3dDeviceContext, resource);
-        if (wireFrame) g_GridRenderer->Render(g_pd3dDeviceContext, resource, true);
-
-        if (drawClip)
-        {
-            g_DebugRenderer->DrawClippedR16(Vector2(0.0f), g_System->GetHeightClip(), g_pd3dDeviceContext);
-#ifdef  HARDWARE_FILTERING
-            g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedRGBA8888(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
-#else
-            g_DebugRenderer->DrawClippedBc3(Vector2(0, 260), g_System->GetAlbedoClip(), g_pd3dDeviceContext);
-            g_DebugRenderer->DrawClippedBc3(Vector2(0, 520), g_System->GetNormalClip(), g_pd3dDeviceContext);
-#endif
-        }
+        g_ModelRenderer->Render(g_pd3dDeviceContext,
+            statueWorld, g_Camera->GetViewProjection(), *g_Vertices, *g_Indices, *g_Albedo, wireFrame);
+        g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-         g_pSwapChain->Present(1, 0); // Present with vsync
+        g_pSwapChain->Present(1, 0); // Present with vsync
         //g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
@@ -307,19 +219,19 @@ bool CreateDeviceD3D(HWND hWnd)
     // Setup swap chain
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
-    sd.BufferCount = 2;
-    sd.BufferDesc.Width = 0;
-    sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    sd.BufferDesc.RefreshRate.Numerator = 60;
+    sd.BufferCount                        = 2;
+    sd.BufferDesc.Width                   = 0;
+    sd.BufferDesc.Height                  = 0;
+    sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    sd.BufferDesc.RefreshRate.Numerator   = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hWnd;
-    sd.SampleDesc.Count = 1;
-    sd.SampleDesc.Quality = 0;
-    sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.OutputWindow                       = hWnd;
+    sd.SampleDesc.Count                   = 1;
+    sd.SampleDesc.Quality                 = 0;
+    sd.Windowed                           = TRUE;
+    sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
     UINT createDeviceFlags = 0;
 
@@ -327,7 +239,7 @@ bool CreateDeviceD3D(HWND hWnd)
 
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, };
-    HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
+    HRESULT res                                 = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
         featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
         &featureLevel,
         &g_pd3dDeviceContext);
@@ -390,20 +302,31 @@ void CleanupRenderTarget()
 void CreateSystem()
 {
     g_Constants = std::make_unique<PassConstants>();
-    g_Cb0 = std::make_unique<DirectX::ConstantBuffer<PassConstants>>(g_pd3dDevice);
-
-    g_MeshRenderer = std::make_unique<TINRenderer>(g_pd3dDevice, g_Cb0);
-    g_MeshRenderer->Initialize(g_pd3dDeviceContext, "shader");
-
-    g_GridRenderer = std::make_unique<ClipmapRenderer>(g_pd3dDevice, g_Cb0);
-    g_GridRenderer->Initialize("shader");
+    g_Cb0       = std::make_unique<DirectX::ConstantBuffer<PassConstants>>(g_pd3dDevice);
 
     g_Camera = std::make_unique<Camera>(ViewInit);
 
-    g_System = std::make_unique<TerrainSystem>(ViewInit, "asset", g_pd3dDevice);
-    g_System->BindMaterials(MaterialPackages.at(PackIndex));
-
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
+
+    auto [meshes, mats, bounding] = AssetImporter::LoadAsset(R"(asset\model\Statue\12328_Statue_v1_L2.obj)");
+    std::vector<ModelRenderer::Vertex> vertices;
+    vertices.reserve(meshes[0].Vertices.size());
+    std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
+        [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos, v.Nor, v.Tc); });
+    g_Bound = bounding;
+
+    CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
+        0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
+    g_Vertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
+        vertices.data(), vertices.size(), desc);
+    desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+    desc.StructureByteStride = sizeof(uint32_t);
+    g_Indices                = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
+        meshes[0].Indices.size(), desc);
+    g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
+
+    g_ModelRenderer = std::make_unique<ModelRenderer>(g_pd3dDevice);
+    g_ModelRenderer->Initialize(R"(shader)");
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

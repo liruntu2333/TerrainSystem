@@ -157,6 +157,7 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AssetImporter.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="ClipmapLevel.cpp" />
     <ClCompile Include="ClipmapRenderer.cpp" />
@@ -166,6 +167,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="MaterialBlender.cpp" />
     <ClCompile Include="BitmapManager.cpp" />
+    <ClCompile Include="ModelRenderer.cpp" />
     <ClCompile Include="TINRenderer.cpp" />
     <ClCompile Include="Patch.cpp" />
     <ClCompile Include="Renderer.cpp" />
@@ -175,6 +177,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\HeightMapSplitter\ThreadPool.h" />
+    <ClInclude Include="AssetImporter.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="ClipmapLevel.h" />
     <ClInclude Include="ClipmapRenderer.h" />
@@ -186,6 +189,7 @@
     <ClInclude Include="imgui_impl_win32.h" />
     <ClInclude Include="MaterialBlender.h" />
     <ClInclude Include="BitmapManager.h" />
+    <ClInclude Include="ModelRenderer.h" />
     <ClInclude Include="TINRenderer.h" />
     <ClInclude Include="Patch.h" />
     <ClInclude Include="Renderer.h" />
@@ -196,6 +200,14 @@
     <ClInclude Include="VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\shader\GrassGeneration.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+    </FxCompile>
     <FxCompile Include="..\shader\GridPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
@@ -221,6 +233,18 @@
     <FxCompile Include="..\shader\MeshVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="..\shader\ModelPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="..\shader\ModelVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="..\shader\WireFramePS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

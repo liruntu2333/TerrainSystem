@@ -63,6 +63,12 @@
     <ClCompile Include="BitmapManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AssetImporter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -125,6 +131,12 @@
     <ClInclude Include="BitmapManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="AssetImporter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shader\MeshPS.hlsl">
@@ -143,6 +155,15 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shader\GridWireFrame.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shader\GrassGeneration.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shader\ModelVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shader\ModelPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

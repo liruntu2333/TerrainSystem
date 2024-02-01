@@ -32,7 +32,7 @@ void DebugRenderer::DrawBounding(
 {
     for (auto&& bb : bbs)
         s_Cube->Draw(Matrix::CreateScale(bb.Extents * 2) * Matrix::CreateTranslation(bb.Center),
-            view, proj, Colors::DarkRed, nullptr, true);
+            view, proj, Colors::DarkOliveGreen, nullptr, true);
 }
 
 void DebugRenderer::DrawBounding(
@@ -49,6 +49,11 @@ void DebugRenderer::DrawSprite(
     s_Sprite->Begin();
     s_Sprite->Draw(srv, position, nullptr, Colors::White, 0, Vector2::Zero, scale);
     s_Sprite->End();
+}
+
+void DebugRenderer::DrawBox(const Matrix& world, const Matrix& view, const Matrix& proj, const XMVECTORF32& color)
+{
+    s_Cube->Draw(world, view, proj, color, nullptr, false);
 }
 
 void DebugRenderer::DrawClippedR16(
@@ -92,7 +97,7 @@ void DebugRenderer::DrawClippedRGBA8888(
     for (int i = 0; i < LevelCount; ++i)
     {
         auto pos = origin + Vector2(260 * i, 0);
-        RECT r = { 0, 0, 256, 256 };
+        RECT r   = { 0, 0, 256, 256 };
         s_Sprite->Draw(srvs[i], pos, &r);
     }
     s_Sprite->End();
@@ -116,7 +121,7 @@ void DebugRenderer::DrawClippedBc3(
     for (int i = 0; i < LevelCount; ++i)
     {
         auto pos = origin + Vector2(260 * i, 0);
-        RECT r = { 0, 0, 256, 256 };
+        RECT r   = { 0, 0, 256, 256 };
         s_Sprite->Draw(srvs[i], pos, &r);
     }
     s_Sprite->End();

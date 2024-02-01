@@ -43,3 +43,8 @@ struct GridInstance // TODO
     static constexpr unsigned int InputElementCount = 3;
     static const D3D11_INPUT_ELEMENT_DESC InputElements[InputElementCount];
 };
+
+struct 
+{
+    
+};

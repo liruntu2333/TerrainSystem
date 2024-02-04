@@ -5,7 +5,7 @@ struct Vertex
     float2 Texture;
 };
 
-cbuffer ModelConstants : register(b1)
+cbuffer ModelConstants : register(b0)
 {
     float4x4 worldViewProjection;
     float4x4 viewProjection;

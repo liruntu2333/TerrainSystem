@@ -69,6 +69,9 @@
     <ClCompile Include="ModelRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GrassRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -137,6 +140,9 @@
     <ClInclude Include="ModelRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GrassRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shader\MeshPS.hlsl">
@@ -164,6 +170,12 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shader\ModelPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shader\GrassVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shader\GrassPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

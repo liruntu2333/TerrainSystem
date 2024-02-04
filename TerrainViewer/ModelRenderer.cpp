@@ -62,7 +62,7 @@ void ModelRenderer::Render(
 
     ID3D11ShaderResourceView* geoSrvs[] = { vb.GetSrv(), ib.GetSrv() };
     ID3D11Buffer* cbs[]                 = { m_Cb0.GetBuffer() };
-    context->VSSetConstantBuffers(1, _countof(cbs), cbs);
+    context->VSSetConstantBuffers(0, _countof(cbs), cbs);
     context->VSSetShaderResources(0, _countof(geoSrvs), geoSrvs);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
 

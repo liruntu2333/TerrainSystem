@@ -14,11 +14,11 @@
 #include "Texture2D.h"
 #include "TerrainSystem.h"
 #include "../HeightMapSplitter/ThreadPool.h"
-#include <directxtk/GeometricPrimitive.h>
 #include <d3d11_3.h>
 
 #include "AssetImporter.h"
 #include "DebugRenderer.h"
+#include "GrassRenderer.h"
 #include "ModelRenderer.h"
 #include "StructuredBuffer.h"
 
@@ -39,11 +39,18 @@ namespace
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera                              = nullptr;
 
-    std::unique_ptr<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>> g_Vertices = nullptr;
-    std::unique_ptr<DirectX::StructuredBuffer<uint32_t>> g_Indices                              = nullptr;
+    std::unique_ptr<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>> g_BaseVertices = nullptr;
+    std::unique_ptr<DirectX::StructuredBuffer<uint32_t>> g_BaseIndices                              = nullptr;
     DirectX::BoundingBox g_Bound;
+    float g_BaseArea                               = 0.0f;
     std::unique_ptr<DirectX::Texture2D> g_Albedo   = nullptr;
     std::unique_ptr<ModelRenderer> g_ModelRenderer = nullptr;
+
+    std::unique_ptr<GrassRenderer> g_GrassRenderer    = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> g_GrassVb    = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> g_GrassIb    = nullptr;
+    std::unique_ptr<DirectX::Texture2D> g_GrassAlbedo = nullptr;
+    uint32_t g_GrassIdxCnt                            = 0;
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
@@ -152,8 +159,8 @@ int main(int, char**)
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::End();
 
-        auto statueWorld = Matrix::CreateScale(1) * Matrix::CreateFromYawPitchRoll(Vector3(-DirectX::XM_PIDIV2, 0, 0)) * Matrix::CreateTranslation(0, -100, 0);
-
+        auto statueRotTrans = Matrix::CreateTranslation(0, -100, 0);
+        auto statueWorld    = statueRotTrans;
         // Updating
         std::vector<DirectX::BoundingBox> bbs;
         DirectX::BoundingBox bbWorld;
@@ -165,8 +172,6 @@ int main(int, char**)
             frustum = g_Camera->GetFrustum();
             view    = g_Camera->GetPosition();
         }
-        //const auto& pr = g_System->TickMeshTerrain(
-        // camCullingXy, frustumLocal, yScale, bounding, g_pd3dDevice);
 
         Vector3 lDir(
             std::sin(lTheta) * std::cos(lPhi),
@@ -192,14 +197,16 @@ int main(int, char**)
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
+        g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(), statueRotTrans,
+            g_Camera->GetViewProjection(), g_BaseArea, 20.0, wireFrame);
         g_ModelRenderer->Render(g_pd3dDeviceContext,
-            statueWorld, g_Camera->GetViewProjection(), *g_Vertices, *g_Indices, *g_Albedo, wireFrame);
+            statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices, *g_BaseIndices, *g_Albedo, wireFrame);
         g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        g_pSwapChain->Present(1, 0); // Present with vsync
-        //g_pSwapChain->Present(0, 0); // Present without vsync
+        //g_pSwapChain->Present(1, 0); // Present with vsync
+        g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup
@@ -308,25 +315,44 @@ void CreateSystem()
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 
-    auto [meshes, mats, bounding] = AssetImporter::LoadAsset(R"(asset\model\Statue\12328_Statue_v1_L2.obj)");
-    std::vector<ModelRenderer::Vertex> vertices;
-    vertices.reserve(meshes[0].Vertices.size());
-    std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
-        [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos, v.Nor, v.Tc); });
-    g_Bound = bounding;
+    {
+        //auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\Rock1\Rock1.obj)");
+        auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\Statue\12328_Statue_v1_L2.obj)", true);
+        std::vector<ModelRenderer::Vertex> vertices;
+        vertices.reserve(meshes[0].Vertices.size());
+        std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
+            [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos * 1, v.Nor, v.Tc); });
+        bounding.Transform(g_Bound, Matrix::CreateScale(1));
+        g_BaseArea = areaSum;
 
-    CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
-        0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
-    g_Vertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
-        vertices.data(), vertices.size(), desc);
-    desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
-    desc.StructureByteStride = sizeof(uint32_t);
-    g_Indices                = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
-        meshes[0].Indices.size(), desc);
-    g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
+        CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
+            0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
+        g_BaseVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
+            vertices.data(), vertices.size(), desc);
+        desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+        desc.StructureByteStride = sizeof(uint32_t);
+        g_BaseIndices            = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
+            meshes[0].Indices.size(), desc);
+        g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
+    }
 
     g_ModelRenderer = std::make_unique<ModelRenderer>(g_pd3dDevice);
     g_ModelRenderer->Initialize(R"(shader)");
+
+    g_GrassRenderer = std::make_unique<GrassRenderer>(g_pd3dDevice);
+    g_GrassRenderer->Initialize(R"(shader)");
+
+    {
+        auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\DeadTree\DeadTree.obj)");
+        std::vector<ModelRenderer::Vertex> vertices;
+        vertices.reserve(meshes[0].Vertices.size());
+        g_GrassIdxCnt = meshes[0].Indices.size();
+        std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
+            [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos, v.Nor, v.Tc); });
+        DirectX::CreateStaticBuffer(g_pd3dDevice, vertices, D3D11_BIND_VERTEX_BUFFER, &g_GrassVb);
+        DirectX::CreateStaticBuffer(g_pd3dDevice, meshes[0].Indices, D3D11_BIND_INDEX_BUFFER, &g_GrassIb);
+        g_GrassAlbedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, R"(asset\model\DeadTree\grass.png)");
+    }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

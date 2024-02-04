@@ -21,11 +21,12 @@ namespace
     }
 }
 
-AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem::path& fPath)
+AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem::path& fPath, bool yToZ)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(fPath.string().c_str(),
-        aiProcessPreset_TargetRealtime_Fast | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes);
+        aiProcessPreset_TargetRealtime_Fast | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes |
+        (yToZ ? aiProcess_FlipWindingOrder : 0));
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
@@ -36,7 +37,7 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
     ImporterModelData model {};
 
     std::function<void(const aiNode*, Matrix)> traverse =
-        [scene, &model, &traverse](const aiNode* node, Matrix t)
+        [scene, &model, &traverse, yToZ](const aiNode* node, Matrix t)
     {
         t                  = AiMatrixToMatrix(node->mTransformation) * t;
         const auto meshCnt = node->mNumMeshes;
@@ -44,6 +45,10 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
         {
             const auto mesh    = scene->mMeshes[node->mMeshes[i]];
             const auto vertCnt = mesh->mNumVertices;
+            if (mesh->mTextureCoords[0] == nullptr)
+            {
+                continue;
+            }
             std::vector<Vertex> vb;
             for (uint32_t j = 0; j < vertCnt; ++j)
             {
@@ -51,9 +56,13 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
                 const auto& nor = mesh->mNormals[j];
                 const auto& tan = mesh->mTangents[j];
                 const auto& tc  = mesh->mTextureCoords[0][j];
+
+                Vector3 tPos = Vector3::Transform(yToZ ? Vector3(pos.x, pos.z, pos.y) : Vector3(pos.x, pos.y, pos.z), t);
+                Vector3 tNor = Vector3::TransformNormal(yToZ ? Vector3(nor.x, nor.z, nor.y) : Vector3(nor.x, nor.y, nor.z), t);
+                tNor.Normalize();
                 vb.emplace_back(
-                    Vector3::Transform(Vector3(pos.x, pos.y, pos.z), t),
-                    Vector3(nor.x, nor.y, nor.z),
+                    tPos,
+                    tNor,
                     Vector3(tan.x, tan.y, tan.z),
                     Vector2(tc.x, tc.y));
             }
@@ -66,11 +75,17 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
                 {
                     ib.push_back(face.mIndices[k]);
                 }
+                model.AreaSum += 0.5f * (vb[ib[j * 3]].Pos - vb[ib[j * 3 + 2]].Pos).Cross(vb[ib[j * 3 + 1]].Pos - vb[ib[j * 3 + 2]].Pos).Length();
             }
             const auto matIndex = mesh->mMaterialIndex;
             model.Subsets.emplace_back(std::move(vb), std::move(ib), matIndex);
-            const auto minCorner = Vector3(mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z);
-            const auto maxCorner = Vector3(mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z);
+            auto minCorner = Vector3(mesh->mAABB.mMin.x, mesh->mAABB.mMin.y, mesh->mAABB.mMin.z);
+            auto maxCorner = Vector3(mesh->mAABB.mMax.x, mesh->mAABB.mMax.y, mesh->mAABB.mMax.z);
+            if (yToZ)
+            {
+                std::swap(minCorner.y, minCorner.z);
+                std::swap(maxCorner.y, maxCorner.z);
+            }
             model.BoundingBox = DirectX::BoundingBox((minCorner + maxCorner) * 0.5, (maxCorner - minCorner) * 0.5);
         }
         const auto childCnt = node->mNumChildren;

@@ -50,12 +50,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Camera.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="CullingSoa.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="D3DHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -63,9 +57,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imgui_impl_win32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TINRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer.h">
@@ -80,34 +71,10 @@
     <ClInclude Include="VertexBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Patch.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Vertex.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TerrainSystem.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\HeightMapSplitter\ThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ClipmapRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ClipmapLevel.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BitMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="DebugRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MaterialBlender.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="BitmapManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="AssetImporter.h">

@@ -173,26 +173,15 @@
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\HeightMapSplitter\ThreadPool.h" />
     <ClInclude Include="AssetImporter.h" />
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="ClipmapLevel.h" />
-    <ClInclude Include="ClipmapRenderer.h" />
-    <ClInclude Include="CullingSoa.h" />
     <ClInclude Include="D3DHelper.h" />
     <ClInclude Include="DebugRenderer.h" />
-    <ClInclude Include="BitMap.h" />
     <ClInclude Include="GrassRenderer.h" />
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />
-    <ClInclude Include="MaterialBlender.h" />
-    <ClInclude Include="BitmapManager.h" />
     <ClInclude Include="ModelRenderer.h" />
-    <ClInclude Include="TINRenderer.h" />
-    <ClInclude Include="Patch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="StructuredBuffer.h" />
-    <ClInclude Include="TerrainSystem.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexBuffer.h" />

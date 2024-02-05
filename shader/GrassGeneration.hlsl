@@ -6,26 +6,11 @@
 //    INT  BaseVertexLocation;
 //    UINT StartInstanceLocation;
 //};
+#include "Grass.hlsli"
 
 #define Pi 3.14159265359
 #define TwoPi 6.28318530718
 #define PiDivTwo 1.57079632679
-
-struct InstanceData
-{
-    float3 pos;
-    float3 v1;
-    float3 v2;
-    float maxWidth;
-    uint hash;
-};
-
-struct BaseVertex
-{
-    float3 position;
-    float3 normal;
-    float2 textureCoordinate;
-};
 
 // Hash function from H. Schechter & R. Bridson, goo.gl/RXiKaH
 uint Hash(uint s)
@@ -77,34 +62,23 @@ void EnsureValidV2Pos(inout float3 v2, in float3 bladeUp, in float3 groundPosV2)
     v2 += bladeUp * -min(dot(bladeUp, groundPosV2), 0.0f);
 }
 
-cbuffer Uniforms : register(b0)
-{
-    float4x4 viewProj;
-    float4x4 baseWorld;
-    float3x3 invTansBaseWorld;
-    uint grassIdxCnt;
-    uint numBaseTriangle;
-    float invSumBaseArea;
-    float density;
-    float pad[3];
-}
-
 RWBuffer<uint> drawArg : register(u0);
 AppendStructuredBuffer<InstanceData> instanceData : register(u1);
 
 StructuredBuffer<BaseVertex> vertices : register(t0);
 StructuredBuffer<uint> indices : register(t1);
+//StructuredBuffer<uint> triangleIndex : register(t2);
 
 [numthreads(256, 1, 1)]
 void main(uint3 threadId : SV_DispatchThreadID)
 {
     if (threadId.x == 0u)
     {
-        drawArg[0] = 15u;
-        drawArg[1] = 0u;
-        drawArg[2] = 0u;
-        drawArg[3] = 0;
-        drawArg[4] = 0u;
+        drawArg[5] = 15u;
+        drawArg[6] = 0u;
+        drawArg[7] = 0u;
+        drawArg[8] = 0;
+        drawArg[9] = 0u;
     }
 
     DeviceMemoryBarrier();
@@ -114,9 +88,12 @@ void main(uint3 threadId : SV_DispatchThreadID)
         return;
     }
 
-    const BaseVertex baseV0 = vertices[indices[threadId.x * 3 + 0]];
-    const BaseVertex baseV1 = vertices[indices[threadId.x * 3 + 1]];
-    const BaseVertex baseV2 = vertices[indices[threadId.x * 3 + 2]];
+    //uint seed               = triangleIndex[threadId.x];
+    const uint ti           = threadId.x;
+    uint seed               = ti;
+    const BaseVertex baseV0 = vertices[indices[ti * 3 + 0]];
+    const BaseVertex baseV1 = vertices[indices[ti * 3 + 1]];
+    const BaseVertex baseV2 = vertices[indices[ti * 3 + 2]];
 
     const float3 cross12 = cross(baseV1.position - baseV0.position, baseV2.position - baseV0.position);
     const float area     = length(cross12) * 0.5;
@@ -143,10 +120,8 @@ void main(uint3 threadId : SV_DispatchThreadID)
     //    float4(r3[2], 0),
     //    float4(0, 0, 0, 1));
 
-    uint numInstances = uint(floor(density * area * invSumBaseArea) + 1);
-    numInstances      = 1;
-    InterlockedAdd(drawArg[1], numInstances);
-    uint seed = threadId.x;
+    const uint numInstances = max(round(density * area), 1u);
+
     for (uint i = 0; i < numInstances; ++i)
     {
         // https://chrischoy.github.io/research/barycentric-coordinate-for-mesh-sampling/
@@ -160,7 +135,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
         float3 groundPos = baseV0.position * alpha + baseV1.position * beta + baseV2.position * gamma;
         groundPos        = mul(float4(groundPos, 1.0), baseWorld).xyz;
 
-		float3 bladeUp = normalize(faceUp + 0.5 * (baseV0.normal * alpha + baseV1.normal * beta + baseV2.normal * gamma));
+        float3 bladeUp = normalize(faceUp + 0.5 * (baseV0.normal * alpha + baseV1.normal * beta + baseV2.normal * gamma));
 
         const float dirPhi = lerp(0.0, TwoPi, RandF(seed));
         float sd, cd;
@@ -182,12 +157,11 @@ void main(uint3 threadId : SV_DispatchThreadID)
         sincos(dirTheta, ts, tc);
         const float stiff = lerp(0.5, 0.9, RandF(seed));
 
-        const float3 groundPosV2 = height * stiff * ts * bladeUp + height * stiff * tc * bladeFront;
+        float3 groundPosV2 = height * stiff * ts * bladeUp + height * stiff * tc * bladeFront;
 
-        float3 v2 = groundPos + groundPosV2;
-        float3 v1 = CalculateV1(groundPos, groundPosV2, bladeUp, height, invHeight);
+        float3 groundPosV1 = CalculateV1(float3(0, 0, 0), groundPosV2, bladeUp, height, invHeight);
         //Grass length correction
-        MakePersistentLength(groundPos, groundPosV2, v1, v2, height);
+        MakePersistentLength(float3(0, 0, 0), groundPosV2, groundPosV1, groundPosV2, height);
 
         seed = Hash(seed);
         //const float4x4 S = float4x4(
@@ -208,10 +182,11 @@ void main(uint3 threadId : SV_DispatchThreadID)
         //world          = mul(world, baseWorld);
         InstanceData instance;
         instance.pos      = groundPos;
-        instance.v1       = v1;
-        instance.v2       = v2;
+        instance.posV1    = groundPosV1;
+        instance.posV2    = groundPosV2;
         instance.maxWidth = width;
         instance.hash     = seed;
         instanceData.Append(instance);
+        InterlockedAdd(drawArg[6], 1);
     }
 }

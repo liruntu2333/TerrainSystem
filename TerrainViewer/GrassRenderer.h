@@ -24,7 +24,7 @@ public:
         const DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>& baseVb,
         const DirectX::StructuredBuffer<unsigned>& baseIb,
         ID3D11ShaderResourceView* grassAlbedo,
-        const DirectX::SimpleMath::Matrix& baseRotTrans,
+        const DirectX::SimpleMath::Matrix& baseWorld,
         const DirectX::SimpleMath::Matrix& viewProj,
         const float baseArea, float density, bool wireFrame);
 
@@ -32,8 +32,8 @@ protected:
     struct InstanceData
     {
         DirectX::SimpleMath::Vector3 Pos;
-        DirectX::SimpleMath::Vector3 V1;
-        DirectX::SimpleMath::Vector3 V2;
+        DirectX::SimpleMath::Vector3 PosV1;
+        DirectX::SimpleMath::Vector3 PosV2;
         float MaxWidth;
         uint32_t Hash;
     };
@@ -42,23 +42,28 @@ protected:
     {
         DirectX::SimpleMath::Matrix ViewProj;
         DirectX::SimpleMath::Matrix BaseWorld;
-        DirectX::XMFLOAT3X3 InvTransBaseWorld;
-        uint32_t GrassIdxCnt;
         uint32_t NumBaseTriangle;
-        float InvSumBaseArea;
         float Density;
-        float Padding[3];
+        float Pad[2];
     };
 
     DirectX::ConstantBuffer<Uniforms> m_Cb0;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndirectDrawArg          = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_HighLodIb                = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_DrawArgUav  = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_InstanceBuffer           = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_InstanceUav = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_InstanceSrv  = nullptr;
 
-    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_Cs;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_SamIdx                 = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_SamIdxUav = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_SamIdxSrv  = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndirectDispArg        = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_InstData             = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_InstUav = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_InstSrv  = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndirectArg         = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> m_ArgUav = nullptr;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_HighLodIb = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_GenGrassCs;
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_AssignSamCs;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps;
 };

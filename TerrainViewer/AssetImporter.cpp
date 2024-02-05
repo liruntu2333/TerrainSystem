@@ -11,13 +11,21 @@ using namespace DirectX::SimpleMath;
 
 namespace
 {
-    Matrix AiMatrixToMatrix(const aiMatrix4x4& aiMat)
+    Matrix AiMatrixToMatrix(const aiMatrix4x4& aiMat, bool yToZ)
     {
-        return Matrix(
+        auto m = Matrix(
             aiMat.a1, aiMat.a2, aiMat.a3, aiMat.a4,
             aiMat.b1, aiMat.b2, aiMat.b3, aiMat.b4,
             aiMat.c1, aiMat.c2, aiMat.c3, aiMat.c4,
-            aiMat.d1, aiMat.d2, aiMat.d3, aiMat.d4).Transpose();
+            aiMat.d1, aiMat.d2, aiMat.d3, aiMat.d4);
+        if (yToZ)
+        {
+            std::swap(m(1, 0), m(2, 0));
+            std::swap(m(1, 1), m(2, 1));
+            std::swap(m(1, 2), m(2, 2));
+            std::swap(m(1, 3), m(2, 3));
+        }
+        return m;
     }
 }
 
@@ -25,8 +33,7 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(fPath.string().c_str(),
-        aiProcessPreset_TargetRealtime_Fast | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes |
-        (yToZ ? aiProcess_FlipWindingOrder : 0));
+        aiProcessPreset_TargetRealtime_Fast | aiProcess_FlipUVs | aiProcess_GenBoundingBoxes);
 
     if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
     {
@@ -39,7 +46,7 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
     std::function<void(const aiNode*, Matrix)> traverse =
         [scene, &model, &traverse, yToZ](const aiNode* node, Matrix t)
     {
-        t                  = AiMatrixToMatrix(node->mTransformation) * t;
+        t *= AiMatrixToMatrix(node->mTransformation, yToZ);
         const auto meshCnt = node->mNumMeshes;
         for (uint32_t i = 0; i < meshCnt; ++i)
         {
@@ -57,12 +64,19 @@ AssetImporter::ImporterModelData AssetImporter::LoadAsset(const std::filesystem:
                 const auto& tan = mesh->mTangents[j];
                 const auto& tc  = mesh->mTextureCoords[0][j];
 
-                Vector3 tPos = Vector3::Transform(yToZ ? Vector3(pos.x, pos.z, pos.y) : Vector3(pos.x, pos.y, pos.z), t);
-                Vector3 tNor = Vector3::TransformNormal(yToZ ? Vector3(nor.x, nor.z, nor.y) : Vector3(nor.x, nor.y, nor.z), t);
+                auto tPos = Vector3(pos.x, pos.y, pos.z);
+                auto tNor = Vector3(nor.x, nor.y, nor.z);
+                if (yToZ)
+                {
+                    std::swap(tPos.y, tPos.z);
+                    tPos.z = -tPos.z;
+                    std::swap(tNor.y, tNor.z);
+                    tNor.z = -tNor.z;
+                }
+                tPos = Vector3::Transform(tPos, t);
+                tNor = Vector3::TransformNormal(tNor, t);
                 tNor.Normalize();
-                vb.emplace_back(
-                    tPos,
-                    tNor,
+                vb.emplace_back(tPos, tNor,
                     Vector3(tan.x, tan.y, tan.z),
                     Vector2(tc.x, tc.y));
             }

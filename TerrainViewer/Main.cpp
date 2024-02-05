@@ -119,9 +119,16 @@ int main(int, char**)
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum {};
     Vector3 view(ViewInit);
-    float spd     = 100.0f;
-    bool done     = false;
-    float ambient = 0.2f;
+    float spd       = 100.0f;
+    float density   = 40.0f;
+    float heightMin = 1.4f;
+    float heightMax = 2.5f;
+    float widthMin  = 0.1f;
+    float widthMax  = 0.14f;
+    float stiffMin  = 0.5f;
+    float stiffMax  = 0.9f;
+    bool done       = false;
+    float ambient   = 0.2f;
     // Main loop
     while (!done)
     {
@@ -150,11 +157,13 @@ int main(int, char**)
         ImGui::Begin("Grass System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
         //ImGui::Text("Visible Patch : %d", pr.Patches.size());
-        ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
-        ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
-        ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
-        ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
+        //ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
+        //ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
+        //ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
+        //ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
+        ImGui::SliderFloat("Grass Density", &density, 0, 50);
+        ImGui::DragFloatRange2()
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::End();
@@ -198,7 +207,7 @@ int main(int, char**)
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
         g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(), statueRotTrans,
-            g_Camera->GetViewProjection(), g_BaseArea, 20.0, wireFrame);
+            g_Camera->GetViewProjection(), g_BaseArea, density, wireFrame);
         g_ModelRenderer->Render(g_pd3dDeviceContext,
             statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices, *g_BaseIndices, *g_Albedo, wireFrame);
         g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());

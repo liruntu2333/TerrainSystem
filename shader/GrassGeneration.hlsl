@@ -30,18 +30,18 @@ float RandF(inout uint seed)
     return float(seed) / 4294967295.0; // 2^32-1
 }
 
-float3 CalculateV1(in float3 groundPos, in float3 groundPosV2, in float3 bladeUp, in float height, in float invHeight)
+float3 CalculateV1(in float3 groundPosV2, in float3 bladeUp, in float height, in float invHeight)
 {
     const float3 g      = groundPosV2 - dot(groundPosV2, bladeUp) * bladeUp;
     const float v2ratio = abs(length(g) * invHeight);
     const float fac     = max(1.0f - v2ratio, 0.05f * max(v2ratio, 1.0f));
-    return groundPos + bladeUp * height * fac;
+    return bladeUp * height * fac;
 }
 
-void MakePersistentLength(in float3 groundPos, in float3 groundPosV2, inout float3 v1, inout float3 v2, in float height)
+void MakePersistentLength(in float3 groundPosV2, inout float3 v1, inout float3 v2, in float height)
 {
     //Persistent length
-    float3 v01       = v1 - groundPos;
+    float3 v01       = v1;
     float3 v12       = v2 - v1;
     const float lv01 = length(v01);
     const float lv12 = length(v12);
@@ -53,7 +53,7 @@ void MakePersistentLength(in float3 groundPos, in float3 groundPosV2, inout floa
     const float ldiff = height / L;
     v01               = v01 * ldiff;
     v12               = v12 * ldiff;
-    v1                = groundPos + v01;
+    v1                = v01;
     v2                = v1 + v12;
 }
 
@@ -148,20 +148,20 @@ void main(uint3 threadId : SV_DispatchThreadID)
         //bladeDir   = normalize(mul(bladeDir, invTansBaseWorld));
         //bladeFront = normalize(mul(bladeFront, invTansBaseWorld));
 
-        const float height    = lerp(1.4, 2.5, RandF(seed));
+        const float height    = lerp(heightRange.x, heightRange.y, RandF(seed));
         const float invHeight = 1.0 / height;
-        const float width     = lerp(0.1, 0.14, RandF(seed));
+        const float width     = lerp(widthRange.x, widthRange.y, RandF(seed));
         //const float width = 10.0;
         const float dirTheta = lerp(0.2, 0.8, RandF(seed)) * PiDivTwo;
         float ts, tc;
         sincos(dirTheta, ts, tc);
-        const float stiff = lerp(0.5, 0.9, RandF(seed));
+        const float stiff = lerp(stiffRange.x, stiffRange.y, RandF(seed));
 
         float3 groundPosV2 = height * stiff * ts * bladeUp + height * stiff * tc * bladeFront;
 
-        float3 groundPosV1 = CalculateV1(float3(0, 0, 0), groundPosV2, bladeUp, height, invHeight);
+        float3 groundPosV1 = CalculateV1(groundPosV2, bladeUp, height, invHeight);
         //Grass length correction
-        MakePersistentLength(float3(0, 0, 0), groundPosV2, groundPosV1, groundPosV2, height);
+        MakePersistentLength(groundPosV2, groundPosV1, groundPosV2, height);
 
         seed = Hash(seed);
         //const float4x4 S = float4x4(

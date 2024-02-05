@@ -121,13 +121,14 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;ispc_texcomp.lib;$(CoreLibraryDependencies);$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
-      <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(SolutionDir)shader\%(Filename).cso</ObjectFileOutput>
-      <PreprocessorDefinitions>HARDWARE_FILTERING</PreprocessorDefinitions>
+      <ShaderModel>5.0</ShaderModel>
+      <DisableOptimizations>false</DisableOptimizations>
+      <EnableDebuggingInformation>false</EnableDebuggingInformation>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -147,33 +148,28 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;ispc_texcomp.lib;$(CoreLibraryDependencies);$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SolutionDir)$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <FxCompile>
       <ShaderModel>5.0</ShaderModel>
       <ObjectFileOutput>$(SolutionDir)shader\%(Filename).cso</ObjectFileOutput>
-      <PreprocessorDefinitions>HARDWARE_FILTERING</PreprocessorDefinitions>
+      <PreprocessorDefinitions>
+      </PreprocessorDefinitions>
+      <DisableOptimizations>true</DisableOptimizations>
+      <EnableDebuggingInformation>true</EnableDebuggingInformation>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AssetImporter.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="ClipmapLevel.cpp" />
-    <ClCompile Include="ClipmapRenderer.cpp" />
     <ClCompile Include="DebugRenderer.cpp" />
     <ClCompile Include="GrassRenderer.cpp" />
     <ClCompile Include="imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui_impl_win32.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="MaterialBlender.cpp" />
-    <ClCompile Include="BitmapManager.cpp" />
     <ClCompile Include="ModelRenderer.cpp" />
-    <ClCompile Include="TINRenderer.cpp" />
-    <ClCompile Include="Patch.cpp" />
     <ClCompile Include="Renderer.cpp" />
-    <ClCompile Include="TerrainSystem.cpp" />
-    <ClCompile Include="Vertex.cpp" />
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -219,41 +215,14 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
     </FxCompile>
     <FxCompile Include="..\shader\GrassPS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
     </FxCompile>
     <FxCompile Include="..\shader\GrassVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\GridPS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\GridVS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\GridWireFrame.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\MeshPS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\MeshVS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="..\shader\ModelPS.hlsl">
@@ -268,16 +237,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="..\shader\WireFramePS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shader\Grass.hlsli" />
-    <None Include="..\shader\ShaderUtil.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

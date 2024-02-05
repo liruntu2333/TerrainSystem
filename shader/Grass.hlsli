@@ -4,7 +4,9 @@ cbuffer Uniforms : register(b0)
     float4x4 baseWorld;
     uint numBaseTriangle;
     float density;
-	float pad[2];
+	float2 heightRange;
+	float2 widthRange;
+	float2 stiffRange;
 }
 
 struct BaseVertex

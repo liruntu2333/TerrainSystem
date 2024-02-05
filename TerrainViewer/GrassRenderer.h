@@ -26,7 +26,12 @@ public:
         ID3D11ShaderResourceView* grassAlbedo,
         const DirectX::SimpleMath::Matrix& baseWorld,
         const DirectX::SimpleMath::Matrix& viewProj,
-        const float baseArea, float density, bool wireFrame);
+        float baseArea,
+        float density,
+        const DirectX::SimpleMath::Vector2& height,
+        const DirectX::SimpleMath::Vector2& width,
+        const DirectX::SimpleMath::Vector2& stiffness,
+        bool wireFrame);
 
 protected:
     struct InstanceData
@@ -44,7 +49,9 @@ protected:
         DirectX::SimpleMath::Matrix BaseWorld;
         uint32_t NumBaseTriangle;
         float Density;
-        float Pad[2];
+        DirectX::SimpleMath::Vector2 Height;
+        DirectX::SimpleMath::Vector2 Width;
+        DirectX::SimpleMath::Vector2 Stiffness;
     };
 
     DirectX::ConstantBuffer<Uniforms> m_Cb0;

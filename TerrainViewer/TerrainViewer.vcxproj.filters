@@ -30,37 +30,13 @@
     <ClCompile Include="Main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TINRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Texture2D.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Patch.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Vertex.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="TerrainSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ClipmapRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ClipmapLevel.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DebugRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MaterialBlender.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="BitmapManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="AssetImporter.cpp">
@@ -145,24 +121,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\shader\MeshPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\MeshVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\WireFramePS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\GridVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\GridPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\GridWireFrame.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="..\shader\GrassGeneration.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
@@ -175,17 +133,14 @@
     <FxCompile Include="..\shader\GrassVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="..\shader\GrassPS.hlsl">
+    <FxCompile Include="..\shader\AssignSample.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="..\shader\AssignSample.hlsl">
+    <FxCompile Include="..\shader\GrassPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shader\ShaderUtil.hlsli">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\shader\Grass.hlsli">
       <Filter>Shaders</Filter>
     </None>

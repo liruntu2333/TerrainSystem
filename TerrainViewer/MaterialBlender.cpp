@@ -1,6 +1,9 @@
 #define NOMINMAX
 #define _XM_NO_INTRINSICS_ // in case of AVX-SSE transition penalty
 #include "MaterialBlender.h"
+#ifdef __RPCNDR_H__ //find the real flag in the header
+#undef small
+#endif
 #include <xsimd/xsimd.hpp>
 #include <directxtk/SimpleMath.h>
 

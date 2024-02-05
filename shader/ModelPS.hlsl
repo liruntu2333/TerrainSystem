@@ -12,8 +12,8 @@ SamplerState anisotropicClamp : register(s0);
 
 float4 main(VertexOut pin) : SV_TARGET
 {
-    const float3 normal = normalize(pin.Normal);
-	float3 col = Shade(normal, float3(0.0, 1.0, 0.0), 0.1, 1.0) * albedo.Sample(anisotropicClamp, pin.Texture);
-    col = ToneMapping(col);
+    float3 normal = normalize(pin.Normal);
+    float3 col = Shade(normal, float3(0.0, 1.0, 0.0), 0.1, 1.0) * albedo.Sample(anisotropicClamp, pin.Texture).rgb;
+    col        = ToneMapping(col);
     return float4(col, 1.0f);
 }

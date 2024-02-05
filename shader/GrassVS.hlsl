@@ -29,15 +29,14 @@ static const float2 lowLod[7] =
     float2(-1.0, 1.0)
 };
 
-float3 QuadBezier(const float3 p0, const float3 p1, const float3 p2, const float t)
+float3 QuadBezierP0Zero(const float3 p1, const float3 p2, const float t)
 {
-    const float oneMinusT = 1.0 - t;
-    return oneMinusT * oneMinusT * p0 + 2.0 * oneMinusT * t * p1 + t * t * p2;
+    return 2.0 * (1.0 - t) * t * p1 + t * t * p2;
 }
 
-float3 QuadBezierDerivative(const float3 p0, const float3 p1, const float3 p2, const float t)
+float3 QuadBezierDerivativeP0Zero(const float3 p1, const float3 p2, const float t)
 {
-    return 2.0 * (1.0 - t) * (p1 - p0) + 2.0 * t * (p2 - p1);
+    return 2.0 * (1.0 - t) * p1 + 2.0 * t * (p2 - p1);
 }
 
 StructuredBuffer<InstanceData> instanceData : register(t0);
@@ -46,18 +45,18 @@ VertexOut main(uint vertexId : SV_VertexID, const uint instanceId : SV_InstanceI
 {
     const InstanceData inst = instanceData[instanceId];
     const float3 v0         = inst.pos;
-    const float3 posV1      = inst.posV1;
-    const float3 posV2      = inst.posV2;
-    const float3 bladeDir   = normalize(cross(posV1, posV2));
+    const float3 v0v1       = inst.posV1;
+    const float3 v0v2       = inst.posV2;
+    const float3 bladeDir   = normalize(cross(v0v1, v0v2));
     float2 uv               = highLod[vertexId];
 
-    float3 pos = QuadBezier(float3(0, 0, 0), inst.posV1, inst.posV2, uv.y);
+    float3 pos = QuadBezierP0Zero(inst.posV1, inst.posV2, uv.y);
 
     const float width = inst.maxWidth * (1.0 - uv.y);
     pos += bladeDir * width * uv.x;
     pos += v0;
 
-    const float3 dCurve = QuadBezierDerivative(float3(0, 0, 0), inst.posV1, inst.posV2, uv.y);
+    const float3 dCurve = QuadBezierDerivativeP0Zero(inst.posV1, inst.posV2, uv.y);
     const float3 wNor   = normalize(cross(dCurve, bladeDir));
     uv.x                = uv.x * 0.5 + 0.5;
 

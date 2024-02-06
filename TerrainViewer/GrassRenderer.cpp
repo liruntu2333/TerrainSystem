@@ -1,5 +1,6 @@
 #include "GrassRenderer.h"
 
+#include <array>
 #include <d3dcompiler.h>
 
 using namespace DirectX;
@@ -9,7 +10,7 @@ namespace
 {
     constexpr uint32_t MAX_GRASS_COUNT = 0x800000;
     constexpr uint32_t GROUP_SIZE_X    = 256;
-    const uint16_t HIGH_LOD_INDEX[15]  = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
+    const uint16_t HIGH_LOD_INDEX[15]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 }
 
 GrassRenderer::GrassRenderer(ID3D11Device* device) : Renderer(device), m_Cb0(device)
@@ -97,17 +98,17 @@ void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
             blob->GetBufferSize(),
             nullptr,
             &m_GenGrassCs)
-    );
+        );
 
-    name = (shaderDir / "AssignSample.cso").wstring();
-    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
-    ThrowIfFailed(
-        m_Device->CreateComputeShader(
-            blob->GetBufferPointer(),
-            blob->GetBufferSize(),
-            nullptr,
-            &m_AssignSamCs)
-    );
+    //name = (shaderDir / "AssignSample.cso").wstring();
+    //ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
+    //ThrowIfFailed(
+    //    m_Device->CreateComputeShader(
+    //        blob->GetBufferPointer(),
+    //        blob->GetBufferSize(),
+    //        nullptr,
+    //        &m_AssignSamCs)
+    //    );
 
     name = (shaderDir / "GrassVS.cso").wstring();
     ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
@@ -117,7 +118,7 @@ void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
             blob->GetBufferSize(),
             nullptr,
             &m_Vs)
-    );
+        );
 
     name = shaderDir / "GrassPS.cso";
     ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
@@ -127,7 +128,7 @@ void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
             blob->GetBufferSize(),
             nullptr,
             &m_Ps)
-    );
+        );
 }
 
 void GrassRenderer::Render(
@@ -138,7 +139,8 @@ void GrassRenderer::Render(
     const Matrix& baseWorld, const Matrix& viewProj,
     const float baseArea, float density,
     const Vector2& height, const Vector2& width,
-    const Vector2& stiffness, bool wireFrame)
+    const Vector2& bend, const Vector4& grav, const Vector4& wind, const DirectX::SimpleMath::Vector3& camPos,
+    float orientThreshold, const std::array<Vector4, 6>& planes, bool wireFrame)
 {
     density = std::clamp(density, 0.0f, MAX_GRASS_COUNT / baseArea);
 
@@ -149,7 +151,12 @@ void GrassRenderer::Render(
     uniforms.Density         = density;
     uniforms.Height          = height;
     uniforms.Width           = width;
-    uniforms.Stiffness       = stiffness;
+    uniforms.BendFactor      = bend;
+    uniforms.Gravity         = grav;
+    uniforms.Wind            = wind;
+    uniforms.CamPos          = camPos;
+    uniforms.OrientThreshold = orientThreshold;
+    std::copy_n(planes.begin(), 6, uniforms.Planes);
     m_Cb0.SetData(context, uniforms);
     ID3D11Buffer* b0 = m_Cb0.GetBuffer();
 
@@ -169,10 +176,10 @@ void GrassRenderer::Render(
     {
         context->CSSetShader(m_GenGrassCs.Get(), nullptr, 0);
         context->CSSetConstantBuffers(0, 1, &b0);
-        ID3D11ShaderResourceView* csSrv[] = {baseVb.GetSrv(), baseIb.GetSrv()};
+        ID3D11ShaderResourceView* csSrv[] = { baseVb.GetSrv(), baseIb.GetSrv() };
         context->CSSetShaderResources(0, _countof(csSrv), csSrv);
-        ID3D11UnorderedAccessView* csUav[] = {m_ArgUav.Get(), m_InstUav.Get()};
-        constexpr UINT uavInit[]           = {10, 0};
+        ID3D11UnorderedAccessView* csUav[] = { m_ArgUav.Get(), m_InstUav.Get() };
+        constexpr UINT uavInit[]           = { 10, 0 };
         context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, uavInit);
         //context->DispatchIndirect(m_IndirectArg.Get(), 0);
         context->Dispatch((baseIb.m_Capacity / 3 + GROUP_SIZE_X - 1) / GROUP_SIZE_X, 1, 1);
@@ -192,7 +199,7 @@ void GrassRenderer::Render(
 
         context->VSSetShader(m_Vs.Get(), nullptr, 0);
         context->VSSetConstantBuffers(0, 1, &b0);
-        ID3D11ShaderResourceView* vsSrv[] = {m_InstSrv.Get()};
+        ID3D11ShaderResourceView* vsSrv[] = { m_InstSrv.Get() };
         context->VSSetShaderResources(0, _countof(vsSrv), vsSrv);
 
         context->RSSetState(wireFrame ? s_CommonStates->Wireframe() : s_CommonStates->CullNone());

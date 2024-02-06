@@ -76,7 +76,7 @@ int main(int, char**)
     };
     ::RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Renderer", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL,
-                                NULL, wc.hInstance, NULL);
+        NULL, wc.hInstance, NULL);
 
     // CreateSystem Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -117,18 +117,21 @@ int main(int, char**)
     float lTheta       = 1.2f;
     float lInt         = 3.0f;
     bool freezeFrustum = false;
-    DirectX::BoundingFrustum frustum{};
-    Vector3 view(ViewInit);
-    float spd       = 100.0f;
-    float density   = 40.0f;
-    float heightMin = 1.4f;
-    float heightMax = 2.5f;
-    float widthMin  = 0.1f;
-    float widthMax  = 0.14f;
-    float stiffMin  = 0.5f;
-    float stiffMax  = 0.9f;
-    bool done       = false;
-    float ambient   = 0.2f;
+    DirectX::BoundingFrustum frustum;
+    float spd     = 100.0f;
+    float density = 40.0f;
+    Vector2 height(1.4f, 2.5f);
+    Vector2 width(0.1f, 0.14f);
+    Vector2 bend(0.5f, 0.9f);
+    Vector4 gravity(0, -1, 0, 1);
+    Vector3 windDir;
+    (Vector3::Forward + Vector3::Right + Vector3::Up).Normalize(windDir);
+    float windStrength      = 2.0;
+    float windPeriod        = 2.0;
+    float orientThreshold   = 0.95f;
+    bool orientationCulling = true, frustumCulling = true, depthCulling = true, innerSphereCulling = true, occlusionCulling = true;
+    bool done               = false;
+    float time              = 0.0f;
     // Main loop
     while (!done)
     {
@@ -162,10 +165,14 @@ int main(int, char**)
         //ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
         //ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
-        ImGui::SliderFloat("Grass Density", &density, 0, 50);
-        ImGui::DragFloatRange2("Height Range", &heightMin, &heightMax, 0.1, 0.0, 10.0, "%.2f", nullptr, ImGuiSliderFlags_NoRoundToFormat);
-        ImGui::DragFloatRange2("Width Range", &widthMin, &widthMax, 0.001, 0.0, 1.0, "%.5f", nullptr, ImGuiSliderFlags_NoRoundToFormat);
-        ImGui::DragFloatRange2("Stiffness Range", &stiffMin, &stiffMax, 0.001, 0.0, 2.0, "%.5f", nullptr, ImGuiSliderFlags_NoRoundToFormat);
+        ImGui::SliderFloat("Grass Density", &density, 0, 70);
+        ImGui::DragFloatRange2("Height", &height.x, &height.y, 0.01, 0.01, 10.0, "%.5f", nullptr);
+        ImGui::DragFloatRange2("Width", &width.x, &width.y, 0.001, 0.01, 1.0, "%.5f", nullptr);
+        ImGui::DragFloatRange2("Bend", &bend.x, &bend.y, 0.001, 0.001, 5.0, "%.5f", nullptr);
+        ImGui::SliderFloat("Gravity", &gravity.w, 0.01, 10.0, "%.3f");
+        ImGui::SliderFloat("Wind Strength", &windStrength, 0.0, 10.0, "%.3f");
+        ImGui::SliderFloat("Wind Period", &windPeriod, 0.0, 10.0, "%.3f");
+        ImGui::SliderFloat("Orient Threshold", &orientThreshold, 0.9, 1.0, "%.3f");
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::End();
@@ -181,20 +188,17 @@ int main(int, char**)
         if (!freezeFrustum)
         {
             frustum = g_Camera->GetFrustum();
-            view    = g_Camera->GetPosition();
         }
-
-        Vector3 lDir(
-            std::sin(lTheta) * std::cos(lPhi),
-            std::cos(lTheta),
-            std::sin(lTheta) * std::sin(lPhi));
-
-        lDir.Normalize();
-
-        g_Constants->ViewProjection   = g_Camera->GetViewProjection().Transpose();
-        g_Constants->ViewPosition     = view;
-        g_Constants->Light            = Vector4(lDir.x, lDir.y, lDir.z, lInt);
-        g_Constants->AmbientIntensity = ambient;
+        std::array<Vector4, 6> planes;
+        DirectX::XMVECTOR vPlanes[6];
+        frustum.GetPlanes(&vPlanes[0], &vPlanes[1], &vPlanes[2], &vPlanes[3], &vPlanes[4], &vPlanes[5]);
+        for (int i = 0; i < 6; ++i)
+        {
+            XMStoreFloat4(&planes[i], vPlanes[i]);
+        }
+        const Vector3 wind3 = windDir * windStrength;
+        time += io.DeltaTime;
+        const Vector4 wind(wind3.x, wind3.y, wind3.z, windPeriod * time);
 
         // Rendering
         ImGui::Render();
@@ -209,10 +213,10 @@ int main(int, char**)
         g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
         g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(), statueRotTrans,
-                                g_Camera->GetViewProjection(), g_BaseArea, density,
-                                Vector2(heightMin, heightMax), Vector2(widthMin, widthMax), Vector2(stiffMin, stiffMax), wireFrame);
-        g_ModelRenderer->Render(g_pd3dDeviceContext,
-                                statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices, *g_BaseIndices, *g_Albedo, wireFrame);
+            g_Camera->GetViewProjection(), g_BaseArea, density, height, width, bend, gravity, wind, g_Camera->GetPosition(),
+            orientThreshold, planes, wireFrame);
+        g_ModelRenderer->Render(g_pd3dDeviceContext, statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices, *g_BaseIndices,
+            *g_Albedo, wireFrame);
         g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -257,14 +261,14 @@ bool CreateDeviceD3D(HWND hWnd)
     createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 
     D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[] = {D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0,};
+    const D3D_FEATURE_LEVEL featureLevelArray[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, };
     HRESULT res                                 = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
-                                                featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
-                                                &featureLevel,
-                                                &g_pd3dDeviceContext);
+        featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
+        &featureLevel,
+        &g_pd3dDeviceContext);
     if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
         res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_WARP, NULL, createDeviceFlags, featureLevelArray, 2,
-                                            D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
+            D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
     if (res != S_OK)
         return false;
 
@@ -300,9 +304,9 @@ void CreateRenderTarget()
 
     D3D11_TEXTURE2D_DESC texDesc;
     pBackBuffer->GetDesc(&texDesc);
-    CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D24_UNORM_S8_UINT,
-                                 texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL,
-                                 D3D11_USAGE_DEFAULT);
+    CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D32_FLOAT,
+        texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL,
+        D3D11_USAGE_DEFAULT);
     g_depthStencil = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, dsDesc);
     g_depthStencil->CreateViews(g_pd3dDevice);
 
@@ -333,18 +337,18 @@ void CreateSystem()
         std::vector<ModelRenderer::Vertex> vertices;
         vertices.reserve(meshes[0].Vertices.size());
         std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
-                       [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos * 1, v.Nor, v.Tc); });
+            [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos * 1, v.Nor, v.Tc); });
         bounding.Transform(g_Bound, Matrix::CreateScale(1));
         g_BaseArea = areaSum;
 
         CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
-                                0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
+            0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
         g_BaseVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
-                                                                                                           vertices.data(), vertices.size(), desc);
+            vertices.data(), vertices.size(), desc);
         desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
         desc.StructureByteStride = sizeof(uint32_t);
         g_BaseIndices            = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
-                                                                              meshes[0].Indices.size(), desc);
+            meshes[0].Indices.size(), desc);
         g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
     }
 
@@ -360,7 +364,7 @@ void CreateSystem()
         vertices.reserve(meshes[0].Vertices.size());
         g_GrassIdxCnt = meshes[0].Indices.size();
         std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
-                       [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos, v.Nor, v.Tc); });
+            [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos, v.Nor, v.Tc); });
         DirectX::CreateStaticBuffer(g_pd3dDevice, vertices, D3D11_BIND_VERTEX_BUFFER, &g_GrassVb);
         DirectX::CreateStaticBuffer(g_pd3dDevice, meshes[0].Indices, D3D11_BIND_INDEX_BUFFER, &g_GrassIb);
         g_GrassAlbedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, R"(asset\model\DeadTree\grass.png)");

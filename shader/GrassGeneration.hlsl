@@ -57,9 +57,9 @@ void MakePersistentLength(in float3 groundPosV2, inout float3 v1, inout float3 v
     v2                = v1 + v12;
 }
 
-void EnsureValidV2Pos(inout float3 v2, in float3 bladeUp, in float3 groundPosV2)
+void EnsureValidV2Pos(inout float3 groundPosV2, in float3 bladeUp)
 {
-    v2 += bladeUp * -min(dot(bladeUp, groundPosV2), 0.0f);
+    groundPosV2 += bladeUp * -min(dot(bladeUp, groundPosV2), 0.0f);
 }
 
 RWBuffer<uint> drawArg : register(u0);
@@ -120,8 +120,10 @@ void main(uint3 threadId : SV_DispatchThreadID)
     //    float4(r3[2], 0),
     //    float4(0, 0, 0, 1));
 
-    const uint numInstances = max(round(density * area), 1u);
-
+    float numBlade          = density * area;
+    float numRange          = 0.5 / numBlade;
+    const uint numInstances = round(numBlade * lerp(1.0 - numRange, 1.0 + numRange, RandF(seed)));
+	bool orientationCulling = true, frustumCulling = true;
     for (uint i = 0; i < numInstances; ++i)
     {
         // https://chrischoy.github.io/research/barycentric-coordinate-for-mesh-sampling/
@@ -140,7 +142,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
         const float dirPhi = lerp(0.0, TwoPi, RandF(seed));
         float sd, cd;
         sincos(dirPhi, sd, cd);
-        const float3 tmp  = normalize(float3(sd, sd + cd, cd)); //arbitrary vector for finding normal vector
+        float3 tmp        = normalize(float3(sd, sd + cd, cd)); //arbitrary vector for finding normal vector
         float3 bladeDir   = normalize(cross(bladeUp, tmp));
         float3 bladeFront = normalize(cross(bladeUp, bladeDir));
 
@@ -150,14 +152,57 @@ void main(uint3 threadId : SV_DispatchThreadID)
 
         const float height    = lerp(heightRange.x, heightRange.y, RandF(seed));
         const float invHeight = 1.0 / height;
-        const float width     = lerp(widthRange.x, widthRange.y, RandF(seed));
-        //const float width = 10.0;
-        const float dirTheta = lerp(0.2, 0.8, RandF(seed)) * PiDivTwo;
-        float ts, tc;
-        sincos(dirTheta, ts, tc);
-        const float stiff = lerp(stiffRange.x, stiffRange.y, RandF(seed));
 
-        float3 groundPosV2 = height * stiff * ts * bladeUp + height * stiff * tc * bladeFront;
+		const float3 camDir = normalize(groundPos - camPos);
+		if (orientationCulling && abs(dot(camDir, bladeDir)) >= orientThreshold)
+		{
+			return;
+		}
+
+        if (frustumCulling)
+        {
+            if (dot(float4(groundPos, 1.0), planes[0]) > height ||
+                dot(float4(groundPos, 1.0), planes[1]) > height ||
+                dot(float4(groundPos, 1.0), planes[2]) > height ||
+                dot(float4(groundPos, 1.0), planes[3]) > height ||
+                dot(float4(groundPos, 1.0), planes[4]) > height ||
+                dot(float4(groundPos, 1.0), planes[5]) > height)
+            {
+                continue;
+            }
+        }
+
+        const float width = lerp(widthRange.x, widthRange.y, RandF(seed));
+        //const float width = 10.0;
+        //const float dirTheta = lerp(0.2, 0.8, RandF(seed)) * PiDivTwo;
+        //float ts, tc;
+        //sincos(dirTheta, ts, tc);
+        const float bendingFac = lerp(bendRange.x, bendRange.y, RandF(seed));
+        float3 groundPosV2     = bladeUp * height;
+
+        //gravity
+        //float3 grav     = normalize(gravityVec.xyz) * gravityVec.w * (1.0f - useGravityPoint) + normalize(gravityPoint.xyz - v2) * gravityPoint.w * useGravityPoint; //towards mass center
+        float3 grav = gravity.xyz * gravity.w;
+        float sign  = step(-0.01f, dot(gravity.xyz, bladeFront)) * 2.0f - 1.0f;
+        //grav += sign * bladeFront * h * (gravityVec.w * (1.0f - useGravityPoint) + gravityPoint.w * useGravityPoint) * 0.25f; //also a bit forward !!CARE!! 0.25f is some random constant
+        grav += sign * bladeFront * height * gravity.w * 0.25f; //also a bit forward !!CARE!! 0.25f is some random constant
+        grav = grav * height * bendingFac; //apply bending fac and dt
+
+        //wind
+        float windageHeight = abs(dot(groundPosV2, bladeUp)) * invHeight;
+        float windageDir    = 1.0f - abs(dot(normalize(wind.xyz), normalize(groundPosV2)));
+        float windPos       = 1.0f - max((
+            cos((groundPos.x + groundPos.z) * 0.25f + wind.w) +
+            sin((groundPos.x + groundPos.y) * 0.15f + wind.w) +
+            sin((groundPos.y + groundPos.z) * 0.2f + wind.w)) / 3.0f, 0.0f);
+        float3 w = wind.xyz * windageDir * windageHeight * windPos * windPos * bendingFac; //!!CARE!! windPos^2 is just random
+
+        // add a little bit of ambient wave to the grass
+		w += sin(groundPos.x * 0.3f + groundPos.y * 0.5f + groundPos.z * 0.4f + wind.w * 0.5) * bladeFront * 0.2 * bendingFac;
+
+		groundPosV2 += grav + w;
+
+        EnsureValidV2Pos(groundPosV2, bladeUp);
 
         float3 groundPosV1 = CalculateV1(groundPosV2, bladeUp, height, invHeight);
         //Grass length correction
@@ -184,6 +229,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
         instance.pos      = groundPos;
         instance.posV1    = groundPosV1;
         instance.posV2    = groundPosV2;
+        instance.bladeDir = bladeDir;
         instance.maxWidth = width;
         instance.hash     = seed;
         instanceData.Append(instance);

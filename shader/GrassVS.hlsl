@@ -45,20 +45,24 @@ VertexOut main(uint vertexId : SV_VertexID, const uint instanceId : SV_InstanceI
 {
     const InstanceData inst = instanceData[instanceId];
     const float3 v0         = inst.pos;
-    const float3 v0v1       = inst.posV1;
-    const float3 v0v2       = inst.posV2;
-    const float3 bladeDir   = normalize(cross(v0v1, v0v2));
-    float2 uv               = highLod[vertexId];
+    //const float3 v0v1       = inst.posV1;
+    //const float3 v0v2       = inst.posV2;
+    //const float3 bladeDir   = normalize(cross(v0v1, v0v2));
+    float2 uv = highLod[vertexId];
 
     float3 pos = QuadBezierP0Zero(inst.posV1, inst.posV2, uv.y);
 
+    //const float3 dir  = normalize(lerp(inst.bladeDir, bladeDir, uv.y));
     const float width = inst.maxWidth * (1.0 - uv.y);
-    pos += bladeDir * width * uv.x;
+    pos += inst.bladeDir * width * uv.x;
     pos += v0;
 
+
     const float3 dCurve = QuadBezierDerivativeP0Zero(inst.posV1, inst.posV2, uv.y);
-    const float3 wNor   = normalize(cross(dCurve, bladeDir));
-    uv.x                = uv.x * 0.5 + 0.5;
+    float3 wNor         = normalize(cross(dCurve, inst.bladeDir));
+    wNor                = normalize(wNor + uv.x * inst.bladeDir * 0.25);
+    // add a little curvature to normal
+    uv.x = uv.x * 0.5 + 0.5;
 
     VertexOut vout;
     vout.Position = mul(float4(pos, 1.0), viewProj);

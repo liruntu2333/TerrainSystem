@@ -30,8 +30,11 @@ public:
         float density,
         const DirectX::SimpleMath::Vector2& height,
         const DirectX::SimpleMath::Vector2& width,
-        const DirectX::SimpleMath::Vector2& stiffness,
-        bool wireFrame);
+        const DirectX::SimpleMath::Vector2& bend,
+        const DirectX::SimpleMath::Vector4& grav,
+        const DirectX::SimpleMath::Vector4& wind,
+        const DirectX::SimpleMath::Vector3& camPos,
+        float orientThreshold, const std::array<DirectX::SimpleMath::Vector4, 6>& planes, bool wireFrame);
 
 protected:
     struct InstanceData
@@ -39,6 +42,7 @@ protected:
         DirectX::SimpleMath::Vector3 Pos;
         DirectX::SimpleMath::Vector3 PosV1;
         DirectX::SimpleMath::Vector3 PosV2;
+        DirectX::SimpleMath::Vector3 BladeDir;
         float MaxWidth;
         uint32_t Hash;
     };
@@ -51,7 +55,12 @@ protected:
         float Density;
         DirectX::SimpleMath::Vector2 Height;
         DirectX::SimpleMath::Vector2 Width;
-        DirectX::SimpleMath::Vector2 Stiffness;
+        DirectX::SimpleMath::Vector2 BendFactor;
+        DirectX::SimpleMath::Vector4 Gravity;
+        DirectX::SimpleMath::Vector4 Wind;
+        DirectX::SimpleMath::Vector3 CamPos;
+        float OrientThreshold;
+        DirectX::SimpleMath::Vector4 Planes[6];
     };
 
     DirectX::ConstantBuffer<Uniforms> m_Cb0;
@@ -70,7 +79,7 @@ protected:
 
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_HighLodIb = nullptr;
     Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_GenGrassCs;
-    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_AssignSamCs;
+    //Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_AssignSamCs;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps;
 };

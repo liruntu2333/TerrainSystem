@@ -54,7 +54,7 @@ Matrix Camera::GetProjection() const
 
 BoundingFrustum Camera::GetFrustum() const
 {
-    BoundingFrustum f(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane));
+    BoundingFrustum f(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane), true);
     f.Transform(f, Matrix::CreateFromYawPitchRoll(m_Rotation) * Matrix::CreateTranslation(m_Position));
     return f;
 }

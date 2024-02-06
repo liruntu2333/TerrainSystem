@@ -4,9 +4,14 @@ cbuffer Uniforms : register(b0)
     float4x4 baseWorld;
     uint numBaseTriangle;
     float density;
-	float2 heightRange;
-	float2 widthRange;
-	float2 stiffRange;
+    float2 heightRange;
+    float2 widthRange;
+    float2 bendRange;
+    float4 gravity;
+    float4 wind;
+	float3 camPos;
+	float orientThreshold;
+	float4 planes[6];
 }
 
 struct BaseVertex
@@ -21,6 +26,7 @@ struct InstanceData
     float3 pos;
     float3 posV1;
     float3 posV2;
+	float3 bladeDir;
     float maxWidth;
     uint hash;
 };

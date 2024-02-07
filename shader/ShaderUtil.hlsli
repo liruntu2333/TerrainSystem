@@ -1,20 +1,20 @@
 #ifndef SHADER_UTIL
 #define SHADER_UTIL
 
-static const uint PatchScale = 255;
+static const uint PatchScale    = 255;
 static const float SphereRadius = 200000.0f;
-static const float Pi = 3.1415926535897932384626433832795f;
+static const float Pi           = 3.1415926535897932384626433832795f;
 
 cbuffer PassConstants : register(b0)
 {
-float4x4 ViewProjection;
-float3 LightDirection;
-float LightIntensity;
-float3 ViewPosition;
-float OneOverWidth;
-float2 AlphaOffset;
-float HeightMapScale;
-float AmbientIntensity;
+    float4x4 ViewProjection;
+    float3 LightDirection;
+    float LightIntensity;
+    float3 ViewPosition;
+    float OneOverWidth;
+    float2 AlphaOffset;
+    float HeightMapScale;
+    float AmbientIntensity;
 }
 
 float4 LoadColor(const uint col)
@@ -87,66 +87,46 @@ float Luminance(const float3 color)
     return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
 }
 
-float DTerm(const float nh, const float roughness)
+float Pow2(const float x)
 {
-    const float a = roughness * roughness;
-    const float a2 = a * a;
-    const float d = (nh * a2 - nh) * nh + 1.0;
-    return a2 / (Pi * d * d);
+    return x * x;
 }
 
-float GTerm(const float nl, const float nv, const float roughness)
+float3 Brdf(float3 l, float3 lightColor, float3 v, float3 n, float3 alb, float3 f0, float metallic, float roughness, float ao)
 {
-    const float a = roughness + 1.0f;
-    const float k = (a * a) / 8.0f;
-    const float gl = nl / (nl * (1.0 - k) + k);
-    const float gv = nv / (nv * (1.0 - k) + k);
-    return gl * gv;
-}
+    float3 h = normalize(l + v);
+    float nl = max(saturate(dot(n, l)), 0.000001);
+    float nv = max(saturate(dot(n, v)), 0.000001);
+    float nh = max(saturate(dot(n, h)), 0.000001);
+    float lh = max(saturate(dot(l, h)), 0.000001);
+    float vh = max(saturate(dot(v, h)), 0.000001);
 
-float Pow5(const float x)
-{
-    return x * x * x * x * x;
-}
+    float lerpSquareRoughness = Pow2(lerp(0.002, 1, roughness));
 
-float3 FTerm(const float cosTheta, const float3 f0)
-{
-    return f0 + (1.0f - f0) * Pow5(1.0f - cosTheta);
-}
+    float D = lerpSquareRoughness / (Pow2((Pow2(nh) * (lerpSquareRoughness - 1) + 1)) * Pi);
 
-float3 FTermR(const float cosTheta, const float3 f0, const float roughness)
-{
-    return f0 + (max(float3(1.0f - roughness, 1.0f - roughness, 1.0f - roughness), f0) - f0) * Pow5(1.0f - cosTheta);
-}
+    float kInDirectLight = Pow2(roughness * roughness + 1) / 8;
+    float GLeft          = nl / lerp(nl, 1, kInDirectLight);
+    float GRight         = nv / lerp(nv, 1, kInDirectLight);
+    float G              = GLeft * GRight;
 
-float3 Brdf(
-    const float3 l, const float3 v, const float3 n,
-    const float3 f0, const float3 alb, const float metallic, const float roughness)
-{
-    const float3 h = normalize(l + v);
-    const float nl = saturate(dot(n, l));
-    const float nv = saturate(dot(n, v));
-    const float nh = saturate(dot(n, h));
-    const float lh = saturate(dot(l, h));
-	const float rroughness = max(roughness, 0.001f);
+    float3 F0 = lerp(float3(0.04, 0.04, 0.04), f0 * alb, metallic);
+    float3 F  = F0 + (1 - F0) * exp2((-5.55473 * vh - 6.98316) * vh);
 
-    const float3 f = FTerm(lh, f0);
-    const float d = DTerm(nh, rroughness);
-    const float g = GTerm(nl, nv, rroughness);
+    float3 SpecularResult = (D * G * F * 0.25) / (nv * nl);
 
-    const float3 nominator = f * d * g;
-    const float denominator = 4.0f * nl * nv;
-    float3 specular = nominator / max(denominator, 0.001f);
+    float3 kd                = (1 - F) * (1 - metallic);
+    float3 specColor         = SpecularResult * lightColor * nl * Pi;
+    float3 diffColor         = kd * alb * lightColor * nl;
+    float3 DirectLightResult = diffColor + specColor;
 
-    const float3 kD = (1.0f - f) * (1.0f - metallic);
-    const float3 diffuse = kD * alb / Pi;
-    specular *= 1.0f - kD;
-
-    return diffuse + specular;
+	float3 ambient = (0.3 + EvalSh(n)) * alb * ao;
+    
+	return DirectLightResult + ambient;
 }
 
 float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion)
 {
-	return dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal);
+    return dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal);
 }
 #endif

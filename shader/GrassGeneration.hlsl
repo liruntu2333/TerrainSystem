@@ -145,7 +145,7 @@ void main(uint3 threadId : SV_DispatchThreadID)
         float3 groundPos = baseV0.position * alpha + baseV1.position * beta + baseV2.position * gamma;
         groundPos        = mul(float4(groundPos, 1.0), baseWorld).xyz;
 
-        float3 bladeUp = normalize(faceUp + 0.5 * (baseV0.normal * alpha + baseV1.normal * beta + baseV2.normal * gamma));
+        float3 bladeUp = normalize(baseV0.normal * alpha + baseV1.normal * beta + baseV2.normal * gamma);
 
         const float dirPhi = lerp(0.0, TwoPi, RandF(seed));
         float sd, cd;

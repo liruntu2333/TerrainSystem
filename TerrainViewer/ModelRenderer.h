@@ -17,6 +17,8 @@ public:
         DirectX::SimpleMath::Matrix WorldViewProj;
         DirectX::SimpleMath::Matrix ViewProj;
         DirectX::SimpleMath::Matrix World;
+        DirectX::SimpleMath::Vector3 CamPos;
+        float Padding;
     };
 
     explicit ModelRenderer(ID3D11Device* device);
@@ -34,11 +36,13 @@ public:
         const DirectX::SimpleMath::Matrix& viewProj,
         const DirectX::StructuredBuffer<Vertex>& vb,
         const DirectX::StructuredBuffer<unsigned>& ib,
-        const DirectX::Texture2D& albedo, bool wireFrame = false);
+        const DirectX::Texture2D& albedo, 
+        const DirectX::SimpleMath::Vector3& camPos, 
+        bool wireFrame = false);
 
 private:
     DirectX::ConstantBuffer<Uniforms> m_Cb0 {};
 
-    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs         = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps          = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps  = nullptr;
 };

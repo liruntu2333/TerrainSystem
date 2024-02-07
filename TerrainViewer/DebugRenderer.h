@@ -25,7 +25,15 @@ public:
 
     static void DrawBox(
         const DirectX::SimpleMath::Matrix& world,
-        const DirectX::SimpleMath::Matrix& view, const DirectX::SimpleMath::Matrix& proj, const DirectX::XMVECTORF32& color = DirectX::Colors::White);
+        const DirectX::SimpleMath::Matrix& view,
+        const DirectX::SimpleMath::Matrix& proj,
+        const DirectX::XMVECTORF32& color = DirectX::Colors::White);
+
+    static void DrawSphere(
+        const DirectX::SimpleMath::Matrix& world,
+        const DirectX::SimpleMath::Matrix& view,
+        const DirectX::SimpleMath::Matrix& proj,
+        const DirectX::XMVECTORF32& color = DirectX::Colors::White);
 
     void DrawClippedR16(
         DirectX::SimpleMath::Vector2 origin, const DirectX::Texture2D& tex, ID3D11DeviceContext* context) const;

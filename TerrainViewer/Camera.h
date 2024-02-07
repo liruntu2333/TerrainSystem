@@ -22,6 +22,8 @@ public:
     // [[nodiscard]] DirectX::BoundingFrustum GetFrustumLocal() const;
     // [[nodiscard]] DirectX::XMINT2 GetPatch() const { return { m_PatchX, m_PatchY }; }
     [[nodiscard]] DirectX::SimpleMath::Vector3 GetDeltaPosition() const { return m_DeltaPosition; }
+    [[nodiscard]] float GetNear() const { return m_NearPlane; }
+    [[nodiscard]] float GetFar() const { return m_FarPlane; }
     void SetViewPort(ID3D11DeviceContext* context) const;
     void Update(const ImGuiIO& io, float spd);
     void StartRecord();

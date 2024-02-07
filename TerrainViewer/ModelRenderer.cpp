@@ -42,13 +42,14 @@ void ModelRenderer::Render(
     const SimpleMath::Matrix& viewProj,
     const StructuredBuffer<VertexPositionNormalTexture>& vb,
     const StructuredBuffer<uint32_t>& ib,
-    const Texture2D& albedo, bool wireFrame)
+    const Texture2D& albedo, const DirectX::SimpleMath::Vector3& camPos, bool wireFrame)
 {
     const Uniforms uniforms
     {
         (world * viewProj).Transpose(),
         viewProj.Transpose(),
-        world.Transpose()
+        world.Transpose(),
+        camPos
     };
     m_Cb0.SetData(context, uniforms);
 
@@ -70,6 +71,7 @@ void ModelRenderer::Render(
     context->PSSetSamplers(0, 1, &ani);
     ID3D11ShaderResourceView* const albSrv = albedo.GetSrv();
     context->PSSetShaderResources(0, 1, &albSrv);
+    context->PSSetConstantBuffers(0, _countof(cbs), cbs);
     context->RSSetState(wireFrame ? s_CommonStates->Wireframe() : s_CommonStates->CullClockwise());
     context->PSSetShader(m_Ps.Get(), nullptr, 0);
 

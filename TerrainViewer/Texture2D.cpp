@@ -40,7 +40,8 @@ void Texture2D::CreateViews(ID3D11Device* device)
         auto srv = CD3D11_SHADER_RESOURCE_VIEW_DESC(m_Texture.Get(),
             isMultiSample
                 ? D3D11_SRV_DIMENSION_TEXTURE2DMS
-                : D3D11_SRV_DIMENSION_TEXTURE2D);
+                : D3D11_SRV_DIMENSION_TEXTURE2D, 
+            m_Desc.Format == DXGI_FORMAT_R32_TYPELESS ? DXGI_FORMAT_R32_FLOAT : m_Desc.Format);
         auto hr = device->CreateShaderResourceView(m_Texture.Get(), &srv, &m_Srv);
         ThrowIfFailed(hr);
     }
@@ -69,7 +70,8 @@ void Texture2D::CreateViews(ID3D11Device* device)
         auto dsv = CD3D11_DEPTH_STENCIL_VIEW_DESC(m_Texture.Get(),
             isMultiSample
                 ? D3D11_DSV_DIMENSION_TEXTURE2DMS
-                : D3D11_DSV_DIMENSION_TEXTURE2D);
+                : D3D11_DSV_DIMENSION_TEXTURE2D,
+            m_Desc.Format == DXGI_FORMAT_R32_TYPELESS ? DXGI_FORMAT_D32_FLOAT : m_Desc.Format);
         auto hr = device->CreateDepthStencilView(m_Texture.Get(), &dsv, &m_Dsv);
         ThrowIfFailed(hr);
     }

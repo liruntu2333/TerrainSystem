@@ -100,9 +100,6 @@
     <FxCompile Include="..\shader\GrassVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="..\shader\AssignSample.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="..\shader\GrassPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

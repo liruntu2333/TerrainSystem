@@ -56,6 +56,11 @@ void DebugRenderer::DrawBox(const Matrix& world, const Matrix& view, const Matri
     s_Cube->Draw(world, view, proj, color, nullptr, false);
 }
 
+void DebugRenderer::DrawSphere(const Matrix& world, const Matrix& view, const Matrix& proj, const XMVECTORF32& color)
+{
+    s_Sphere->Draw(world, view, proj, color, nullptr, false);
+}
+
 void DebugRenderer::DrawClippedR16(
     const Vector2 origin, const Texture2D& tex, ID3D11DeviceContext* context) const
 {

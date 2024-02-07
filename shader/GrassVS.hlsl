@@ -1,24 +1,24 @@
 #include "Grass.hlsli"
-static const float2 highLod[15] =
+static const float3 lod0[15] =
 {
-    float2(-1.0, 0.0),
-    float2(+1.0, 0.0),
-    float2(-1.0, 0.14285714),
-    float2(+1.0, 0.14285714),
-    float2(-1.0, 0.28571428),
-    float2(+1.0, 0.28571428),
-    float2(-1.0, 0.42857142),
-    float2(+1.0, 0.42857142),
-    float2(-1.0, 0.57142857),
-    float2(+1.0, 0.57142857),
-    float2(-1.0, 0.71428571),
-    float2(+1.0, 0.71428571),
-    float2(-1.0, 0.85714285),
-    float2(+1.0, 0.85714285),
-    float2(-1.0, 1.0)
+    float3(-1.0, 0.0, 0.0),
+    float3(+1.0, 0.0, 0.0),
+    float3(-1.0, 0.14285714, 0.0),
+    float3(+1.0, 0.14285714, 0.0),
+    float3(-1.0, 0.28571428, 0.0),
+    float3(+1.0, 0.28571428, 0.0),
+    float3(-1.0, 0.42857142, 0.33333333),
+    float3(+1.0, 0.42857142, 0.33333333),
+    float3(-1.0, 0.57142857, 0.66666667),
+    float3(+1.0, 0.57142857, 0.66666667),
+    float3(-1.0, 0.71428571, 1.0),
+    float3(+1.0, 0.71428571, 1.0),
+    float3(-1.0, 0.85714285, 1.0),
+    float3(+1.0, 0.85714285, 1.0),
+    float3(-1.0, 1.0, 1.0)
 };
 
-static const float2 lowLod[7] =
+static const float2 lod1[7] =
 {
     float2(-1.0, 0.0),
     float2(+1.0, 0.0),
@@ -48,7 +48,16 @@ VertexOut main(uint vertexId : SV_VertexID, const uint instanceId : SV_InstanceI
     //const float3 v0v1       = inst.posV1;
     //const float3 v0v2       = inst.posV2;
     //const float3 bladeDir   = normalize(cross(v0v1, v0v2));
-    float2 uv = highLod[vertexId];
+    float2 uv;
+    if (inst.lod < 1.0)
+    {
+        uv.x = lod0[vertexId].x;
+        uv.y = lerp(lod0[vertexId].y, lod0[vertexId].z, inst.lod);
+    }
+    else
+    {
+        uv = lod1[vertexId];
+    }
 
     float3 pos = QuadBezierP0Zero(inst.posV1, inst.posV2, uv.y);
 
@@ -56,7 +65,6 @@ VertexOut main(uint vertexId : SV_VertexID, const uint instanceId : SV_InstanceI
     const float width = inst.maxWidth * (1.0 - uv.y);
     pos += inst.bladeDir * width * uv.x;
     pos += v0;
-
 
     const float3 dCurve = QuadBezierDerivativeP0Zero(inst.posV1, inst.posV2, uv.y);
     float3 wNor         = normalize(cross(dCurve, inst.bladeDir));
@@ -68,5 +76,7 @@ VertexOut main(uint vertexId : SV_VertexID, const uint instanceId : SV_InstanceI
     vout.Position = mul(float4(pos, 1.0), viewProj);
     vout.Normal   = wNor;
     vout.Texture  = uv;
+    vout.Lod      = inst.lod;
+    vout.WldPos   = pos;
     return vout;
 }

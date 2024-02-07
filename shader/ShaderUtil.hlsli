@@ -72,11 +72,6 @@ float3 EvalSh(float3 _dir)
     return rgb;
 }
 
-float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion)
-{
-    return dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal);
-}
-
 float3 ToneMapping(const float3 color)
 {
     return color / (color + float3(1.0f, 1.0f, 1.0f));
@@ -90,38 +85,6 @@ float3 GammaCorrect(const float3 color)
 float Luminance(const float3 color)
 {
     return dot(color, float3(0.2126f, 0.7152f, 0.0722f));
-}
-
-float3 MakeSphere(const float2 xz, const float y, const float3 view, const float r)
-{
-	const float3 center = float3(view.x, -r, view.z);
-    float3 p = center + normalize(float3(xz.x, 0, xz.y) - center) * (r + y);
-	return p;
-}
-
-float SampleClipmapLevel(
-    Texture2DArray<float> tex, const SamplerState pw,
-    const float3 uvf, const float3 uvc, const float alpha)
-{
-    const float fine = tex.SampleLevel(pw, uvf, 0);
-    const float coarse = tex.SampleLevel(pw, uvc, 0);
-    return lerp(fine, coarse, alpha);
-}
-
-float4 SampleClipmapLevel(
-    Texture2DArray tex, const SamplerState aw,
-    const float3 uvf, const float3 uvc, const float alpha)
-{
-    float4 fine, coarse;
-#ifdef HARDWARE_FILTERING
-    fine = tex.Sample(aw, uvf);
-    coarse = tex.Sample(aw, uvc);
-#else
-    fine = tex.SampleLevel(aw, uvf, 0);
-    coarse = tex.SampleLevel(aw, uvc, 0);
-#endif
-
-    return lerp(fine, coarse, alpha);
 }
 
 float DTerm(const float nh, const float roughness)
@@ -165,7 +128,7 @@ float3 Brdf(
     const float nv = saturate(dot(n, v));
     const float nh = saturate(dot(n, h));
     const float lh = saturate(dot(l, h));
-    const float rroughness = max(0.05f, roughness);
+	const float rroughness = max(roughness, 0.001f);
 
     const float3 f = FTerm(lh, f0);
     const float d = DTerm(nh, rroughness);
@@ -182,4 +145,8 @@ float3 Brdf(
     return diffuse + specular;
 }
 
+float3 Shade(const float3 normal, const float3 lightDir, const float lightIntensity, const float occlusion)
+{
+	return dot(normal, lightDir) * lightIntensity + occlusion * EvalSh(normal);
+}
 #endif

@@ -1,4 +1,4 @@
-cbuffer Uniforms : register(b0)
+cbuffer cb0 : register(b0)
 {
     float4x4 viewProj;
     float4x4 baseWorld;
@@ -21,7 +21,9 @@ cbuffer Uniforms : register(b0)
     float orientThreshold;
     //float4 planes[6];
     float lod0Dist;
-    int pad[3];
+    uint groupCntX;
+    uint groupCntY;
+	float foldHeight;
 }
 
 struct BaseVertex
@@ -37,7 +39,7 @@ struct InstanceData
     float3 posV1;
     float3 posV2;
     float3 bladeDir;
-    float maxWidth;
+    float maxHalfWidth;
     float lod;
 };
 

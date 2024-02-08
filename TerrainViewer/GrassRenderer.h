@@ -17,7 +17,7 @@ public:
         uint32_t NumBaseTriangle;
         float Density;
         DirectX::SimpleMath::Vector2 Height;
-        DirectX::SimpleMath::Vector2 Width;
+        DirectX::SimpleMath::Vector2 HalfWidth;
         DirectX::SimpleMath::Vector2 BendFactor;
         DirectX::SimpleMath::Vector4 Gravity;
         DirectX::SimpleMath::Vector4 Wind;
@@ -32,7 +32,9 @@ public:
         float OrientThreshold;
         //DirectX::SimpleMath::Vector4 Planes[6];
         float Lod0Dist;
-        int pad[3];
+        int GroupCntX;
+        int GroupCntY;
+        float FoldHeight;
     };
 
     using BaseVertex = DirectX::VertexPositionNormalTexture;
@@ -51,7 +53,7 @@ public:
         const DirectX::StructuredBuffer<unsigned>& baseIb,
         ID3D11ShaderResourceView* grassAlbedo,
         ID3D11ShaderResourceView* depth,
-        const Uniforms& uniforms,
+        Uniforms& uniforms,
         bool wireFrame);
 
 protected:

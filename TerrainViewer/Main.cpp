@@ -131,6 +131,7 @@ int main(int, char**)
     bool orientCulling    = true, frustumCulling = true, distCulling = true, occlusionCulling = true;
     float lod0Dist        = 50.0f;
     bool showDebug        = false;
+    float foldHeight      = 1.5f;
     bool done             = false;
     float time            = 0.0f;
     // Main loop
@@ -173,6 +174,7 @@ int main(int, char**)
         ImGui::SliderFloat("Gravity", &gravity.w, 0.0, 10.0, "%.3f");
         ImGui::SliderFloat("Wind Strength", &windStrength, 0.0, 10.0, "%.3f");
         ImGui::SliderFloat("Wind Period", &windPeriod, 0.0, 10.0, "%.3f");
+        ImGui::SliderFloat("Fold Height", &foldHeight, 0.0, 10.0, "%.3f");
         ImGui::SliderFloat("LOD Dist", &lod0Dist, 0.0, 1000.0, "%.3f");
         ImGui::Checkbox("Show Debug", &showDebug);
         ImGui::Checkbox("Distance Culling", &distCulling);
@@ -217,7 +219,7 @@ int main(int, char**)
         };
 
         auto dsv = showDebug ? g_depthLookup->GetDsv() : g_depthStencil->GetDsv();
-        auto rtv = showDebug ?  nullptr : g_mainRenderTargetView;
+        auto rtv = showDebug ? nullptr : g_mainRenderTargetView;
         g_pd3dDeviceContext->OMSetRenderTargets(1, &rtv, dsv);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         g_pd3dDeviceContext->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
@@ -247,7 +249,7 @@ int main(int, char**)
         uniforms.NumBaseTriangle  = g_BaseIndices->m_Capacity / 3;
         uniforms.Density          = density;
         uniforms.Height           = height;
-        uniforms.Width            = width;
+        uniforms.HalfWidth        = width * 0.5f;
         uniforms.BendFactor       = bend;
         uniforms.Gravity          = gravity;
         uniforms.Wind             = wind;
@@ -261,6 +263,7 @@ int main(int, char**)
         uniforms.OrientThreshold  = orientThreshold;
         uniforms.Lod0Dist         = lod0Dist;
         uniforms.Debug            = showDebug;
+        uniforms.FoldHeight       = foldHeight;
         //std::copy_n(planes.begin(), 6, uniforms.Planes);
         g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(),
             g_depthLookup->GetSrv(), uniforms, wireFrame);

@@ -9,7 +9,6 @@ using namespace SimpleMath;
 namespace
 {
     constexpr uint32_t MAX_GRASS_COUNT = 0x400000;
-    constexpr uint32_t GROUP_SIZE_X    = 256;
     const uint16_t HIGH_LOD_INDEX[15]  = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 }
 
@@ -140,9 +139,18 @@ void GrassRenderer::Render(
     const StructuredBuffer<uint32_t>& baseIb,
     ID3D11ShaderResourceView* grassAlbedo,
     ID3D11ShaderResourceView* depth,
-    const Uniforms& uniforms,
+    Uniforms& uniforms,
     bool wireFrame)
 {
+    const uint32_t triCnt    = baseIb.m_Capacity / 3;
+    //const uint32_t groupCntX = sqrt(triCnt);
+    //const uint32_t groupCntY = (triCnt + groupCntX - 1) / groupCntX;
+    const uint32_t groupCntX = sqrt(triCnt);
+    const uint32_t groupCntY = (triCnt + groupCntX - 1) / groupCntX;
+
+    uniforms.GroupCntX = groupCntX;
+    uniforms.GroupCntY = groupCntY;
+
     m_Cb0.SetData(context, uniforms);
     ID3D11Buffer* b0 = m_Cb0.GetBuffer();
 
@@ -168,7 +176,7 @@ void GrassRenderer::Render(
         constexpr UINT uavInit[]           = { 10, 0, 0 };
         context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, uavInit);
         //context->DispatchIndirect(m_IndirectArg.Get(), 0);
-        context->Dispatch((baseIb.m_Capacity / 3 + GROUP_SIZE_X - 1) / GROUP_SIZE_X, 1, 1);
+        context->Dispatch(groupCntX, groupCntY, 1);
         std::memset(csUav, 0, sizeof(csUav));
         context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, nullptr);
         csSrv[2] = nullptr;

@@ -126,7 +126,7 @@ VertexOut main(uint vertexId : SV_VertexID, const uint instanceId : SV_InstanceI
     float3 pos = QuadBezierP0Zero(posV1, posV2, uv.y);
 
     //const float3 dir  = normalize(lerp(inst.bladeDir, bladeDir, uv.y));
-    const float width = inst.maxHalfWidth * (1.0 - uv.y);
+    const float width = inst.halfWidth * (1.0 - uv.y);
 
     pos += bladeDir * width * uv.x;
     pos += v0;

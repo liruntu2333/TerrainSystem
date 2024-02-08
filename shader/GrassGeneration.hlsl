@@ -318,7 +318,7 @@ void main(uint3 threadId : SV_DispatchThreadID, uint3 groupId : SV_GroupID, uint
     instance.posV1        = groundPosV1;
     instance.posV2        = groundPosV2;
     instance.bladeDir     = bladeDir;
-    instance.maxHalfWidth = width;
+    instance.halfWidth = width;
     if (camDist < lod0Dist)
     {
         const float transition = 0.3;

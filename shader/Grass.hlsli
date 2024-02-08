@@ -39,7 +39,7 @@ struct InstanceData
     float3 posV1;
     float3 posV2;
     float3 bladeDir;
-    float maxHalfWidth;
+    float halfWidth;
     float lod;
 };
 

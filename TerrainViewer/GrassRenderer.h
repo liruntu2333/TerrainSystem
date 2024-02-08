@@ -63,7 +63,7 @@ protected:
         DirectX::SimpleMath::Vector3 PosV1;
         DirectX::SimpleMath::Vector3 PosV2;
         DirectX::SimpleMath::Vector3 BladeDir;
-        float MaxWidth;
+        float HalfWidth;
         uint32_t Hash;
     };
 

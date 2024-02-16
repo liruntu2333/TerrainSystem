@@ -86,7 +86,8 @@ GrassRenderer::GrassRenderer(ID3D11Device* device) : Renderer(device), m_Cb0(dev
         ThrowIfFailed(device->CreateShaderResourceView(m_SamIdx.Get(), &srvDesc, &m_SamIdxSrv));
     }
 
-    ThrowIfFailed(CreateStaticBuffer(device, HIGH_LOD_INDEX, _countof(HIGH_LOD_INDEX), D3D11_BIND_INDEX_BUFFER, &m_HighLodIb));
+    ThrowIfFailed(CreateStaticBuffer(device, HIGH_LOD_INDEX, _countof(HIGH_LOD_INDEX), D3D11_BIND_INDEX_BUFFER,
+        &m_HighLodIb));
 }
 
 void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
@@ -100,17 +101,17 @@ void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
             blob->GetBufferSize(),
             nullptr,
             &m_GenGrassCs)
-        );
+    );
 
-    //name = (shaderDir / "AssignSample.cso").wstring();
-    //ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
-    //ThrowIfFailed(
-    //    m_Device->CreateComputeShader(
-    //        blob->GetBufferPointer(),
-    //        blob->GetBufferSize(),
-    //        nullptr,
-    //        &m_AssignSamCs)
-    //    );
+    name = (shaderDir / "GenDepthMip3.cso").wstring();
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
+    ThrowIfFailed(
+        m_Device->CreateComputeShader(
+            blob->GetBufferPointer(),
+            blob->GetBufferSize(),
+            nullptr,
+            &m_GenDepthMip3Cs)
+    );
 
     name = (shaderDir / "GrassVS.cso").wstring();
     ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
@@ -120,7 +121,7 @@ void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
             blob->GetBufferSize(),
             nullptr,
             &m_Vs)
-        );
+    );
 
     name = shaderDir / "GrassPS.cso";
     ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
@@ -130,19 +131,36 @@ void GrassRenderer::Initialize(const std::filesystem::path& shaderDir)
             blob->GetBufferSize(),
             nullptr,
             &m_Ps)
-        );
+    );
 }
 
-void GrassRenderer::Render(
+void GrassRenderer::GenerateHiZ3(
     ID3D11DeviceContext* context,
-    const StructuredBuffer<BaseVertex>& baseVb,
-    const StructuredBuffer<uint32_t>& baseIb,
-    ID3D11ShaderResourceView* grassAlbedo,
-    ID3D11ShaderResourceView* depth,
-    Uniforms& uniforms,
-    bool wireFrame)
+    ID3D11ShaderResourceView* depth0,
+    ID3D11UnorderedAccessView* depthMip1,
+    ID3D11UnorderedAccessView* depthMip2,
+    ID3D11UnorderedAccessView* depthMip3, uint32_t rtW, uint32_t rtH)
 {
-    const uint32_t triCnt    = baseIb.m_Capacity / 3;
+    ID3D11UnorderedAccessView* uavs[] = { depthMip1, depthMip2, depthMip3 };
+    context->CSSetShader(m_GenDepthMip3Cs.Get(), nullptr, 0);
+    context->CSSetUnorderedAccessViews(0, _countof(uavs), uavs, nullptr);
+    context->CSSetShaderResources(0, 1, &depth0);
+    context->Dispatch(rtW + 7 / 8, rtH + 7 / 8, 1);
+    context->CSSetUnorderedAccessViews(0, _countof(uavs), nullptr, nullptr);
+    depth0 = nullptr;
+    context->CSSetShaderResources(0, 1, &depth0);
+    uavs[0] = uavs[1] = uavs[2] = uavs[3] = nullptr;
+    context->CSSetUnorderedAccessViews(0, _countof(uavs), uavs, nullptr);
+}
+
+void GrassRenderer::GenerateInstance(
+    ID3D11DeviceContext* context,
+    const StructuredBuffer<VertexPositionNormalTexture>& baseVb,
+    const StructuredBuffer<unsigned>& baseIb,
+    ID3D11ShaderResourceView* depthMip,
+    Uniforms& uniforms)
+{
+    const uint32_t triCnt = baseIb.m_Capacity / 3;
     //const uint32_t groupCntX = sqrt(triCnt);
     //const uint32_t groupCntY = (triCnt + groupCntX - 1) / groupCntX;
     const uint32_t groupCntX = sqrt(triCnt);
@@ -154,34 +172,27 @@ void GrassRenderer::Render(
     m_Cb0.SetData(context, uniforms);
     ID3D11Buffer* b0 = m_Cb0.GetBuffer();
 
-    //{
-    //    context->CSSetShader(m_AssignSamCs.Get(), nullptr, 0);
-    //    context->CSSetConstantBuffers(0, 1, &b0);
-    //    ID3D11ShaderResourceView* csSrv[] = { baseVb.GetSrv(), baseIb.GetSrv() };
-    //    context->CSSetShaderResources(0, _countof(csSrv), csSrv);
-    //    ID3D11UnorderedAccessView* csUav[] = { m_ArgUav.Get(), m_SamIdxUav.Get() };
-    //    constexpr UINT uavInit[]           = { 10, 0 };
-    //    context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, uavInit);
-    //    context->Dispatch((baseIb.m_Capacity / 3 + GROUP_SIZE_X - 1) / GROUP_SIZE_X, 1, 1);
-    //    csUav[0] = csUav[1] = nullptr;
-    //    context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, nullptr);
-    //}
+    context->CSSetShader(m_GenGrassCs.Get(), nullptr, 0);
+    context->CSSetConstantBuffers(0, 1, &b0);
+    ID3D11ShaderResourceView* csSrv[] = { baseVb.GetSrv(), baseIb.GetSrv(), depthMip };
+    context->CSSetShaderResources(0, _countof(csSrv), csSrv);
+    ID3D11UnorderedAccessView* csUav[] = { m_ArgUav.Get(), m_Lod0Uav.Get(), m_Lod1Uav.Get() };
+    constexpr UINT uavInit[]           = { 10, 0, 0 };
+    context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, uavInit);
+    //context->DispatchIndirect(m_IndirectArg.Get(), 0);
+    context->Dispatch(groupCntX, groupCntY, 1);
+    std::memset(csUav, 0, sizeof(csUav));
+    context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, nullptr);
+    csSrv[2] = nullptr;
+    context->CSSetShaderResources(2, 1, &csSrv[2]);
+}
 
-    {
-        context->CSSetShader(m_GenGrassCs.Get(), nullptr, 0);
-        context->CSSetConstantBuffers(0, 1, &b0);
-        ID3D11ShaderResourceView* csSrv[] = { baseVb.GetSrv(), baseIb.GetSrv(), depth };
-        context->CSSetShaderResources(0, _countof(csSrv), csSrv);
-        ID3D11UnorderedAccessView* csUav[] = { m_ArgUav.Get(), m_Lod0Uav.Get(), m_Lod1Uav.Get() };
-        constexpr UINT uavInit[]           = { 10, 0, 0 };
-        context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, uavInit);
-        //context->DispatchIndirect(m_IndirectArg.Get(), 0);
-        context->Dispatch(groupCntX, groupCntY, 1);
-        std::memset(csUav, 0, sizeof(csUav));
-        context->CSSetUnorderedAccessViews(0, _countof(csUav), csUav, nullptr);
-        csSrv[2] = nullptr;
-        context->CSSetShaderResources(2, 1, &csSrv[2]);
-    }
+void GrassRenderer::Render(
+    ID3D11DeviceContext* context,
+    ID3D11ShaderResourceView* grassAlbedo,
+    bool wireFrame)
+{
+    ID3D11Buffer* b0 = m_Cb0.GetBuffer();
 
     {
         constexpr UINT stride = sizeof(BaseVertex);

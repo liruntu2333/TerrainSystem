@@ -34,8 +34,15 @@ ThreadPool g_ThreadPool(std::thread::hardware_concurrency());
 
 namespace
 {
-    std::unique_ptr<DirectX::Texture2D> g_depthStencil            = nullptr;
-    std::unique_ptr<DirectX::Texture2D> g_depthLookup             = nullptr;
+    std::unique_ptr<DirectX::Texture2D> g_depthStencil = nullptr;
+
+    uint32_t W, H;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> g_depthLookup               = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> g_depthLookupSrv   = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> g_depthLookupUav1 = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> g_depthLookupUav2 = nullptr;
+    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> g_depthLookupUav3 = nullptr;
+
     std::shared_ptr<PassConstants> g_Constants                    = nullptr;
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera                              = nullptr;
@@ -218,29 +225,34 @@ int main(int, char**)
             clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w
         };
 
-        auto dsv = showDebug ? g_depthLookup->GetDsv() : g_depthStencil->GetDsv();
-        auto rtv = showDebug ? nullptr : g_mainRenderTargetView;
-        g_pd3dDeviceContext->OMSetRenderTargets(1, &rtv, dsv);
+        g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, g_depthStencil->GetDsv());
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        g_pd3dDeviceContext->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
+        g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
-        g_ModelRenderer->Render(g_pd3dDeviceContext, statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices, *g_BaseIndices,
+        g_ModelRenderer->Render(g_pd3dDeviceContext, statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices,
+            *g_BaseIndices,
             *g_Albedo, g_Camera->GetPosition(), wireFrame);
-        g_DebugRenderer->DrawSphere(Matrix::CreateScale(10) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(), g_Camera->GetProjection());
+        g_DebugRenderer->DrawSphere(Matrix::CreateScale(10) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
+            g_Camera->GetProjection());
 
+        g_GrassRenderer->GenerateHiZ3(
+            g_pd3dDeviceContext,
+            g_depthStencil->GetSrv(),
+            g_depthLookupUav1.Get(),
+            g_depthLookupUav2.Get(),
+            g_depthLookupUav3.Get(), W, H);
 
         if (showDebug)
         {
-            g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, g_depthStencil->GetDsv());
-            g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         }
 
-        if (occlusionCulling && !showDebug)
-        {
-            g_pd3dDeviceContext->CopyResource(g_depthLookup->GetTexture(), g_depthStencil->GetTexture());
-        }
+        //if (occlusionCulling && !showDebug)
+        //{
+        //    g_pd3dDeviceContext->CopyResource(g_depthLookup->GetTexture(), g_depthStencil->GetTexture());
+        //}
 
         GrassRenderer::Uniforms uniforms;
         uniforms.ViewProj         = g_Camera->GetViewProjection().Transpose();
@@ -265,8 +277,7 @@ int main(int, char**)
         uniforms.Debug            = showDebug;
         uniforms.FoldHeight       = foldHeight;
         //std::copy_n(planes.begin(), 6, uniforms.Planes);
-        g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(),
-            g_depthLookup->GetSrv(), uniforms, wireFrame);
+        g_GrassRenderer->Render(g_pd3dDeviceContext, g_GrassAlbedo->GetSrv(), wireFrame);
 
         g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
@@ -313,7 +324,7 @@ bool CreateDeviceD3D(HWND hWnd)
 
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, };
-    HRESULT res                                 = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
+    HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
         featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
         &featureLevel,
         &g_pd3dDeviceContext);
@@ -356,15 +367,31 @@ void CreateRenderTarget()
     D3D11_TEXTURE2D_DESC texDesc;
     pBackBuffer->GetDesc(&texDesc);
     CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D32_FLOAT,
-        texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL,
+        texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
         D3D11_USAGE_DEFAULT);
     g_depthStencil = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, dsDesc);
     g_depthStencil->CreateViews(g_pd3dDevice);
 
-    dsDesc.Format    = DXGI_FORMAT_R32_TYPELESS;
-    dsDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_DEPTH_STENCIL;
-    g_depthLookup    = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, dsDesc);
-    g_depthLookup->CreateViews(g_pd3dDevice);
+    W = dsDesc.Width;
+    H = dsDesc.Height;
+    dsDesc.Height /= 2;
+    dsDesc.Width /= 2;
+    dsDesc.MipLevels = 3;
+    dsDesc.Format    = DXGI_FORMAT_R32_FLOAT;
+    dsDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+    g_pd3dDevice->CreateTexture2D(&dsDesc, nullptr, &g_depthLookup);
+
+    CD3D11_SHADER_RESOURCE_VIEW_DESC srvDesc(g_depthLookup.Get(), D3D11_SRV_DIMENSION_TEXTURE2D,
+        DXGI_FORMAT_R32_FLOAT, 0, 3);
+    g_pd3dDevice->CreateShaderResourceView(g_depthLookup.Get(), &srvDesc, &g_depthLookupSrv);
+
+    CD3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc(g_depthLookup.Get(), D3D11_UAV_DIMENSION_TEXTURE2D,
+        DXGI_FORMAT_R32_FLOAT, 0);
+    g_pd3dDevice->CreateUnorderedAccessView(g_depthLookup.Get(), &uavDesc, &g_depthLookupUav1);
+    uavDesc.Texture2D.MipSlice = 1;
+    g_pd3dDevice->CreateUnorderedAccessView(g_depthLookup.Get(), &uavDesc, &g_depthLookupUav2);
+    uavDesc.Texture2D.MipSlice = 2;
+    g_pd3dDevice->CreateUnorderedAccessView(g_depthLookup.Get(), &uavDesc, &g_depthLookupUav3);
 
     pBackBuffer->Release();
 }
@@ -389,7 +416,8 @@ void CreateSystem()
 
     {
         //auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\Rock1\Rock1.obj)");
-        auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\BingMaYong\12341_Statue_v2_l1.obj)", true);
+        auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(
+            R"(asset\model\BingMaYong\12341_Statue_v2_l1.obj)", true);
         std::vector<ModelRenderer::Vertex> vertices;
         vertices.reserve(meshes[0].Vertices.size());
         std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
@@ -401,9 +429,9 @@ void CreateSystem()
             0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
         g_BaseVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
             vertices.data(), vertices.size(), desc);
-        desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
         desc.StructureByteStride = sizeof(uint32_t);
-        g_BaseIndices            = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
+        g_BaseIndices = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
             meshes[0].Indices.size(), desc);
         g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
     }

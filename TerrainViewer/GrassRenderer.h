@@ -47,13 +47,24 @@ public:
     GrassRenderer& operator=(GrassRenderer&&)      = delete;
 
     void Initialize(const std::filesystem::path& shaderDir);
-    void Render(
+
+    void GenerateHiZ3(
+        ID3D11DeviceContext* context,
+        ID3D11ShaderResourceView* depth0,
+        ID3D11UnorderedAccessView* depthMip1,
+        ID3D11UnorderedAccessView* depthMip2,
+        ID3D11UnorderedAccessView* depthMip3,
+        uint32_t rtW, uint32_t rtH);
+
+    void GenerateInstance(
         ID3D11DeviceContext* context,
         const DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>& baseVb,
         const DirectX::StructuredBuffer<unsigned>& baseIb,
+        ID3D11ShaderResourceView* depthMip, Uniforms& uniforms);
+
+    void Render(
+        ID3D11DeviceContext* context,
         ID3D11ShaderResourceView* grassAlbedo,
-        ID3D11ShaderResourceView* depth,
-        Uniforms& uniforms,
         bool wireFrame);
 
 protected:
@@ -87,6 +98,7 @@ protected:
 
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_HighLodIb = nullptr;
     Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_GenGrassCs;
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_GenDepthMip3Cs;
     //Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_AssignSamCs;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps;

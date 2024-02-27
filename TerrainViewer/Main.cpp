@@ -13,14 +13,10 @@
 
 #include "Texture2D.h"
 #include "TerrainSystem.h"
-#include "../HeightMapSplitter/ThreadPool.h"
 #include <d3d11_3.h>
+#include "../HeightMapSplitter/ThreadPool.h"
 
-#include "AssetImporter.h"
 #include "DebugRenderer.h"
-#include "GrassRenderer.h"
-#include "ModelRenderer.h"
-#include "StructuredBuffer.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice                     = NULL;
@@ -36,29 +32,9 @@ namespace
 {
     std::unique_ptr<DirectX::Texture2D> g_depthStencil = nullptr;
 
-    uint32_t W, H;
-    Microsoft::WRL::ComPtr<ID3D11Texture2D> g_depthLookup               = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> g_depthLookupSrv   = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> g_depthLookupUav1 = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> g_depthLookupUav2 = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11UnorderedAccessView> g_depthLookupUav3 = nullptr;
-
     std::shared_ptr<PassConstants> g_Constants                    = nullptr;
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera                              = nullptr;
-
-    std::unique_ptr<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>> g_BaseVertices = nullptr;
-    std::unique_ptr<DirectX::StructuredBuffer<uint32_t>> g_BaseIndices                              = nullptr;
-    DirectX::BoundingBox g_Bound;
-    float g_BaseArea                               = 0.0f;
-    std::unique_ptr<DirectX::Texture2D> g_Albedo   = nullptr;
-    std::unique_ptr<ModelRenderer> g_ModelRenderer = nullptr;
-
-    std::unique_ptr<GrassRenderer> g_GrassRenderer    = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> g_GrassVb    = nullptr;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> g_GrassIb    = nullptr;
-    std::unique_ptr<DirectX::Texture2D> g_GrassAlbedo = nullptr;
-    uint32_t g_GrassIdxCnt                            = 0;
 
     std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
 
@@ -123,24 +99,9 @@ int main(int, char**)
     bool wireFrame     = false;
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
-    Matrix vpForCull;
-    float spd     = 100.0f;
-    float density = 40.0f;
-    Vector2 height(1.4f, 2.5f);
-    Vector2 width(0.1f, 0.14f);
-    Vector2 bend(0.5f, 0.9f);
-    Vector4 gravity(0, -1, 0, 1);
-    Vector3 windDir;
-    (Vector3::Forward + Vector3::Right + Vector3::Up).Normalize(windDir);
-    float windStrength    = 2.0;
-    float windPeriod      = 2.0;
-    float orientThreshold = 0.98f;
-    bool orientCulling    = true, frustumCulling = true, distCulling = true, occlusionCulling = true;
-    float lod0Dist        = 50.0f;
-    bool showDebug        = false;
-    float foldHeight      = 1.5f;
-    bool done             = false;
-    float time            = 0.0f;
+    float spd  = 100.0f;
+    bool done  = false;
+    float time = 0.0f;
     // Main loop
     while (!done)
     {
@@ -164,48 +125,19 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        bool modeChanged = false;
-
         ImGui::Begin("Grass System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-        //ImGui::Text("Visible Patch : %d", pr.Patches.size());
-        //ImGui::SliderFloat("Sun Theta", &lTheta, 0.0f, DirectX::XM_PIDIV2);
-        //ImGui::SliderFloat("Sun Phi", &lPhi, 0.0, DirectX::XM_2PI);
-        //ImGui::SliderFloat("Sun Intensity", &lInt, 0.0, 5.0);
-        //ImGui::SliderFloat("Ambient Intensity", &ambient, 0.0, 1.0);
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
-        ImGui::SliderFloat("Grass Density", &density, 0, 70);
-        ImGui::DragFloatRange2("Height", &height.x, &height.y, 0.01, 0.01, 10.0, "%.5f", nullptr);
-        ImGui::DragFloatRange2("Width", &width.x, &width.y, 0.001, 0.01, 1.0, "%.5f", nullptr);
-        ImGui::DragFloatRange2("Bend", &bend.x, &bend.y, 0.001, 0.001, 5.0, "%.5f", nullptr);
-        ImGui::SliderFloat("Gravity", &gravity.w, 0.0, 10.0, "%.3f");
-        ImGui::SliderFloat("Wind Strength", &windStrength, 0.0, 10.0, "%.3f");
-        ImGui::SliderFloat("Wind Period", &windPeriod, 0.0, 10.0, "%.3f");
-        ImGui::SliderFloat("Fold Height", &foldHeight, 0.0, 10.0, "%.3f");
-        ImGui::SliderFloat("LOD Dist", &lod0Dist, 0.0, 1000.0, "%.3f");
-        ImGui::Checkbox("Show Debug", &showDebug);
-        ImGui::Checkbox("Distance Culling", &distCulling);
-        ImGui::Checkbox("Orient Culling", &orientCulling);
-        ImGui::SliderFloat("Orient Threshold", &orientThreshold, 0.9, 1.0, "%.3f");
-        ImGui::Checkbox("Frustum Culling", &frustumCulling);
-        ImGui::Checkbox("Occlusion Culling", &occlusionCulling);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::End();
 
-        auto statueRotTrans = Matrix::CreateTranslation(0, -50, 0);
-        auto statueWorld    = statueRotTrans;
-
         // Updating
         std::vector<DirectX::BoundingBox> bbs;
-        DirectX::BoundingBox bbWorld;
-        g_Bound.Transform(bbWorld, statueWorld);
-        bbs.emplace_back(bbWorld);
         g_Camera->Update(io, spd);
         if (!freezeFrustum)
         {
-            frustum   = g_Camera->GetFrustum();
-            vpForCull = g_Camera->GetViewProjection();
+            frustum = g_Camera->GetFrustum();
         }
         std::array<Vector4, 6> planes;
         DirectX::XMVECTOR vPlanes[6];
@@ -216,8 +148,6 @@ int main(int, char**)
         }
 
         time += io.DeltaTime;
-        float windWave = windPeriod * time;
-        const Vector4 wind(windDir.x, windDir.y, windDir.z, windStrength);
 
         // Rendering
         ImGui::Render();
@@ -230,54 +160,13 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
-
-        g_ModelRenderer->Render(g_pd3dDeviceContext, statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices,
-            *g_BaseIndices,
-            *g_Albedo, g_Camera->GetPosition(), wireFrame);
-        g_DebugRenderer->DrawSphere(Matrix::CreateScale(10) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
+        g_DebugRenderer->DrawSphere(Matrix::CreateScale(100) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
             g_Camera->GetProjection());
-
-        g_GrassRenderer->GenerateHiZ3(
-            g_pd3dDeviceContext,
-            g_depthStencil->GetSrv(),
-            g_depthLookupUav1.Get(),
-            g_depthLookupUav2.Get(),
-            g_depthLookupUav3.Get(), W, H);
-
-        if (showDebug)
-        {
-            g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        }
 
         //if (occlusionCulling && !showDebug)
         //{
         //    g_pd3dDeviceContext->CopyResource(g_depthLookup->GetTexture(), g_depthStencil->GetTexture());
         //}
-
-        GrassRenderer::Uniforms uniforms;
-        uniforms.ViewProj         = g_Camera->GetViewProjection().Transpose();
-        uniforms.BaseWorld        = statueWorld.Transpose();
-        uniforms.VPForCull        = vpForCull.Transpose();
-        uniforms.NumBaseTriangle  = g_BaseIndices->m_Capacity / 3;
-        uniforms.Density          = density;
-        uniforms.Height           = height;
-        uniforms.HalfWidth        = width * 0.5f;
-        uniforms.BendFactor       = bend;
-        uniforms.Gravity          = gravity;
-        uniforms.Wind             = wind;
-        uniforms.WindWave         = windWave;
-        uniforms.DistCulling      = distCulling;
-        uniforms.OrientCulling    = orientCulling;
-        uniforms.FrustumCulling   = frustumCulling;
-        uniforms.OcclusionCulling = occlusionCulling;
-        uniforms.NearFar          = Vector2(g_Camera->GetNear(), g_Camera->GetFar());
-        uniforms.CamPos           = g_Camera->GetPosition();
-        uniforms.OrientThreshold  = orientThreshold;
-        uniforms.Lod0Dist         = lod0Dist;
-        uniforms.Debug            = showDebug;
-        uniforms.FoldHeight       = foldHeight;
-        //std::copy_n(planes.begin(), 6, uniforms.Planes);
-        g_GrassRenderer->Render(g_pd3dDeviceContext, g_GrassAlbedo->GetSrv(), wireFrame);
 
         g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
@@ -324,7 +213,7 @@ bool CreateDeviceD3D(HWND hWnd)
 
     D3D_FEATURE_LEVEL featureLevel;
     const D3D_FEATURE_LEVEL featureLevelArray[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, };
-    HRESULT res = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
+    HRESULT res                                 = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags,
         featureLevelArray, _countof(featureLevelArray), D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice,
         &featureLevel,
         &g_pd3dDeviceContext);
@@ -367,31 +256,10 @@ void CreateRenderTarget()
     D3D11_TEXTURE2D_DESC texDesc;
     pBackBuffer->GetDesc(&texDesc);
     CD3D11_TEXTURE2D_DESC dsDesc(DXGI_FORMAT_D32_FLOAT,
-        texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
+        texDesc.Width, texDesc.Height, 1, 0, D3D11_BIND_DEPTH_STENCIL,
         D3D11_USAGE_DEFAULT);
     g_depthStencil = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, dsDesc);
     g_depthStencil->CreateViews(g_pd3dDevice);
-
-    W = dsDesc.Width;
-    H = dsDesc.Height;
-    dsDesc.Height /= 2;
-    dsDesc.Width /= 2;
-    dsDesc.MipLevels = 3;
-    dsDesc.Format    = DXGI_FORMAT_R32_FLOAT;
-    dsDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-    g_pd3dDevice->CreateTexture2D(&dsDesc, nullptr, &g_depthLookup);
-
-    CD3D11_SHADER_RESOURCE_VIEW_DESC srvDesc(g_depthLookup.Get(), D3D11_SRV_DIMENSION_TEXTURE2D,
-        DXGI_FORMAT_R32_FLOAT, 0, 3);
-    g_pd3dDevice->CreateShaderResourceView(g_depthLookup.Get(), &srvDesc, &g_depthLookupSrv);
-
-    CD3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc(g_depthLookup.Get(), D3D11_UAV_DIMENSION_TEXTURE2D,
-        DXGI_FORMAT_R32_FLOAT, 0);
-    g_pd3dDevice->CreateUnorderedAccessView(g_depthLookup.Get(), &uavDesc, &g_depthLookupUav1);
-    uavDesc.Texture2D.MipSlice = 1;
-    g_pd3dDevice->CreateUnorderedAccessView(g_depthLookup.Get(), &uavDesc, &g_depthLookupUav2);
-    uavDesc.Texture2D.MipSlice = 2;
-    g_pd3dDevice->CreateUnorderedAccessView(g_depthLookup.Get(), &uavDesc, &g_depthLookupUav3);
 
     pBackBuffer->Release();
 }
@@ -413,46 +281,6 @@ void CreateSystem()
     g_Camera = std::make_unique<Camera>(ViewInit);
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
-
-    {
-        //auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\Rock1\Rock1.obj)");
-        auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(
-            R"(asset\model\BingMaYong\12341_Statue_v2_l1.obj)", true);
-        std::vector<ModelRenderer::Vertex> vertices;
-        vertices.reserve(meshes[0].Vertices.size());
-        std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
-            [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos * 2, v.Nor, v.Tc); });
-        bounding.Transform(g_Bound, Matrix::CreateScale(2));
-        g_BaseArea = areaSum;
-
-        CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
-            0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
-        g_BaseVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
-            vertices.data(), vertices.size(), desc);
-        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        desc.StructureByteStride = sizeof(uint32_t);
-        g_BaseIndices = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
-            meshes[0].Indices.size(), desc);
-        g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
-    }
-
-    g_ModelRenderer = std::make_unique<ModelRenderer>(g_pd3dDevice);
-    g_ModelRenderer->Initialize(R"(shader)");
-
-    g_GrassRenderer = std::make_unique<GrassRenderer>(g_pd3dDevice);
-    g_GrassRenderer->Initialize(R"(shader)");
-
-    {
-        auto [meshes, mats, bounding, areaSum] = AssetImporter::LoadAsset(R"(asset\model\DeadTree\DeadTree.obj)");
-        std::vector<ModelRenderer::Vertex> vertices;
-        vertices.reserve(meshes[0].Vertices.size());
-        g_GrassIdxCnt = meshes[0].Indices.size();
-        std::transform(meshes[0].Vertices.begin(), meshes[0].Vertices.end(), std::back_inserter(vertices),
-            [](const VertexPositionNormalTangentTexture& v) { return ModelRenderer::Vertex(v.Pos, v.Nor, v.Tc); });
-        DirectX::CreateStaticBuffer(g_pd3dDevice, vertices, D3D11_BIND_VERTEX_BUFFER, &g_GrassVb);
-        DirectX::CreateStaticBuffer(g_pd3dDevice, meshes[0].Indices, D3D11_BIND_INDEX_BUFFER, &g_GrassIb);
-        g_GrassAlbedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, R"(asset\model\DeadTree\grass.png)");
-    }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

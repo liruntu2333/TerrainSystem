@@ -7,16 +7,12 @@
 #include <chrono>
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
-#include "TINRenderer.h"
-#include "ClipmapRenderer.h"
 #include "Camera.h"
 
-#include "Texture2D.h"
-#include "TerrainSystem.h"
-#include <d3d11_3.h>
 #include "../HeightMapSplitter/ThreadPool.h"
 
 #include "DebugRenderer.h"
+#include "PlanetRenderer.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice                     = NULL;
@@ -36,9 +32,10 @@ namespace
     std::shared_ptr<DirectX::ConstantBuffer<PassConstants>> g_Cb0 = nullptr;
     std::unique_ptr<Camera> g_Camera                              = nullptr;
 
-    std::unique_ptr<DebugRenderer> g_DebugRenderer = nullptr;
+    std::unique_ptr<DebugRenderer> g_DebugRenderer   = nullptr;
+    std::unique_ptr<PlanetRenderer> g_PlanetRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, 150.0f);
+    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, 20000.0f);
 }
 
 // Forward declarations of helper functions
@@ -58,7 +55,7 @@ int main(int, char**)
     WNDCLASSEXW wc = {
         sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"ImGui Example", NULL
     };
-    ::RegisterClassExW(&wc);
+    RegisterClassExW(&wc);
     HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Renderer", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL,
         NULL, wc.hInstance, NULL);
 
@@ -66,13 +63,13 @@ int main(int, char**)
     if (!CreateDeviceD3D(hwnd))
     {
         CleanupDeviceD3D();
-        ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return 1;
     }
 
     // Show the window
-    ::ShowWindow(hwnd, SW_SHOWDEFAULT);
-    ::UpdateWindow(hwnd);
+    ShowWindow(hwnd, SW_SHOWDEFAULT);
+    UpdateWindow(hwnd);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -92,16 +89,24 @@ int main(int, char**)
     // Load Fonts
 
     // Our state
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    auto& darkSlateGray = DirectX::Colors::Black;
+    ImVec4 clear_color  = ImVec4(darkSlateGray.f[0], darkSlateGray.f[1],
+        darkSlateGray.f[2], darkSlateGray.f[3]);
 
     CreateSystem();
 
     bool wireFrame     = false;
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
-    float spd  = 100.0f;
-    bool done  = false;
+    float yaw  = 0.0;
+    float spd  = 500.0f;
+    bool done  = false, debug = false, rotate = false;
     float time = 0.0f;
+    PlanetRenderer::Uniforms uniforms {};
+    float roll = -23.5f * DirectX::XM_PI / 180.0f;
+    Matrix tilt = Matrix::CreateRotationZ(roll);
+    Vector3 earthAxis = (Vector3(cos(roll), sin(roll), 0).Cross(Vector3::UnitZ));
+    earthAxis.Normalize();
     // Main loop
     while (!done)
     {
@@ -110,7 +115,7 @@ int main(int, char**)
         MSG msg;
         while (::PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
         {
-            ::TranslateMessage(&msg);
+            TranslateMessage(&msg);
             ::DispatchMessage(&msg);
             if (msg.message == WM_QUIT)
                 done = true;
@@ -125,11 +130,28 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Grass System");
+        ImGui::Begin("Planet System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
+
+#define UNIFORM(x) #x, &uniforms.x
+        ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
+        // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
+        // if (!uniforms.interpolateNormal)
+        // {
+        //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
+        // }
+        ImGui::SliderFloat(UNIFORM(lacunarity), 0.0f, 4.0f);
+        ImGui::SliderFloat(UNIFORM(gain), 0.5f, 1.0f);
+        ImGui::SliderFloat(UNIFORM(radius), 1000.0f, 10000.0f);
+        ImGui::SliderFloat(UNIFORM(elevation), 0.0f, 2000.0f);
+        ImGui::SliderFloat(UNIFORM(billowy), -1.0f, 1.0f);
+        // ImGui::SliderFloat(UNIFORM(baseAmplitude), 0.0f, 2.0f);
+#undef UNIFORM
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
+        ImGui::Checkbox("Rotate", &rotate);
+        // ImGui::Checkbox("Debug", &debug);
         ImGui::End();
 
         // Updating
@@ -139,13 +161,18 @@ int main(int, char**)
         {
             frustum = g_Camera->GetFrustum();
         }
-        std::array<Vector4, 6> planes;
-        DirectX::XMVECTOR vPlanes[6];
-        frustum.GetPlanes(&vPlanes[0], &vPlanes[1], &vPlanes[2], &vPlanes[3], &vPlanes[4], &vPlanes[5]);
-        for (int i = 0; i < 6; ++i)
+        if (rotate)
         {
-            XMStoreFloat4(&planes[i], vPlanes[i]);
+            yaw -= io.DeltaTime * 0.05f;
+            yaw = std::fmod(yaw, -DirectX::XM_2PI);
         }
+
+        // tilt = Quaternion::CreateFromAxisAngle(Vector3::UnitZ, pitch);
+        Matrix world = tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
+
+        uniforms.world         = world.Transpose();
+        uniforms.worldViewProj = (world * g_Camera->GetViewProjection()).Transpose();
+        uniforms.camPos        = g_Camera->GetPosition();
 
         time += io.DeltaTime;
 
@@ -157,18 +184,15 @@ int main(int, char**)
 
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, g_depthStencil->GetDsv());
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
-        g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+        g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 0.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
-        g_DebugRenderer->DrawSphere(Matrix::CreateScale(100) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
-            g_Camera->GetProjection());
+        // g_DebugRenderer->DrawSphere(Matrix::CreateScale(100) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
+        //     g_Camera->GetProjection());
 
-        //if (occlusionCulling && !showDebug)
-        //{
-        //    g_pd3dDeviceContext->CopyResource(g_depthLookup->GetTexture(), g_depthStencil->GetTexture());
-        //}
+        g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, wireFrame);
 
-        g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
+        // g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -182,8 +206,8 @@ int main(int, char**)
     ImGui::DestroyContext();
 
     CleanupDeviceD3D();
-    ::DestroyWindow(hwnd);
-    ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+    DestroyWindow(hwnd);
+    UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
     return 0;
 }
@@ -196,7 +220,7 @@ bool CreateDeviceD3D(HWND hWnd)
     sd.BufferCount                        = 2;
     sd.BufferDesc.Width                   = 0;
     sd.BufferDesc.Height                  = 0;
-    sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
     sd.BufferDesc.RefreshRate.Numerator   = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
@@ -281,6 +305,9 @@ void CreateSystem()
     g_Camera = std::make_unique<Camera>(ViewInit);
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
+
+    g_PlanetRenderer = std::make_unique<PlanetRenderer>(g_pd3dDevice);
+    g_PlanetRenderer->Initialize("./shader", 255);
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

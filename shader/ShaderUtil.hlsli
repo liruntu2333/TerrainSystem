@@ -1,21 +1,7 @@
 #ifndef SHADER_UTIL
 #define SHADER_UTIL
 
-static const uint PatchScale    = 255;
-static const float SphereRadius = 200000.0f;
 static const float Pi           = 3.1415926535897932384626433832795f;
-
-cbuffer PassConstants : register(b0)
-{
-    float4x4 ViewProjection;
-    float3 LightDirection;
-    float LightIntensity;
-    float3 ViewPosition;
-    float OneOverWidth;
-    float2 AlphaOffset;
-    float HeightMapScale;
-    float AmbientIntensity;
-}
 
 float4 LoadColor(const uint col)
 {
@@ -92,7 +78,7 @@ float Pow2(const float x)
     return x * x;
 }
 
-float3 Brdf(float3 l, float3 lightColor, float3 v, float3 n, float3 alb, float3 f0, float metallic, float roughness, float ao)
+float3 Brdf(float3 l, float3 li, float3 v, float3 n, float3 alb, float3 f0, float metallic, float roughness, float3 ami)
 {
     float3 h = normalize(l + v);
     float nl = max(saturate(dot(n, l)), 0.000001);
@@ -116,11 +102,11 @@ float3 Brdf(float3 l, float3 lightColor, float3 v, float3 n, float3 alb, float3 
     float3 SpecularResult = (D * G * F * 0.25) / (nv * nl);
 
     float3 kd                = (1 - F) * (1 - metallic);
-    float3 specColor         = SpecularResult * lightColor * nl * Pi;
-    float3 diffColor         = kd * alb * lightColor * nl;
+    float3 specColor         = SpecularResult * li * nl * Pi;
+    float3 diffColor         = kd * alb * li * nl;
     float3 DirectLightResult = diffColor + specColor;
 
-	float3 ambient = (0.3 + EvalSh(n)) * alb * ao;
+	float3 ambient = alb * ami;
     
 	return DirectLightResult + ambient;
 }

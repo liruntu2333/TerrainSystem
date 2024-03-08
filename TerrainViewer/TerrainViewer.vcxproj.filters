@@ -42,10 +42,7 @@
     <ClCompile Include="AssetImporter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ModelRenderer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GrassRenderer.cpp">
+    <ClCompile Include="PlanetRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -80,35 +77,26 @@
     <ClInclude Include="AssetImporter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ModelRenderer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GrassRenderer.h">
+    <ClInclude Include="PlanetRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\shader\GrassGeneration.hlsl">
+    <FxCompile Include="..\shader\PlanetVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="..\shader\ModelVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\ModelPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\GrassVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\GrassPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\GenDepthMip3.hlsl">
+    <FxCompile Include="..\shader\PlanetPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shader\Grass.hlsli">
+    <None Include="..\shader\Planet.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shader\FastNoiseLite.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shader\Simplex.hlsli">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

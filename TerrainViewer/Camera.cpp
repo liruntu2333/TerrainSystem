@@ -38,7 +38,14 @@ Matrix Camera::GetView() const
 
 Matrix Camera::GetProjection() const
 {
-    return Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+    auto proj = Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
+    // reverse depth [0, 1] -> [1, 0]
+    const auto zReverse = Matrix(
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, -1, 0,
+        0, 0, 1, 1);
+    return proj * zReverse;
 }
 
 // Matrix Camera::GetProjectionLocal() const
@@ -74,7 +81,7 @@ void Camera::SetViewPort(ID3D11DeviceContext* context) const
 void Camera::Update(const ImGuiIO& io, float spd)
 {
     m_AspectRatio = io.DisplaySize.x / io.DisplaySize.y;
-    m_Viewport =
+    m_Viewport    =
     {
         0.0f, 0.0f,
         io.DisplaySize.x, io.DisplaySize.y,
@@ -82,11 +89,11 @@ void Camera::Update(const ImGuiIO& io, float spd)
     };
 
     const float dt = io.DeltaTime;
-    m_Orientation = Quaternion::CreateFromYawPitchRoll(m_Rotation);
+    m_Orientation  = Quaternion::CreateFromYawPitchRoll(m_Rotation);
     m_Orientation.Normalize();
     auto forward = Vector3::Transform(Vector3::Forward, Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z));
     forward.Normalize();
-    m_Forward = forward;
+    m_Forward  = forward;
     auto right = Vector3::Transform(Vector3::Right, Matrix::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z));
     right.Normalize();
     m_Right = right;
@@ -105,7 +112,7 @@ void Camera::Update(const ImGuiIO& io, float spd)
         else
         {
             m_IsPlaying = false;
-            m_RcdIndex = 0;
+            m_RcdIndex  = 0;
         }
     }
     else
@@ -163,7 +170,7 @@ void Camera::StartRecord()
 void Camera::StopRecord()
 {
     m_IsRecording = false;
-    m_IsPlaying = false;
+    m_IsPlaying   = false;
     if (!m_RcdRotations.empty())
     {
         SaveBin("CameraPositions.bin", m_RcdPositions);
@@ -179,7 +186,7 @@ void Camera::PlayRecord()
     {
         return;
     }
-    m_IsPlaying = true;
+    m_IsPlaying    = true;
     m_RcdPositions = LoadBinary<Vector3>("CameraPositions.bin");
     m_RcdRotations = LoadBinary<Vector3>("CameraRotations.bin");
 }

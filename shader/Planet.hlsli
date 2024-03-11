@@ -10,38 +10,41 @@ struct VertexOut
 cbuffer cb0 : register(b0)
 {
     float4x4 worldViewProj;
-    float4x4 world;
+    float4x4 worldInvTrans;
+
+    float4 seed;
 
     int geometryOctaves;
-    int normalOctaves;
+    // int normalOctaves;
     float lacunarity;
     float gain;
-
     float radius;
+
     float elevation;
-    int interpolateNormal;
-	float sharpness;
+    float sharpness;
+    float slopeErosion;
+    float altitudeErosion;
 
     float3 camPos;
-	float baseAmplitude;
+    float perturb;
 
     float4 debugCol;
 }
 
-float4 mod(float4 x, float4 y)
-{
-    return x - y * floor(x / y);
-}
-
-float3 mod(float3 x, float3 y)
-{
-    return x - y * floor(x / y);
-}
-
-float2 mod289(float2 x)
-{
-    return x - floor(x / 289.0) * 289.0;
-}
+// float4 mod(float4 x, float4 y)
+// {
+//     return x - y * floor(x / y);
+// }
+//
+// float3 mod(float3 x, float3 y)
+// {
+//     return x - y * floor(x / y);
+// }
+//
+// float2 mod289(float2 x)
+// {
+//     return x - floor(x / 289.0) * 289.0;
+// }
 
 float3 mod289(float3 x)
 {
@@ -55,13 +58,13 @@ float4 mod289(float4 x)
 
 float4 permute(float4 x)
 {
-    return mod289(((x * 34.0) + 1.0) * x);
+    return mod289(((x * 34.0) + 10.0) * x);
 }
 
-float3 permute(float3 x)
-{
-    return mod289((x * 34.0 + 1.0) * x);
-}
+// float3 permute(float3 x)
+// {
+//     return mod289((x * 34.0 + 10.0) * x);
+// }
 
 float4 taylorInvSqrt(float4 r)
 {
@@ -177,7 +180,7 @@ uint3 pcg3d(uint3 v)
     return v;
 }
 
-float4 SimplexNoiseGrad(int seed, float3 v)
+float4 SimplexNoiseGrad(float3 v)
 {
     const float2 C = float2(1.0 / 6.0, 1.0 / 3.0);
 
@@ -198,15 +201,17 @@ float4 SimplexNoiseGrad(int seed, float3 v)
     float3 x2 = x0 - i2 + C.yyy;
     float3 x3 = x0 - 0.5;
 
+    // https://github.com/ashima/webgl-noise/issues/9
+    float3 seedInt = floor(seed + .5);
     // Permutations
     i        = mod289(i); // Avoid truncation effects in permutation
     float4 p =
-        permute(permute(permute(i.z + float4(0.0, i1.z, i2.z, 1.0))
-                + i.y + float4(0.0, i1.y, i2.y, 1.0))
-            + i.x + float4(0.0, i1.x, i2.x, 1.0));
+        permute(
+            permute(
+                permute(i.z + float4(0.0, i1.z, i2.z, 1.0) + seedInt.z) +
+                i.y + float4(0.0, i1.y, i2.y, 1.0) + seedInt.y) +
+            i.x + float4(0.0, i1.x, i2.x, 1.0) + seedInt.x);
 
-    // Gradients: 7x7 points over a square, mapped onto an octahedron.
-    // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
     float4 j = p - 49.0 * floor(p / 49.0); // mod(p,7*7)
 
     float4 x_ = floor(j / 7.0);
@@ -252,12 +257,12 @@ float4 SimplexNoiseGrad(int seed, float3 v)
         -6.0 * m3.z * x2 * dot(x2, g2) + m4.z * g2 +
         -6.0 * m3.w * x3 * dot(x3, g3) + m4.w * g3;
     float4 px = float4(dot(x0, g0), dot(x1, g1), dot(x2, g2), dot(x3, g3));
-    return 42.0 * float4(grad, dot(m4, px));
+    return (42.0 * float4(grad, dot(m4, px)))/* * 0.5 + float4(0.0, 0.0, 0.0, 0.5)*/;
 }
 
-float SimplexNoise(int seed, float3 v)
+float SimplexNoise(float3 v)
 {
-    return SimplexNoiseGrad(seed, v).w;
+    return SimplexNoiseGrad(v).w;
 }
 
 // float4 BillowyNoiseGrad(int seed, float3 v)
@@ -270,10 +275,20 @@ float SimplexNoise(int seed, float3 v)
 
 float4 Billowy(float4 dNoise)
 {
+    // billowy = abs(noise)
+    // if (dNoise.w < 0.0)
+    // {
+    //     dNoise.xyz = -dNoise.xyz;
+    // }
+    // dNoise.w = abs(dNoise.w);
+
+    // billowy = noise ^ 2     /// chi-square distribution of order 1
     dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
     dNoise.w   = dNoise.w * dNoise.w;
-    // chi-square distribution of order 1
-	return dNoise * 2.0 - 1.0;
+
+    // dNoise *= 2.0;
+    // dNoise.w += -1.0;
+    return dNoise;
 }
 
 // float4 RidgedNoiseGrad(int seed, float3 v)
@@ -289,14 +304,20 @@ float4 Billowy(float4 dNoise)
 
 float4 Ridged(float4 dNoise)
 {
-    if (dNoise.w > 0.0)
-    {
-        dNoise.xyz = -dNoise.xyz;
-    }
-    dNoise.w = 1.0 - abs(dNoise.w);
-	// dNoise.xyz = -2.0 * dNoise.w * dNoise.xyz;
-	// dNoise.w = 1.0 - dNoise.w * dNoise.w;
-    return dNoise * 2.0 - 1.0;
+    // ridged = 1 - abs(noise)
+    // if (dNoise.w > 0.0)
+    // {
+    //     dNoise.xyz = -dNoise.xyz;
+    // }
+    // dNoise.w = 1.0 - abs(dNoise.w);
+
+    // ridged = 1 - noise ^ 2
+    dNoise.xyz = -2.0 * dNoise.w * dNoise.xyz;
+    dNoise.w   = 1.0 - dNoise.w * dNoise.w;
+
+    // dNoise *= 2.0;
+    // dNoise.w += -1.0;
+    return dNoise;
 }
 
 #define FBM_DECLARE

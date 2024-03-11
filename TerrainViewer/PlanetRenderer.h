@@ -16,20 +16,23 @@ public:
     struct Uniforms
     {
         DirectX::SimpleMath::Matrix worldViewProj = DirectX::SimpleMath::Matrix::Identity;
-        DirectX::SimpleMath::Matrix world         = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix worldInvTrans = DirectX::SimpleMath::Matrix::Identity;
+
+        DirectX::SimpleMath::Vector4 seed;
 
         int geometryOctaves = 5;
-        int normalOctaves   = 8;
-        float lacunarity    = 1.98f;
-        float gain          = 0.5f;
+        // int normalOctaves   = 8;
+        float lacunarity = 2.01f;
+        float gain       = 0.5f;
+        float radius     = 8000.0f;
 
-        float radius          = 8000.0f;
         float elevation       = 500.0f;
-        int interpolateNormal = 0;
-        float billowy       = 0.0f;
+        float sharpness       = 0.0f;
+        float slopeErosion    = 1.0f;
+        float altitudeErosion = 0.1f;
 
         DirectX::SimpleMath::Vector3 camPos {};
-        float baseAmplitude = 1.0;
+        float perturb;
 
         DirectX::SimpleMath::Vector4 debugColor {};
     };

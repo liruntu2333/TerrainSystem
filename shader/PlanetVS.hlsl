@@ -18,23 +18,27 @@ VertexOut main(float3 unitSphere : SV_Position)
     // noised = sum;
     float sum   = 0.0;
     float3 dSum = 0.0;
-	float amp = baseAmplitude;
+    float amp   = 1.0;
     float freq  = 1.0;
+
     for (int i = 0; i < geometryOctaves; i++)
     {
-        float4 dNoise  = SimplexNoiseGrad(0, unitSphere * freq);
+        float4 dNoise  = SimplexNoiseGrad(unitSphere * freq + dSum * perturb);
         float4 billowy = Billowy(dNoise);
         float4 ridged  = Ridged(dNoise);
 
-        dNoise = lerp(dNoise, billowy, max(0.0, sharpness));
-        dNoise = lerp(dNoise, ridged, abs(min(0.0, sharpness)));
-        // sum += amp * dNoise;
-        float3 dSumTmp = dSum + amp * dNoise.xyz;
-        float erosion  = 1.0 / (1.0 + dot(dSumTmp, dSumTmp));
+        dNoise = lerp(dNoise, ridged, max(0.0, sharpness));
+        dNoise = lerp(dNoise, billowy, abs(min(0.0, sharpness)));
+
+        float3 dSumErosion = dSum + dNoise.xyz * amp;
+        float sumErosion   = sum + dNoise.w * amp;
+
+        float erosion = lerp(1.0, 1.0 / (1.0 + dot(dSumErosion, dSumErosion)), slopeErosion);
+        erosion *= lerp(1.0, 1.0 - smoothstep(0.0, 1.0, abs(sumErosion)), altitudeErosion);
+
         sum += amp * erosion * dNoise.w;
         dSum += amp * erosion * dNoise.xyz;
-        // dSum = dSumTmp;
-        // sum += amp * dNoise.w;
+
         freq *= lacunarity;
         amp *= gain;
     }

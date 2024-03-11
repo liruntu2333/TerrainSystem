@@ -5,6 +5,8 @@
 #define NOMINMAX
 
 #include <chrono>
+#include <random>
+
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include "Camera.h"
@@ -103,10 +105,17 @@ int main(int, char**)
     bool done  = false, debug = false, rotate = false;
     float time = 0.0f;
     PlanetRenderer::Uniforms uniforms {};
-    float roll = -23.5f * DirectX::XM_PI / 180.0f;
-    Matrix tilt = Matrix::CreateRotationZ(roll);
+    float roll        = -23.5f * DirectX::XM_PI / 180.0f;
+    Matrix tilt       = Matrix::CreateRotationZ(roll);
     Vector3 earthAxis = (Vector3(cos(roll), sin(roll), 0).Cross(Vector3::UnitZ));
     earthAxis.Normalize();
+
+    // seeding
+    std::random_device randomDevice;
+    std::default_random_engine randomEngine(randomDevice());
+    std::uniform_real_distribution distribution(-1.f, 1.f);
+    Vector4 seed {};
+
     // Main loop
     while (!done)
     {
@@ -134,6 +143,17 @@ int main(int, char**)
         ImGui::Text("Frame Rate : %f", io.Framerate);
 
 #define UNIFORM(x) #x, &uniforms.x
+        if (ImGui::Button("RANDOM SEED"))
+        {
+            seed.x        = distribution(randomEngine);
+            seed.y        = distribution(randomEngine);
+            seed.z        = distribution(randomEngine);
+            seed.w        = distribution(randomEngine);
+            uniforms.seed = seed;
+        }
+        ImGui::SameLine();
+        ImGui::Text(": %f, %f, %f, %f", seed.x, seed.y, seed.z, seed.w);
+
         ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
         // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
         // if (!uniforms.interpolateNormal)
@@ -144,7 +164,10 @@ int main(int, char**)
         ImGui::SliderFloat(UNIFORM(gain), 0.5f, 1.0f);
         ImGui::SliderFloat(UNIFORM(radius), 1000.0f, 10000.0f);
         ImGui::SliderFloat(UNIFORM(elevation), 0.0f, 2000.0f);
-        ImGui::SliderFloat(UNIFORM(billowy), -1.0f, 1.0f);
+        ImGui::SliderFloat(UNIFORM(sharpness), -1.0f, 1.0f);
+        ImGui::SliderFloat(UNIFORM(slopeErosion), 0.0f, 1.0f);
+        ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
+        ImGui::SliderFloat(UNIFORM(perturb), 0.0f, 1.0f);
         // ImGui::SliderFloat(UNIFORM(baseAmplitude), 0.0f, 2.0f);
 #undef UNIFORM
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
@@ -170,7 +193,7 @@ int main(int, char**)
         // tilt = Quaternion::CreateFromAxisAngle(Vector3::UnitZ, pitch);
         Matrix world = tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
 
-        uniforms.world         = world.Transpose();
+        uniforms.worldInvTrans = world.Invert().Transpose().Transpose();
         uniforms.worldViewProj = (world * g_Camera->GetViewProjection()).Transpose();
         uniforms.camPos        = g_Camera->GetPosition();
 

@@ -1,7 +1,11 @@
 #include "Planet.hlsli"
 
-VertexOut main(float3 unitSphere : SV_Position)
+VertexOut main(uint vertexId : SV_VertexID)
 {
+    float2 gridOffset = float2(gridOffsetU, gridOffsetV) + float2(vertexId % 255, vertexId / 255) * gridSize;
+    float3 cubeVertex = faceUp + gridOffset.x * faceRight + gridOffset.y * faceBottom;
+    float3 unitSphere = normalize(cubeVertex);
+
     // float4 noised;
     // float4 sum = 0.0;
     // float amp = 0.5;

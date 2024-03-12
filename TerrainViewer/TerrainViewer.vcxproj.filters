@@ -39,9 +39,6 @@
     <ClCompile Include="DebugRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AssetImporter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PlanetRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -74,9 +71,6 @@
     <ClInclude Include="DebugRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AssetImporter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PlanetRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -97,6 +91,9 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="..\shader\Simplex.hlsli">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="..\shader\ShaderUtil.hlsli">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

@@ -101,7 +101,7 @@ int main(int, char**)
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
     float yaw  = 0.0;
-    float spd  = 500.0f;
+    float spd  = 1000.0f;
     bool done  = false, debug = false, rotate = false;
     float time = 0.0f;
     PlanetRenderer::Uniforms uniforms {};
@@ -154,26 +154,30 @@ int main(int, char**)
         ImGui::SameLine();
         ImGui::Text(": %f, %f, %f, %f", seed.x, seed.y, seed.z, seed.w);
 
-        ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
+
         // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
         // if (!uniforms.interpolateNormal)
         // {
         //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
         // }
-        ImGui::SliderFloat(UNIFORM(lacunarity), 0.0f, 4.0f);
+        ImGui::Text("Simplex Noise");
+        ImGui::SliderFloat(UNIFORM(lacunarity), 1.0f, 4.0f);
         ImGui::SliderFloat(UNIFORM(gain), 0.5f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(radius), 1000.0f, 10000.0f);
-        ImGui::SliderFloat(UNIFORM(elevation), 0.0f, 2000.0f);
         ImGui::SliderFloat(UNIFORM(sharpness), -1.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(slopeErosion), 0.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(perturb), 0.0f, 1.0f);
-        // ImGui::SliderFloat(UNIFORM(baseAmplitude), 0.0f, 2.0f);
+        ImGui::SliderFloat(UNIFORM(perturb), -2.0f, 2.0f);
+        ImGui::Text("Sphere Geometry");
+        ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
+        ImGui::SliderFloat(UNIFORM(radius), 1000.0f, 10000.0f);
+        ImGui::SliderFloat(UNIFORM(elevation), 0.0f, 2000.0f);
+        ImGui::Checkbox("Rotate", &rotate);
 #undef UNIFORM
+        ImGui::Text("Camera");
         ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-        ImGui::Checkbox("Rotate", &rotate);
+
         // ImGui::Checkbox("Debug", &debug);
         ImGui::End();
 
@@ -194,6 +198,7 @@ int main(int, char**)
         Matrix world = tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
 
         uniforms.worldInvTrans = world.Invert().Transpose().Transpose();
+        uniforms.world         = world.Transpose();
         uniforms.worldViewProj = (world * g_Camera->GetViewProjection()).Transpose();
         uniforms.camPos        = g_Camera->GetPosition();
 

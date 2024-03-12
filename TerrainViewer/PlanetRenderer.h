@@ -15,7 +15,15 @@ public:
 
     struct Uniforms
     {
+        DirectX::SimpleMath::Vector3 faceUp {};
+        float gridSize = 0.0f;
+        DirectX::SimpleMath::Vector3 faceRight {};
+        float gridOffsetU = 0.0f;
+        DirectX::SimpleMath::Vector3 faceBottom {};
+        float gridOffsetV = 0.0f;
+
         DirectX::SimpleMath::Matrix worldViewProj = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix world         = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix worldInvTrans = DirectX::SimpleMath::Matrix::Identity;
 
         DirectX::SimpleMath::Vector4 seed;
@@ -49,6 +57,7 @@ private:
     void CreateSphere(uint16_t tesselation);
     void CreateTexture();
 
+    int m_Tesselation    = 0;
     int m_IndicesPerFace = 0;
     std::array<Microsoft::WRL::ComPtr<ID3D11Buffer>, 6> m_VertexBuffers;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndexBuffer;

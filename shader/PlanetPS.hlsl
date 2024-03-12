@@ -20,13 +20,13 @@ float4 main(VertexOut pin) : SV_TARGET
     [unroll(32)]
     for (int i = 0; ; i++)
     {
-        float3 v = unitSphere * freq;
+        float3 v = unitSphere * freq + dSum * perturb;
         if (any(ddx(v) > 0.70710678) || any(ddy(v) > 0.70710678))
         {
             break;
         }
 
-        float4 dNoise  = SimplexNoiseGrad(unitSphere * freq + dSum * perturb);
+        float4 dNoise  = SimplexNoiseGrad(v);
         float4 billowy = Billowy(dNoise);
         float4 ridged  = Ridged(dNoise);
 
@@ -37,7 +37,7 @@ float4 main(VertexOut pin) : SV_TARGET
         float sumErosion   = sum + dNoise.w * amp;
 
         float erosion = lerp(1.0, 1.0 / (1.0 + dot(dSumErosion, dSumErosion)), slopeErosion);
-        erosion *= lerp(1.0, 1.0 - smoothstep(0.0, 1.0, abs(sumErosion)), altitudeErosion);
+        erosion *= lerp(1.0, 1.0 - smoothstep(0.0, 1.0, sumErosion), altitudeErosion);
 
         sum += amp * erosion * dNoise.w;
         dSum += amp * erosion * dNoise.xyz;
@@ -49,10 +49,10 @@ float4 main(VertexOut pin) : SV_TARGET
 #ifdef LERP_ALTITUDE
     sum = pixDist;
 #endif
-    float dist = sum * elevation + radius; // radius + sum * elevation;
+    float dist = sum * elevation + radius;
 
     // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
-    float3 g = dSum / (radius + sum * elevation);
+    float3 g = dSum / dist;
     float3 h = g - dot(g, unitSphere) * unitSphere;
     float3 N = normalize(unitSphere - elevation * h);
 
@@ -62,11 +62,11 @@ float4 main(VertexOut pin) : SV_TARGET
     float3 Li = float3(0.9568627, 0.9137255, 0.6078431);
     // float3 li = 0.0;
 
-    float altitude  = (sum * elevation + 50.0);
-    float3 worldPos = unitSphere * dist; //mul(float4(dist * unitSphere, 1.0f), worldInvTrans).xyz;
+    float altitude  = sum * elevation;
+    float3 worldPos = mul(float4(dist * unitSphere, 1.0f), world).xyz;
     float3 V        = normalize(camPos - worldPos);
 
-    float u = abs(unitSphere.y) + altitude / 650.0;
+    float u = sum + 0.5;
     // float u = sum;
 
     float4 albRough = albedoRoughness.Sample(pointClamp, u);
@@ -74,15 +74,14 @@ float4 main(VertexOut pin) : SV_TARGET
     float3 alb      = albRough.rgb;
     // float3 alb = 1;
     // float3 alb = debugCol.xyz;
-    // float3 alb = (N * 0.5 + 0.5).z;
-    float3 f0 = f0metal.rgb;
-
-    // float3 f0 = 0;
-    float metallic = f0metal.a;
-    // float metallic = 0;
-    float roughness = albRough.a;
-    // float roughness = 1;
-    float3 ami = 0.0;
+    // float3 alb = (N * 0.5 + 0.5);
+    // float3 f0 = f0metal.rgb;
+    float3 f0 = 0;
+    // float metallic = f0metal.a;
+    float metallic = 0;
+    // float roughness = albRough.a;
+    float roughness = 1;
+    float3 ami      = 0.0;
 
     float3 color = Brdf(L, Li, V, N, alb, f0, metallic, roughness, ami);
     // float3 color = alb * EvalSh(n);

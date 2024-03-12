@@ -161,7 +161,6 @@
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AssetImporter.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="DebugRenderer.cpp" />
     <ClCompile Include="imgui_impl_dx11.cpp" />
@@ -172,7 +171,6 @@
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AssetImporter.h" />
     <ClInclude Include="D3DHelper.h" />
     <ClInclude Include="DebugRenderer.h" />
     <ClInclude Include="imgui_impl_dx11.h" />
@@ -199,6 +197,7 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
+    <None Include="..\shader\ShaderUtil.hlsli" />
     <None Include="..\shader\Simplex.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

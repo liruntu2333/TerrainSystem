@@ -122,12 +122,18 @@ void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir, int sphe
 
 void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, bool wireFrame)
 {
+    uniforms.gridSize    = 2.0f / static_cast<float>(m_Tesselation - 1);
+    uniforms.gridOffsetU = -1.0f;
+    uniforms.gridOffsetV = -1.0f;
+
     const auto cb = m_Cb0.GetBuffer();
 
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     context->IASetInputLayout(m_VertexLayout.Get());
 
     constexpr uint32_t stride = sizeof(Vertex), offset = 0;
+    ID3D11Buffer* vb          = nullptr;
+    context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
     context->IASetIndexBuffer(m_IndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
     context->VSSetConstantBuffers(0, 1, &cb);
@@ -156,10 +162,11 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
                                                     : i == 4
                                                           ? Colors::Cyan
                                                           : Colors::Magenta;
+        uniforms.faceUp     = upAxis[i];
+        uniforms.faceRight  = rhtAxis[i];
+        uniforms.faceBottom = btmAxis[i];
 
         m_Cb0.SetData(context, uniforms);
-        const auto vb = m_VertexBuffers[i].Get();
-        context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
         context->DrawIndexed(m_IndicesPerFace, 0, 0);
     }
 }
@@ -208,6 +215,7 @@ void PlanetRenderer::CreateSphere(uint16_t tesselation)
     }
 
     ThrowIfFailed(CreateStaticBuffer(m_Device, indices, D3D11_BIND_INDEX_BUFFER, &m_IndexBuffer));
+    m_Tesselation    = tesselation;
     m_IndicesPerFace = indices.size();
 }
 

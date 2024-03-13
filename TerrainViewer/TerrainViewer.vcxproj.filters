@@ -82,6 +82,9 @@
     <FxCompile Include="..\shader\PlanetPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shader\OceanPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shader\Planet.hlsli">

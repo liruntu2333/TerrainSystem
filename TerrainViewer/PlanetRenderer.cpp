@@ -117,6 +117,16 @@ void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir, int sphe
             &m_Ps)
         );
 
+    name = shaderDir / "OceanPS.cso";
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
+    ThrowIfFailed(
+        m_Device->CreatePixelShader(
+            blob->GetBufferPointer(),
+            blob->GetBufferSize(),
+            nullptr,
+            &m_OceanPs)
+        );
+
     m_Cb0.Create(m_Device);
 }
 
@@ -151,17 +161,21 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
 
     for (int i = 0; i < 6; ++i)
     {
-        uniforms.debugColor = i == 0
-                                  ? Colors::Red
-                                  : i == 1
-                                        ? Colors::Green
-                                        : i == 2
-                                              ? Colors::Blue
-                                              : i == 3
-                                                    ? Colors::Yellow
-                                                    : i == 4
-                                                          ? Colors::Cyan
-                                                          : Colors::Magenta;
+        uniforms.faceUp     = upAxis[i];
+        uniforms.faceRight  = rhtAxis[i];
+        uniforms.faceBottom = btmAxis[i];
+
+        m_Cb0.SetData(context, uniforms);
+        context->DrawIndexed(m_IndicesPerFace, 0, 0);
+    }
+
+    uniforms.geometryOctaves = 0;
+    uniforms.radius += uniforms.elevation * uniforms.oceanLevel;
+    context->PSSetShader(m_OceanPs.Get(), nullptr, 0);
+    context->OMSetDepthStencilState(s_CommonStates->DepthReadReverseZ(), 0);
+    context->OMSetBlendState(s_CommonStates->AlphaBlend(), nullptr, 0xFFFFFFFF);
+    for (int i = 0; i < 6; ++i)
+    {
         uniforms.faceUp     = upAxis[i];
         uniforms.faceRight  = rhtAxis[i];
         uniforms.faceBottom = btmAxis[i];
@@ -175,24 +189,6 @@ void PlanetRenderer::CreateSphere(uint16_t tesselation)
 {
     std::vector<uint16_t> indices;
     const uint16_t grids = tesselation - 1;
-
-    for (int i = 0; i < 6; ++i)
-    {
-        std::vector<Vertex> vertices;
-        vertices.reserve(tesselation * tesselation);
-        for (uint16_t j = 0; j < tesselation; ++j)
-        {
-            for (uint16_t k = 0; k < tesselation; ++k)
-            {
-                const float u = static_cast<float>(k) / static_cast<float>(grids);
-                const float v = static_cast<float>(j) / static_cast<float>(grids);
-                Vector3 pos   = GetCubeVertex(static_cast<CubeFace>(i), u, v);
-                pos.Normalize();
-                vertices.emplace_back(pos);
-            }
-        }
-        ThrowIfFailed(CreateStaticBuffer(m_Device, vertices, D3D11_BIND_VERTEX_BUFFER, &m_VertexBuffers[i]));
-    }
 
     indices.reserve(6 * grids * grids);
     for (uint16_t j = 0; j < grids; ++j)

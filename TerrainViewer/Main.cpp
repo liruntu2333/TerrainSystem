@@ -37,7 +37,7 @@ namespace
     std::unique_ptr<DebugRenderer> g_DebugRenderer   = nullptr;
     std::unique_ptr<PlanetRenderer> g_PlanetRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, 20000.0f);
+    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, (PlanetRenderer::kRadius + PlanetRenderer::kElevation) * 2.5f);
 }
 
 // Forward declarations of helper functions
@@ -101,7 +101,7 @@ int main(int, char**)
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
     float yaw  = 0.0;
-    float spd  = 1000.0f;
+    float spd  = PlanetRenderer::kRadius * 0.07f;
     bool done  = false, debug = false, rotate = false;
     float time = 0.0f;
     PlanetRenderer::Uniforms uniforms {};
@@ -114,7 +114,15 @@ int main(int, char**)
     std::random_device randomDevice;
     std::default_random_engine randomEngine(randomDevice());
     std::uniform_real_distribution distribution(-1.f, 1.f);
-    Vector4 seed {};
+    auto rndVec4 = [&distribution, &randomEngine]() -> Vector4
+    {
+        return {
+            distribution(randomEngine),
+            distribution(randomEngine),
+            distribution(randomEngine),
+            distribution(randomEngine)
+        };
+    };
 
     // Main loop
     while (!done)
@@ -145,15 +153,10 @@ int main(int, char**)
 #define UNIFORM(x) #x, &uniforms.x
         if (ImGui::Button("RANDOM SEED"))
         {
-            seed.x        = distribution(randomEngine);
-            seed.y        = distribution(randomEngine);
-            seed.z        = distribution(randomEngine);
-            seed.w        = distribution(randomEngine);
-            uniforms.seed = seed;
+            uniforms.featureNoiseSeed      = rndVec4();
+            uniforms.sharpnessNoiseSeed    = rndVec4();
+            uniforms.slopeErosionNoiseSeed = rndVec4();
         }
-        ImGui::SameLine();
-        ImGui::Text(": %f, %f, %f, %f", seed.x, seed.y, seed.z, seed.w);
-
 
         // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
         // if (!uniforms.interpolateNormal)
@@ -161,20 +164,23 @@ int main(int, char**)
         //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
         // }
         ImGui::Text("Simplex Noise");
+        ImGui::SliderFloat(UNIFORM(baseFrequency), 0.0f, 16.0f);
         ImGui::SliderFloat(UNIFORM(lacunarity), 1.0f, 4.0f);
         ImGui::SliderFloat(UNIFORM(gain), 0.5f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(sharpness), -1.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(slopeErosion), 0.0f, 1.0f);
+        ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
+        ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(perturb), -2.0f, 2.0f);
+        ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
+        ImGui::SliderFloat(UNIFORM(perturb), -1.0f, 1.0f);
         ImGui::Text("Sphere Geometry");
         ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
-        ImGui::SliderFloat(UNIFORM(radius), 1000.0f, 10000.0f);
-        ImGui::SliderFloat(UNIFORM(elevation), 0.0f, 2000.0f);
+        ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
+        ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f);
+        ImGui::SliderFloat(UNIFORM(oceanLevel), 0.0f, 1.0f);
         ImGui::Checkbox("Rotate", &rotate);
 #undef UNIFORM
         ImGui::Text("Camera");
-        ImGui::DragFloat("Camera Speed", &spd, 1.0, 0.0, 5000.0);
+        ImGui::DragFloat("Camera Speed", &spd, PlanetRenderer::kRadius * 0.0001f);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
 

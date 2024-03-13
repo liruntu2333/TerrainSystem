@@ -1,3 +1,4 @@
+#define PIXEL_FBM
 #include "Planet.hlsli"
 #include "ShaderUtil.hlsli"
 // #define LERP_ALTITUDE
@@ -12,39 +13,7 @@ float4 main(VertexOut pin) : SV_TARGET
     // clip(pixDist + 0.01);
     float3 unitSphere = normalize(pin.NormalDist.xyz);
 
-    float sum   = 0.0;
-    float3 dSum = 0.0;
-    float amp   = 1.0;
-    float freq  = 1.0;
-
-    [unroll(32)]
-    for (int i = 0; ; i++)
-    {
-        float3 v = unitSphere * freq + dSum * perturb;
-        if (any(ddx(v) > 0.70710678) || any(ddy(v) > 0.70710678))
-        {
-            break;
-        }
-
-        float4 dNoise  = SimplexNoiseGrad(v);
-        float4 billowy = Billowy(dNoise);
-        float4 ridged  = Ridged(dNoise);
-
-        dNoise = lerp(dNoise, ridged, max(0.0, sharpness));
-        dNoise = lerp(dNoise, billowy, abs(min(0.0, sharpness)));
-
-        float3 dSumErosion = dSum + dNoise.xyz * amp;
-        float sumErosion   = sum + dNoise.w * amp;
-
-        float erosion = lerp(1.0, 1.0 / (1.0 + dot(dSumErosion, dSumErosion)), slopeErosion);
-        erosion *= lerp(1.0, 1.0 - smoothstep(0.0, 1.0, sumErosion), altitudeErosion);
-
-        sum += amp * erosion * dNoise.w;
-        dSum += amp * erosion * dNoise.xyz;
-
-        freq *= lacunarity;
-        amp *= gain;
-    }
+    UBER_NOISE_FBM(32, unitSphere)
 
 #ifdef LERP_ALTITUDE
     sum = pixDist;
@@ -66,12 +35,16 @@ float4 main(VertexOut pin) : SV_TARGET
     float3 worldPos = mul(float4(dist * unitSphere, 1.0f), world).xyz;
     float3 V        = normalize(camPos - worldPos);
 
-    float u = sum + 0.5;
+    float u = sum;
     // float u = sum;
 
     float4 albRough = albedoRoughness.Sample(pointClamp, u);
-    float4 f0metal  = f0Metallic.Sample(pointClamp, u);
-    float3 alb      = albRough.rgb;
+    if (sum < 0 || sum > 1)
+    {
+        albRough = float4(1, 0, 0, 1);
+    }
+    float4 f0metal = f0Metallic.Sample(pointClamp, u);
+    float3 alb     = albRough.rgb;
     // float3 alb = 1;
     // float3 alb = debugCol.xyz;
     // float3 alb = (N * 0.5 + 0.5);

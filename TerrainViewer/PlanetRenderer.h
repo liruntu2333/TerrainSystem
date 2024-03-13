@@ -12,6 +12,8 @@ class PlanetRenderer : public Renderer
 {
 public:
     using Vertex = DirectX::VertexPosition;
+    static constexpr float kRadius    = 173710.0;
+    static constexpr float kElevation = kRadius * 0.1f;
 
     struct Uniforms
     {
@@ -26,21 +28,28 @@ public:
         DirectX::SimpleMath::Matrix world         = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix worldInvTrans = DirectX::SimpleMath::Matrix::Identity;
 
-        DirectX::SimpleMath::Vector4 seed;
+        DirectX::SimpleMath::Vector4 featureNoiseSeed { 0.0f };
+        DirectX::SimpleMath::Vector4 sharpnessNoiseSeed { 0.5f };
+        DirectX::SimpleMath::Vector4 slopeErosionNoiseSeed { 0.75f };
 
         int geometryOctaves = 5;
-        // int normalOctaves   = 8;
-        float lacunarity = 2.01f;
-        float gain       = 0.5f;
-        float radius     = 8000.0f;
+        float lacunarity    = 2.01f;
+        float gain          = 0.5f;
+        float radius        = kRadius;
 
-        float elevation       = 500.0f;
-        float sharpness       = 0.0f;
-        float slopeErosion    = 1.0f;
-        float altitudeErosion = 0.1f;
+        float elevation       = kElevation;
+        float altitudeErosion = 0.0f;
+        float ridgeErosion    = 0.0f;
+        float baseFrequency   = 1.0f;
+
+        float sharpness[2]    = { -1.0f, 1.0f };
+        float slopeErosion[2] = { 0.0f, 1.0f };
+
+        float oceanLevel = 0.3f;
+        float pad[3];
 
         DirectX::SimpleMath::Vector3 camPos {};
-        float perturb;
+        float perturb = 0.0f;
 
         DirectX::SimpleMath::Vector4 debugColor {};
     };
@@ -59,11 +68,12 @@ private:
 
     int m_Tesselation    = 0;
     int m_IndicesPerFace = 0;
-    std::array<Microsoft::WRL::ComPtr<ID3D11Buffer>, 6> m_VertexBuffers;
+
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndexBuffer;
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_VertexLayout;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_OceanPs;
 
     Microsoft::WRL::ComPtr<ID3D11Texture1D> m_AlbedoRoughness;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_AlbedoRoughnessSrv;

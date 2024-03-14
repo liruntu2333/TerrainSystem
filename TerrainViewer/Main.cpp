@@ -123,6 +123,7 @@ int main(int, char**)
             distribution(randomEngine)
         };
     };
+    g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
 
     // Main loop
     while (!done)
@@ -147,15 +148,30 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        bool planetChanged = false;
         ImGui::Begin("Planet System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
 
 #define UNIFORM(x) #x, &uniforms.x
-        if (ImGui::Button("RANDOM SEED"))
+        if (ImGui::Button("Rand Feature Noise Seed"))
         {
-            uniforms.featureNoiseSeed      = rndVec4();
-            uniforms.sharpnessNoiseSeed    = rndVec4();
+            uniforms.featureNoiseSeed = rndVec4();
+            planetChanged             = true;
+        }
+        if (ImGui::Button("Rand Sharpness Noise Seed"))
+        {
+            uniforms.sharpnessNoiseSeed = rndVec4();
+            planetChanged               = true;
+        }
+        if (ImGui::Button("Rand Slope Erosion Noise Seed"))
+        {
             uniforms.slopeErosionNoiseSeed = rndVec4();
+            planetChanged                  = true;
+        }
+        if (ImGui::Button("Rand Perturb Noise Seed"))
+        {
+            uniforms.perturbNoiseSeed = rndVec4();
+            planetChanged             = true;
         }
 
         // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
@@ -164,20 +180,22 @@ int main(int, char**)
         //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
         // }
         ImGui::Text("Simplex Noise");
-        ImGui::SliderFloat(UNIFORM(baseFrequency), 0.0f, 16.0f);
-        ImGui::SliderFloat(UNIFORM(lacunarity), 1.0f, 4.0f);
-        ImGui::SliderFloat(UNIFORM(gain), 0.5f, 1.0f);
-        ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
-        ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(perturb), -1.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(baseFrequency), 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(lacunarity), 1.0f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(gain), 0.5f, std::sqrt(0.5f));
+        planetChanged |= ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat2("perturb", uniforms.perturb, -1.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
+        ImGui::Image(g_PlanetRenderer->GetWorldMapSrv(), ImVec2(PlanetRenderer::kWorldMapWidth, PlanetRenderer::kWorldMapHeight));
         ImGui::Text("Sphere Geometry");
         ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
         ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
-        ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f);
-        ImGui::SliderFloat(UNIFORM(oceanLevel), 0.0f, 1.0f);
+        ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f, 0.0, PlanetRenderer::kRadius * 0.5f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), 0.0f, 1.0f);
         ImGui::Checkbox("Rotate", &rotate);
+        ImGui::SliderFloat("yaw", &yaw, -DirectX::XM_2PI, DirectX::XM_2PI);
 #undef UNIFORM
         ImGui::Text("Camera");
         ImGui::DragFloat("Camera Speed", &spd, PlanetRenderer::kRadius * 0.0001f);
@@ -223,6 +241,14 @@ int main(int, char**)
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
         // g_DebugRenderer->DrawSphere(Matrix::CreateScale(100) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
         //     g_Camera->GetProjection());
+
+
+        ID3D11ShaderResourceView* srv = nullptr;
+        g_pd3dDeviceContext->PSSetShaderResources(0, 1, &srv);
+        if (planetChanged)
+        {
+            g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
+        }
 
         g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, wireFrame);
 

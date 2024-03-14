@@ -1,19 +1,20 @@
 #pragma once
 
-#include <array>
 #include <directxtk/BufferHelpers.h>
 #include <directxtk/VertexTypes.h>
 #include <filesystem>
-#include <wrl/client.h>
 
 #include "Renderer.h"
+#include "Texture2D.h"
 
 class PlanetRenderer : public Renderer
 {
 public:
     using Vertex = DirectX::VertexPosition;
-    static constexpr float kRadius    = 173710.0;
-    static constexpr float kElevation = kRadius * 0.1f;
+    static constexpr float kRadius       = 173710.0;
+    static constexpr float kElevation    = kRadius * 0.1f;
+    static constexpr int kWorldMapWidth  = 512;
+    static constexpr int kWorldMapHeight = 256;
 
     struct Uniforms
     {
@@ -31,6 +32,7 @@ public:
         DirectX::SimpleMath::Vector4 featureNoiseSeed { 0.0f };
         DirectX::SimpleMath::Vector4 sharpnessNoiseSeed { 0.5f };
         DirectX::SimpleMath::Vector4 slopeErosionNoiseSeed { 0.75f };
+        DirectX::SimpleMath::Vector4 perturbNoiseSeed { -0.42f };
 
         int geometryOctaves = 5;
         float lacunarity    = 2.01f;
@@ -45,11 +47,11 @@ public:
         float sharpness[2]    = { -1.0f, 1.0f };
         float slopeErosion[2] = { 0.0f, 1.0f };
 
-        float oceanLevel = 0.3f;
-        float pad[3];
+        float perturb[2] = { 0.0f, 0.0f };
+        float pad[2];
 
         DirectX::SimpleMath::Vector3 camPos {};
-        float perturb = 0.0f;
+        float oceanLevel = -0.1f;
 
         DirectX::SimpleMath::Vector4 debugColor {};
     };
@@ -62,6 +64,10 @@ public:
 
     void Render(ID3D11DeviceContext* context, Uniforms uniforms, bool wireFrame = false);
 
+    void CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms);
+
+    ID3D11ShaderResourceView* GetWorldMapSrv() const { return m_WorldMap->GetSrv(); }
+
 private:
     void CreateSphere(uint16_t tesselation);
     void CreateTexture();
@@ -71,9 +77,10 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndexBuffer;
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_VertexLayout;
-    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_Vs;
-    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_Ps;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_PlanetVs;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_PlanetPs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_OceanPs;
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_WorldMapCs;
 
     Microsoft::WRL::ComPtr<ID3D11Texture1D> m_AlbedoRoughness;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_AlbedoRoughnessSrv;
@@ -82,4 +89,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_F0MetallicSrv;
 
     DirectX::ConstantBuffer<Uniforms> m_Cb0;
+
+    std::unique_ptr<DirectX::Texture2D> m_WorldMap;
 };

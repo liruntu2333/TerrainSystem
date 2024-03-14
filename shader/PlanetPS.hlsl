@@ -13,7 +13,9 @@ float4 main(VertexOut pin) : SV_TARGET
     // clip(pixDist + 0.01);
     float3 unitSphere = normalize(pin.NormalDist.xyz);
 
-    UBER_NOISE_FBM(32, unitSphere)
+    float4 uberNoise = UberNoiseFbm(32, unitSphere);
+    float sum        = uberNoise.w;
+    float3 dSum      = uberNoise.xyz;
 
 #ifdef LERP_ALTITUDE
     sum = pixDist;
@@ -38,23 +40,23 @@ float4 main(VertexOut pin) : SV_TARGET
     float u = sum;
     // float u = sum;
 
-    float4 albRough = albedoRoughness.Sample(pointClamp, u);
-    if (sum < 0 || sum > 1)
+    float4 albRough = albedoRoughness.SampleLevel(pointClamp, u, 0.0);
+    if (sum > 1.0 || sum < 0.0)
     {
         albRough = float4(1, 0, 0, 1);
     }
-    float4 f0metal = f0Metallic.Sample(pointClamp, u);
+    float4 f0metal = f0Metallic.SampleLevel(pointClamp, u, 0.0);
     float3 alb     = albRough.rgb;
     // float3 alb = 1;
     // float3 alb = debugCol.xyz;
     // float3 alb = (N * 0.5 + 0.5);
-    // float3 f0 = f0metal.rgb;
-    float3 f0 = 0;
+    float3 f0 = f0metal.rgb;
+    // float3 f0 = 0;
     // float metallic = f0metal.a;
-    float metallic = 0;
-    // float roughness = albRough.a;
-    float roughness = 1;
-    float3 ami      = 0.0;
+    float metallic  = 0;
+    float roughness = albRough.a;
+    // float roughness = 1;
+    float3 ami = 0.0;
 
     float3 color = Brdf(L, Li, V, N, alb, f0, metallic, roughness, ami);
     // float3 color = alb * EvalSh(n);

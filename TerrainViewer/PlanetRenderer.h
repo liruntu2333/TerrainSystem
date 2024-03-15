@@ -12,7 +12,7 @@ class PlanetRenderer : public Renderer
 public:
     using Vertex = DirectX::VertexPosition;
     static constexpr float kRadius       = 173710.0;
-    static constexpr float kElevation    = kRadius * 0.1f;
+    static constexpr float kElevation    = kRadius * 0.05f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
 
@@ -34,9 +34,11 @@ public:
         DirectX::SimpleMath::Vector4 slopeErosionNoiseSeed { 0.75f };
         DirectX::SimpleMath::Vector4 perturbNoiseSeed { -0.42f };
 
+        DirectX::SimpleMath::Matrix featureNoiseRotation = DirectX::SimpleMath::Matrix::Identity;
+
         int geometryOctaves = 5;
         float lacunarity    = 2.01f;
-        float gain          = 0.5f;
+        float gain          = 0.6f;
         float radius        = kRadius;
 
         float elevation       = kElevation;
@@ -51,7 +53,7 @@ public:
         float pad[2];
 
         DirectX::SimpleMath::Vector3 camPos {};
-        float oceanLevel = -0.1f;
+        float oceanLevel = -3.0f;
 
         DirectX::SimpleMath::Vector4 debugColor {};
     };
@@ -79,6 +81,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11InputLayout> m_VertexLayout;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_PlanetVs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_PlanetPs;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_OceanVs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_OceanPs;
     Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_WorldMapCs;
 

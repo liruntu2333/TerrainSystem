@@ -117,6 +117,16 @@ void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir, int sphe
             &m_PlanetPs)
         );
 
+    name = shaderDir / "OceanVS.cso";
+    ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
+    ThrowIfFailed(
+        m_Device->CreateVertexShader(
+            blob->GetBufferPointer(),
+            blob->GetBufferSize(),
+            nullptr,
+            &m_OceanVs)
+        );
+
     name = shaderDir / "OceanPS.cso";
     ThrowIfFailed(D3DReadFileToBlob(name.c_str(), &blob));
     ThrowIfFailed(
@@ -147,6 +157,8 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
     uniforms.gridOffsetV = -1.0f;
 
     const auto cb = m_Cb0.GetBuffer();
+    context->VSSetConstantBuffers(0, 1, &cb);
+    context->PSSetConstantBuffers(0, 1, &cb);
 
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     context->IASetInputLayout(m_VertexLayout.Get());
@@ -156,11 +168,11 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
     context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
     context->IASetIndexBuffer(m_IndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
     context->VSSetShader(m_PlanetVs.Get(), nullptr, 0);
-    context->VSSetConstantBuffers(0, 1, &cb);
+
     context->RSSetState(wireFrame ? s_CommonStates->Wireframe() : s_CommonStates->CullClockwise());
 
     context->PSSetShader(m_PlanetPs.Get(), nullptr, 0);
-    context->PSSetConstantBuffers(0, 1, &cb);
+
     ID3D11ShaderResourceView* srv[] = { m_AlbedoRoughnessSrv.Get(), m_F0MetallicSrv.Get() };
     context->PSSetShaderResources(0, _countof(srv), srv);
     ID3D11SamplerState* sam[] = { s_CommonStates->LinearClamp() };
@@ -179,10 +191,11 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
         context->DrawIndexed(m_IndicesPerFace, 0, 0);
     }
 
-    if (wireFrame) return;
+    if (wireFrame || uniforms.oceanLevel < -2.0f) return;
 
     uniforms.geometryOctaves = 0;
-    uniforms.radius += uniforms.elevation * uniforms.oceanLevel - 1.0;
+    uniforms.radius += uniforms.elevation * uniforms.oceanLevel - 1.0f;
+    context->VSSetShader(m_OceanVs.Get(), nullptr, 0);
     context->PSSetShader(m_OceanPs.Get(), nullptr, 0);
     context->OMSetDepthStencilState(s_CommonStates->DepthReadReverseZ(), 0);
     context->OMSetBlendState(s_CommonStates->AlphaBlend(), nullptr, 0xFFFFFFFF);

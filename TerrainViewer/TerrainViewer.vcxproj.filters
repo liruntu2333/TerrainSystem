@@ -88,6 +88,9 @@
     <FxCompile Include="..\shader\WorldMapCS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shader\OceanVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shader\Planet.hlsli">

@@ -45,7 +45,7 @@ private:
     float m_Fov = DirectX::XM_PIDIV4;
     float m_AspectRatio = 0;
     float m_NearPlane = 1.0f;
-    float m_FarPlane = 10000000.0f;
+    float m_FarPlane = 2000000.0f;
 
     std::vector<DirectX::SimpleMath::Vector3> m_RcdPositions;
     std::vector<DirectX::SimpleMath::Vector3> m_RcdRotations;

@@ -37,7 +37,7 @@ namespace
     std::unique_ptr<DebugRenderer> g_DebugRenderer   = nullptr;
     std::unique_ptr<PlanetRenderer> g_PlanetRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, (PlanetRenderer::kRadius + PlanetRenderer::kElevation) * 2.5f);
+    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, (PlanetRenderer::kRadius + PlanetRenderer::kElevation) * 3.5f);
 }
 
 // Forward declarations of helper functions
@@ -58,7 +58,7 @@ int main(int, char**)
         sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(NULL), NULL, NULL, NULL, NULL, L"ImGui Example", NULL
     };
     RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Renderer", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, NULL,
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Renderer", WS_OVERLAPPEDWINDOW, 100, 100, 1440, 900, NULL,
         NULL, wc.hInstance, NULL);
 
     // CreateSystem Direct3D
@@ -101,7 +101,7 @@ int main(int, char**)
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
     float yaw  = 0.0;
-    float spd  = PlanetRenderer::kRadius * 0.07f;
+    float spd  = PlanetRenderer::kRadius * 0.25f;
     bool done  = false, debug = false, rotate = false;
     float time = 0.0f;
     PlanetRenderer::Uniforms uniforms {};
@@ -113,15 +113,35 @@ int main(int, char**)
     // seeding
     std::random_device randomDevice;
     std::default_random_engine randomEngine(randomDevice());
-    std::uniform_real_distribution distribution(-1.f, 1.f);
-    auto rndVec4 = [&distribution, &randomEngine]() -> Vector4
+
+    auto rndVec4 = [&randomEngine]() -> Vector4
     {
-        return {
+        std::uniform_real_distribution distribution(-1.0, 1.0);
+        return Vector4(
             distribution(randomEngine),
             distribution(randomEngine),
             distribution(randomEngine),
-            distribution(randomEngine)
-        };
+            distribution(randomEngine));
+    };
+
+    // "Uniform Random Rotations", Ken Shoemake, Graphics Gems III, pg. 124-132.
+    auto rndQ = [&randomEngine]() -> Quaternion
+    {
+        std::uniform_real_distribution dist(0.0, 1.0);
+        const double u1           = dist(randomEngine);
+        const double u2           = dist(randomEngine);
+        const double u3           = dist(randomEngine);
+        const double sqrt1MinusU1 = std::sqrt(1 - u1);
+        const double sqrtU1       = std::sqrt(u1);
+
+        constexpr double pi = 3.14159265358979323846;
+        Quaternion q;
+        q.w = static_cast<float>(sqrt1MinusU1 * std::sin(2.0 * pi * u2));
+        q.x = static_cast<float>(sqrt1MinusU1 * std::cos(2.0 * pi * u2));
+        q.y = static_cast<float>(sqrtU1 * std::sin(2.0 * pi * u3));
+        q.z = static_cast<float>(sqrtU1 * std::cos(2.0 * pi * u3));
+        q.Normalize();
+        return q;
     };
     g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
 
@@ -151,12 +171,12 @@ int main(int, char**)
         bool planetChanged = false;
         ImGui::Begin("Planet System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-
 #define UNIFORM(x) #x, &uniforms.x
-        if (ImGui::Button("Rand Feature Noise Seed"))
+        if (ImGui::Button("Rand Feature Noise"))
         {
-            uniforms.featureNoiseSeed = rndVec4();
-            planetChanged             = true;
+            uniforms.featureNoiseSeed     = rndVec4();
+            uniforms.featureNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
+            planetChanged                 = true;
         }
         if (ImGui::Button("Rand Sharpness Noise Seed"))
         {
@@ -180,20 +200,21 @@ int main(int, char**)
         //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
         // }
         ImGui::Text("Simplex Noise");
-        planetChanged |= ImGui::SliderFloat(UNIFORM(baseFrequency), 0.01f, 4.0f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(lacunarity), 1.0f, 4.0f);
+        planetChanged |= ImGui::DragFloat(UNIFORM(baseFrequency), 0.001f, 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(lacunarity), 1.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(gain), 0.5f, std::sqrt(0.5f));
         planetChanged |= ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
         planetChanged |= ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
         planetChanged |= ImGui::SliderFloat2("perturb", uniforms.perturb, -1.0f, 1.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
-        ImGui::Image(g_PlanetRenderer->GetWorldMapSrv(), ImVec2(PlanetRenderer::kWorldMapWidth, PlanetRenderer::kWorldMapHeight));
+        const auto windowSize = ImGui::GetWindowSize();
+        ImGui::Image(g_PlanetRenderer->GetWorldMapSrv(), ImVec2(windowSize.x, windowSize.x / 2));
         ImGui::Text("Sphere Geometry");
         ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
         ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
         ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f, 0.0, PlanetRenderer::kRadius * 0.5f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), 0.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -0.1f, 2.0f);
         ImGui::Checkbox("Rotate", &rotate);
         ImGui::SliderFloat("yaw", &yaw, -DirectX::XM_2PI, DirectX::XM_2PI);
 #undef UNIFORM
@@ -218,7 +239,6 @@ int main(int, char**)
             yaw = std::fmod(yaw, -DirectX::XM_2PI);
         }
 
-        // tilt = Quaternion::CreateFromAxisAngle(Vector3::UnitZ, pitch);
         Matrix world = tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
 
         uniforms.worldInvTrans = world.Invert().Transpose().Transpose();

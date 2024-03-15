@@ -29,6 +29,8 @@ cbuffer cb0 : register(b0)
     float4 slopeErosionNoiseSeed;
     float4 perturbNoiseSeed;
 
+    float4x4 featureNoiseRotation;
+
     int geometryOctaves;
     float lacunarity;
     float gain;
@@ -180,6 +182,11 @@ float SimplexNoise(float3 v, float4 seed)
     return SimplexNoiseGrad(v, seed).w;
 }
 
+float SimplexNoise01(float3 v, float4 seed)
+{
+    return SimplexNoise(v, seed) * 0.5 + 0.5;
+}
+
 float4 Billowy(float4 dNoise)
 {
     // billowy = noise ^ 2
@@ -188,75 +195,87 @@ float4 Billowy(float4 dNoise)
 
     dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
     dNoise.w   = dNoise.w * dNoise.w;
-
+    // dNoise *= 2.0;
+    // dNoise.w -= 1.0;
     return dNoise;
 }
 
 float4 Ridged(float4 dNoise)
 {
     // ridged = 1 - abs(noise)
-    // dNoise.xyz *= dNoise.w >= 0.0 ? -1.0 : 1.0;
-    // dNoise.w = 1.0 - abs(dNoise.w);
+    dNoise.xyz *= dNoise.w >= 0.0 ? -1.0 : 1.0;
+    dNoise.w = 1.0 - abs(dNoise.w);
 
-    dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
-    dNoise.w   = 1.0 - dNoise.w * dNoise.w;
+    // dNoise.xyz = (2.0 * dNoise.w + (dNoise.w >= 0.0 ? -2.0 : 2.0)) * dNoise.xyz;
+    // dNoise.w   = 1.0 - abs(dNoise.w);
+    // dNoise.w *= dNoise.w;
+
+    // dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
+    // dNoise.w   = 1.0 - dNoise.w * dNoise.w;
+    // dNoise *= 2.0;
+    // dNoise.w -= 1.0;
     return dNoise;
-}
-
-float Fbm(int numOctaves, float3 unitSphere, float4 seed, float freq, float amp)
-{
-    float sum = 0.0;
-    for (int i = 0; i < numOctaves; i++)
-    {
-        sum += SimplexNoise(unitSphere * freq, seed);
-        freq *= 2.0;
-        amp *= 0.5;
-    }
-    return sum;
 }
 
 float4 UberNoiseFbm(int numOctaves, float3 unitSphere)
 {
-    float sum               = 0.0;
-    float3 dSum             = 0.0;
-    float amp               = 1.0;
-    float dampAmp           = 0.5;
-    float freq              = baseFrequency;
-    float3 slopeErosionDSum = 0.0;
-    float3 ridgeErosionDSum = 0.0;
+    float noise   = 0.0;
+    float3 grad   = 0.0;
+    float amp     = 1.0;
+    float dampAmp = amp;
 
-    float currSharpness = lerp(sharpness.x, sharpness.y,
-        Fbm(2, unitSphere, sharpnessNoiseSeed, baseFrequency, 1.0) * 0.5 + 0.5);
-    float currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
-        Fbm(2, unitSphere, sharpnessNoiseSeed, baseFrequency, 1.0) * 0.5 + 0.5);
-    float currPerturb = lerp(perturb.x, perturb.y,
-        Fbm(2, unitSphere, sharpnessNoiseSeed, baseFrequency, 1.0) * 0.5 + 0.5);
+    float3 featureSph      = unitSphere,
+           sharpnessSph    = unitSphere,
+           slopeErosionSph = unitSphere,
+           perturbSph      = unitSphere;
+
+    float featureFreq      = baseFrequency,
+          sharpnessFreq    = baseFrequency,
+          slopeErosionFreq = baseFrequency,
+          perturbFreq      = baseFrequency;
+
+
+    float3 slopeErosionGrad = 0.0;
+    float3 ridgeErosionGrad = 0.0;
 
     for (int i = 0; i < numOctaves; i++)
     {
-        float3 v = unitSphere * freq + dSum * currPerturb;
-        if (i != 0 && sum / dampAmp > 1e2)
+        featureSph = mul(featureSph, (float3x3)featureNoiseRotation);
+
+        float currSharpness = lerp(sharpness.x, sharpness.y,
+            smoothstep(0.0, 1.0, SimplexNoise01(featureSph * featureFreq, sharpnessNoiseSeed)));
+        float currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
+            SimplexNoise01(featureSph * featureFreq, slopeErosionNoiseSeed));
+        float currPerturb = lerp(perturb.x, perturb.y,
+            SimplexNoise01(featureSph * featureFreq, perturbNoiseSeed));
+
+        float3 v = featureSph * featureFreq + grad * currPerturb;
+        if (amp * elevation < 1.0)
         {
             break;
         }
-        float4 dNoise  = SimplexNoiseGrad(v, featureNoiseSeed);
+        float4 dNoise = SimplexNoiseGrad(v, featureNoiseSeed);
+
         float4 billowy = Billowy(dNoise);
         float4 ridged  = Ridged(dNoise);
-        dNoise *= 0.5;
-        dNoise.w += 0.5;
+
+        dNoise = dNoise * 0.5 + float4(0.0, 0.0, 0.0, 0.5);
+        slopeErosionGrad += dNoise.xyz * currSlopeErosion * dampAmp;
+
         dNoise = lerp(dNoise, ridged, max(0.0, currSharpness));
         dNoise = lerp(dNoise, billowy, abs(min(0.0, currSharpness)));
-        slopeErosionDSum += dNoise.xyz * currSlopeErosion;
-        float erosion = 1.0 / (1.0 + dot(slopeErosionDSum, slopeErosionDSum));
-        sum += dampAmp * erosion * dNoise.w;
-        dSum += dampAmp * erosion * dNoise.xyz;
-        freq *= lacunarity;
+
+        float erosion = 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
+
+        noise += dampAmp * erosion * dNoise.w;
+        grad += dampAmp * erosion * dNoise.xyz;
+        featureFreq *= lacunarity;
         amp *= gain;
         // amp *= lerp(1.0, smoothstep(0.0, 1.0, sum), altitudeErosion);
         dampAmp = amp;
     }
 
-    return float4(dSum, sum);
+    return float4(grad, noise);
 }
 
 #endif

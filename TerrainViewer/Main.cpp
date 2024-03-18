@@ -105,7 +105,7 @@ int main(int, char**)
     bool done  = false, debug = false, rotate = false;
     float time = 0.0f;
     PlanetRenderer::Uniforms uniforms {};
-    float roll        = -23.5f * DirectX::XM_PI / 180.0f;
+    float roll        = -23.4f * DirectX::XM_PI / 180.0f;
     Matrix tilt       = Matrix::CreateRotationZ(roll);
     Vector3 earthAxis = (Vector3(cos(roll), sin(roll), 0).Cross(Vector3::UnitZ));
     earthAxis.Normalize();
@@ -171,27 +171,31 @@ int main(int, char**)
         bool planetChanged = false;
         ImGui::Begin("Planet System");
         ImGui::Text("Frame Rate : %f", io.Framerate);
-#define UNIFORM(x) #x, &uniforms.x
-        if (ImGui::Button("Rand Feature Noise"))
+
+        const bool randAll = ImGui::Button("Rand");
+        if (ImGui::Button("Rand Feature") || randAll)
         {
             uniforms.featureNoiseSeed     = rndVec4();
             uniforms.featureNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
             planetChanged                 = true;
         }
-        if (ImGui::Button("Rand Sharpness Noise Seed"))
+        if (ImGui::Button("Rand Sharpness") || randAll)
         {
-            uniforms.sharpnessNoiseSeed = rndVec4();
-            planetChanged               = true;
+            uniforms.sharpnessNoiseSeed     = rndVec4();
+            uniforms.sharpnessNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
+            planetChanged                   = true;
         }
-        if (ImGui::Button("Rand Slope Erosion Noise Seed"))
+        if (ImGui::Button("Rand Slope Erosion") || randAll)
         {
-            uniforms.slopeErosionNoiseSeed = rndVec4();
-            planetChanged                  = true;
+            uniforms.slopeErosionNoiseSeed     = rndVec4();
+            uniforms.slopeErosionNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
+            planetChanged                      = true;
         }
-        if (ImGui::Button("Rand Perturb Noise Seed"))
+        if (ImGui::Button("Rand Perturb") || randAll)
         {
-            uniforms.perturbNoiseSeed = rndVec4();
-            planetChanged             = true;
+            uniforms.perturbNoiseSeed     = rndVec4();
+            uniforms.perturbNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
+            planetChanged                 = true;
         }
 
         // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
@@ -199,33 +203,49 @@ int main(int, char**)
         // {
         //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
         // }
-        ImGui::Text("Simplex Noise");
+        ImGui::Text("Uber Noise");
+#define UNIFORM(x) #x, &uniforms.x
         planetChanged |= ImGui::DragFloat(UNIFORM(baseFrequency), 0.001f, 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(baseAmplitude), 0.0f, 2.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(lacunarity), 1.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(gain), 0.5f, std::sqrt(0.5f));
-        planetChanged |= ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
-        planetChanged |= ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
-        planetChanged |= ImGui::SliderFloat2("perturb", uniforms.perturb, -1.0f, 1.0f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
+
+        planetChanged |= ImGui::DragFloatRange2("sharpness", &uniforms.sharpness[0], &uniforms.sharpness[1],
+            0.001f, -1.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessBaseFrequency), 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessLacunarity), 1.01f, 4.0f);
+
+        planetChanged |= ImGui::DragFloatRange2("slopeErosion", &uniforms.slopeErosion[0], &uniforms.slopeErosion[1],
+            0.001f, 0.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
+
+        planetChanged |= ImGui::DragFloatRange2("perturb", &uniforms.perturb[0], &uniforms.perturb[1],
+            0.001f, -1.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
+        // planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
+        // planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
         const auto windowSize = ImGui::GetWindowSize();
-        ImGui::Image(g_PlanetRenderer->GetWorldMapSrv(), ImVec2(windowSize.x, windowSize.x / 2));
-        ImGui::Text("Sphere Geometry");
-        ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
+        ImGui::Image(g_PlanetRenderer->GetWorldMapSrv(), ImVec2(windowSize.x, windowSize.x * 0.5f));
+        ImGui::End();
+
+        ImGui::Begin("Planet Geometry");
+        // ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
         ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
         ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f, 0.0, PlanetRenderer::kRadius * 0.5f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -0.1f, 2.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -2.0f, 2.0f);
         ImGui::Checkbox("Rotate", &rotate);
         ImGui::SliderFloat("yaw", &yaw, -DirectX::XM_2PI, DirectX::XM_2PI);
+        ImGui::End();
 #undef UNIFORM
-        ImGui::Text("Camera");
-        ImGui::DragFloat("Camera Speed", &spd, PlanetRenderer::kRadius * 0.0001f);
+        ImGui::Begin("Camera");
+        ImGui::DragFloat("Speed", &spd, PlanetRenderer::kRadius * 0.0001f);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
 
         // ImGui::Checkbox("Debug", &debug);
         ImGui::End();
-
         // Updating
         std::vector<DirectX::BoundingBox> bbs;
         g_Camera->Update(io, spd);
@@ -233,11 +253,20 @@ int main(int, char**)
         {
             frustum = g_Camera->GetFrustum();
         }
+        if (io.MouseDown[ImGuiMouseButton_Left] && !io.WantCaptureMouse)
+        {
+            auto ray = g_Camera->GetRay(Vector2(io.MousePos.x, io.MousePos.y));
+            float dist;
+            // if (ray.Intersects(DirectX::BoundingSphere(Vector3::Zero, uniforms.radius), dist))
+            {
+                yaw -= io.MouseDelta.x * 0.01f;
+            }
+        }
         if (rotate)
         {
             yaw -= io.DeltaTime * 0.05f;
-            yaw = std::fmod(yaw, -DirectX::XM_2PI);
         }
+        yaw = std::fmod(yaw, -DirectX::XM_2PI);
 
         Matrix world = tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
 
@@ -259,9 +288,8 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 0.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
-        // g_DebugRenderer->DrawSphere(Matrix::CreateScale(100) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(),
-        //     g_Camera->GetProjection());
-
+        g_DebugRenderer->DrawSphere(Matrix::CreateScale(1) * Matrix::CreateTranslation(g_Camera->GetPosition() + g_Camera->GetForward() * 5.0f),
+            g_Camera->GetView(), g_Camera->GetProjection());
 
         ID3D11ShaderResourceView* srv = nullptr;
         g_pd3dDeviceContext->PSSetShaderResources(0, 1, &srv);

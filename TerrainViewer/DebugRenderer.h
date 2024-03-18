@@ -3,8 +3,9 @@
 #include <directxtk/SpriteBatch.h>
 #include "directxtk/SimpleMath.h"
 #include "Texture2D.h"
+#include "Renderer.h"
 
-class DebugRenderer
+class DebugRenderer : public Renderer
 {
 public:
     DebugRenderer(ID3D11DeviceContext* context, ID3D11Device* device);

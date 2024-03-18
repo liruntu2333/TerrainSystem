@@ -190,3 +190,17 @@ void Camera::PlayRecord()
     m_RcdPositions = LoadBinary<Vector3>("CameraPositions.bin");
     m_RcdRotations = LoadBinary<Vector3>("CameraRotations.bin");
 }
+
+Ray Camera::GetRay(const Vector2& mousePos) const
+{
+    const auto x           = (2.0f * mousePos.x) / m_Viewport.Width - 1.0f;
+    const auto y           = 1.0f - (2.0f * mousePos.y) / m_Viewport.Height;
+    const auto rayClip     = Vector4(x, y, 0.0f, 1.0f);
+    const auto invViewProj = GetViewProjection().Invert();
+    const auto rayEye      = Vector4::Transform(rayClip, invViewProj);
+    auto rayEye3           = Vector3(rayEye.x, rayEye.y, rayEye.z);
+    rayEye3.Normalize();
+    const auto rayDir    = rayEye3;
+    const auto rayOrigin = m_Position;
+    return { rayOrigin, rayDir };
+}

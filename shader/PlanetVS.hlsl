@@ -20,7 +20,7 @@ VertexOut main(uint vertexId : SV_VertexID)
     // 	amp *= gain;
     // }
     // noised = sum;
-    float sum = UberNoiseFbm(64, unitSphere).w;
+    float sum = UberNoiseFbm(unitSphere).w;
 
     float dist = radius + sum * elevation;
 

@@ -7,7 +7,7 @@
 class Camera
 {
 public:
-    Camera(const DirectX::SimpleMath::Vector3& pos) : m_Position(pos) { }
+    Camera(const DirectX::SimpleMath::Vector3& pos) : m_Position(pos) {}
     ~Camera() = default;
 
     [[nodiscard]] DirectX::SimpleMath::Matrix GetViewProjection() const;
@@ -24,11 +24,13 @@ public:
     [[nodiscard]] DirectX::SimpleMath::Vector3 GetDeltaPosition() const { return m_DeltaPosition; }
     [[nodiscard]] float GetNear() const { return m_NearPlane; }
     [[nodiscard]] float GetFar() const { return m_FarPlane; }
+    auto GetForward() const { return m_Forward; }
     void SetViewPort(ID3D11DeviceContext* context) const;
     void Update(const ImGuiIO& io, float spd);
     void StartRecord();
     void StopRecord();
     void PlayRecord();
+    DirectX::SimpleMath::Ray GetRay(const DirectX::SimpleMath::Vector2& mousePos) const;
 
 private:
     // int m_PatchX = 0;
@@ -42,14 +44,14 @@ private:
     DirectX::SimpleMath::Vector3 m_Up;
     DirectX::SimpleMath::Quaternion m_Orientation;
     D3D11_VIEWPORT m_Viewport {};
-    float m_Fov = DirectX::XM_PIDIV4;
+    float m_Fov         = DirectX::XM_PIDIV4;
     float m_AspectRatio = 0;
-    float m_NearPlane = 1.0f;
-    float m_FarPlane = 2000000.0f;
+    float m_NearPlane   = 1.0f;
+    float m_FarPlane    = 2000000.0f;
 
     std::vector<DirectX::SimpleMath::Vector3> m_RcdPositions;
     std::vector<DirectX::SimpleMath::Vector3> m_RcdRotations;
     bool m_IsRecording = false;
-    bool m_IsPlaying = false;
-    int m_RcdIndex = 0;
+    bool m_IsPlaying   = false;
+    int m_RcdIndex     = 0;
 };

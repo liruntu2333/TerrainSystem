@@ -3,7 +3,7 @@
 // #define LERP_ALTITUDE
 
 Texture1D albedoRoughness : register(t0);
-Texture1D f0Metallic : register(t1);
+// Texture1D f0Metallic : register(t1);
 SamplerState pointClamp : register(s0);
 
 float4 main(VertexOut pin) : SV_TARGET
@@ -12,7 +12,7 @@ float4 main(VertexOut pin) : SV_TARGET
     // clip(pixDist + 0.01);
     float3 unitSphere = normalize(pin.NormalDist.xyz);
 
-    float4 uberNoise = UberNoiseFbm(64, unitSphere);
+    float4 uberNoise = UberNoiseFbm(unitSphere);
     float sum        = uberNoise.w;
     float3 dSum      = uberNoise.xyz;
 
@@ -36,7 +36,7 @@ float4 main(VertexOut pin) : SV_TARGET
     float3 worldPos = mul(float4(dist * unitSphere, 1.0f), world).xyz;
     float3 V        = normalize(camPos - worldPos);
 
-    float u = sum / 2.0;
+	float u = sum * 0.5;
     // float u = sum;
 
     float4 albRough = albedoRoughness.SampleLevel(pointClamp, u, 0.0);
@@ -44,15 +44,15 @@ float4 main(VertexOut pin) : SV_TARGET
     // {
     //     albRough = float4(1, 0, 0, 1);
     // }
-    float4 f0metal = f0Metallic.SampleLevel(pointClamp, u, 0.0);
+    // float4 f0metal = f0Metallic.SampleLevel(pointClamp, u, 0.0);
     float3 alb     = albRough.rgb;
     // float3 alb = 1;
     // float3 alb = debugCol.xyz;
     // float3 alb = (N * 0.5 + 0.5);
     // float3 f0 = f0metal.rgb;
-    float3 f0 = 0;
+    float3 f0 = 0.0;
     // float metallic = f0metal.a;
-    float metallic  = 0;
+    float metallic  = 0.0;
     float roughness = albRough.a;
     // float roughness = 1;
     float3 ami = 0.0;

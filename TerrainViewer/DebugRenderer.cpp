@@ -2,7 +2,7 @@
 using namespace DirectX;
 using namespace SimpleMath;
 
-DebugRenderer::DebugRenderer(ID3D11DeviceContext* context, ID3D11Device* device)
+DebugRenderer::DebugRenderer(ID3D11DeviceContext* context, ID3D11Device* device) : Renderer(device)
 {
     if (s_Cube == nullptr)
         s_Cube = GeometricPrimitive::CreateCube(context);

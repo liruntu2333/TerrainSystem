@@ -12,7 +12,7 @@ class PlanetRenderer : public Renderer
 public:
     using Vertex = DirectX::VertexPosition;
     static constexpr float kRadius       = 173710.0;
-    static constexpr float kElevation    = kRadius * 0.05f;
+    static constexpr float kElevation    = kRadius * 0.025f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
 
@@ -34,7 +34,10 @@ public:
         DirectX::SimpleMath::Vector4 slopeErosionNoiseSeed { 0.75f };
         DirectX::SimpleMath::Vector4 perturbNoiseSeed { -0.42f };
 
-        DirectX::SimpleMath::Matrix featureNoiseRotation = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix featureNoiseRotation      = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix sharpnessNoiseRotation    = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix slopeErosionNoiseRotation = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix perturbNoiseRotation      = DirectX::SimpleMath::Matrix::Identity;
 
         int geometryOctaves = 5;
         float lacunarity    = 2.01f;
@@ -46,11 +49,20 @@ public:
         float ridgeErosion    = 0.0f;
         float baseFrequency   = 1.0f;
 
-        float sharpness[2]    = { -1.0f, 1.0f };
-        float slopeErosion[2] = { 0.0f, 1.0f };
+        float baseAmplitude = 1.0f;
+        float pad[3];
 
-        float perturb[2] = { 0.0f, 0.0f };
-        float pad[2];
+        float sharpness[2]           = { -1.0f, 1.0f };
+        float sharpnessBaseFrequency = 1.0;
+        float sharpnessLacunarity    = 2.01f;
+
+        float slopeErosion[2]           = { 0.0f, 1.0f };
+        float slopeErosionBaseFrequency = 1.0f;
+        float slopeErosionLacunarity    = 2.01f;
+
+        float perturb[2]           = { 0.0f, 0.0f };
+        float perturbBaseFrequency = 1.0f;
+        float perturbLacunarity    = 2.01f;
 
         DirectX::SimpleMath::Vector3 camPos {};
         float oceanLevel = -3.0f;

@@ -37,7 +37,7 @@ namespace
     std::unique_ptr<DebugRenderer> g_DebugRenderer   = nullptr;
     std::unique_ptr<PlanetRenderer> g_PlanetRenderer = nullptr;
 
-    constexpr Vector3 ViewInit = Vector3(0.0f, 0.0f, (PlanetRenderer::kRadius + PlanetRenderer::kElevation) * 3.5f);
+    constexpr Vector3 ViewInit = Vector3(-PlanetRenderer::kRadius * 0.75, 0.0f, (PlanetRenderer::kRadius + PlanetRenderer::kElevation) * 3.0f);
 }
 
 // Forward declarations of helper functions
@@ -208,15 +208,15 @@ int main(int, char**)
         planetChanged |= ImGui::DragFloat(UNIFORM(baseFrequency), 0.001f, 0.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(baseAmplitude), 0.0f, 2.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(lacunarity), 1.01f, 4.0f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(gain), 0.5f, std::sqrt(0.5f));
+        planetChanged |= ImGui::SliderFloat(UNIFORM(gain), 0.5f, 0.70710678118654752440084436210485f);
 
         planetChanged |= ImGui::DragFloatRange2("sharpness", &uniforms.sharpness[0], &uniforms.sharpness[1],
-            0.001f, -1.0f, 1.0f);
+            0.01f, -1.0f, 1.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessBaseFrequency), 0.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessLacunarity), 1.01f, 4.0f);
 
         planetChanged |= ImGui::DragFloatRange2("slopeErosion", &uniforms.slopeErosion[0], &uniforms.slopeErosion[1],
-            0.001f, 0.0f, 1.0f);
+            0.01f, 0.0f, 1.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
 
@@ -234,9 +234,8 @@ int main(int, char**)
         // ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
         ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
         ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f, 0.0, PlanetRenderer::kRadius * 0.5f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -2.0f, 2.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -0.1f, 2.0f);
         ImGui::Checkbox("Rotate", &rotate);
-        ImGui::SliderFloat("yaw", &yaw, -DirectX::XM_2PI, DirectX::XM_2PI);
         ImGui::End();
 #undef UNIFORM
         ImGui::Begin("Camera");
@@ -304,8 +303,8 @@ int main(int, char**)
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        //g_pSwapChain->Present(1, 0); // Present with vsync
-        g_pSwapChain->Present(0, 0); // Present without vsync
+        g_pSwapChain->Present(1, 0); // Present with vsync
+        // g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup

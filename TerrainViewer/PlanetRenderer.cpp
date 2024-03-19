@@ -191,7 +191,7 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
         context->DrawIndexed(m_IndicesPerFace, 0, 0);
     }
 
-    if (wireFrame || uniforms.oceanLevel < -2.0f) return;
+    if (wireFrame || uniforms.oceanLevel <= -0.1f) return;
 
     uniforms.geometryOctaves = 0;
     uniforms.radius += uniforms.elevation * uniforms.oceanLevel - 1.0f;

@@ -12,7 +12,7 @@ class PlanetRenderer : public Renderer
 public:
     using Vertex = DirectX::VertexPosition;
     static constexpr float kRadius       = 173710.0;
-    static constexpr float kElevation    = kRadius * 0.025f;
+    static constexpr float kElevation    = kRadius * 0.03f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
 
@@ -41,27 +41,27 @@ public:
 
         int geometryOctaves = 5;
         float lacunarity    = 2.01f;
-        float gain          = 0.6f;
+        float gain          = std::sqrt(0.5f);
         float radius        = kRadius;
 
         float elevation       = kElevation;
         float altitudeErosion = 0.0f;
         float ridgeErosion    = 0.0f;
-        float baseFrequency   = 1.0f;
+        float baseFrequency   = 0.25f;
 
         float baseAmplitude = 1.0f;
         float pad[3];
 
         float sharpness[2]           = { -1.0f, 1.0f };
-        float sharpnessBaseFrequency = 1.0;
+        float sharpnessBaseFrequency = 0.25f;
         float sharpnessLacunarity    = 2.01f;
 
         float slopeErosion[2]           = { 0.0f, 1.0f };
-        float slopeErosionBaseFrequency = 1.0f;
+        float slopeErosionBaseFrequency = 0.25f;
         float slopeErosionLacunarity    = 2.01f;
 
         float perturb[2]           = { 0.0f, 0.0f };
-        float perturbBaseFrequency = 1.0f;
+        float perturbBaseFrequency = 0.25f;
         float perturbLacunarity    = 2.01f;
 
         DirectX::SimpleMath::Vector3 camPos {};

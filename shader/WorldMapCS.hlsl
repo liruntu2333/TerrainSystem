@@ -22,7 +22,7 @@ void main(uint3 dtId : SV_DispatchThreadID)
 
     float sum = UberNoiseFbm(unitSphere).w;
 
-    // float u = sum;
+	// float u = sum * 0.5;
     // float3 alb = albedoRoughness.SampleLevel(pointClamp, u, 0.0).rgb;
     float3 alb = sum * 0.5;
     if (sum < oceanLevel)

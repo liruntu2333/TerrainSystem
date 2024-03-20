@@ -1,5 +1,6 @@
 #include "PlanetRenderer.h"
 
+#include <array>
 #include <d3dcompiler.h>
 #include <DirectXColors.h>
 #include <directxtk/BufferHelpers.h>
@@ -23,67 +24,186 @@ namespace
         NEGATIVE_Z
     };
 
-    constexpr Vector3 upAxis[] =
-    {
-        Vector3(+1, 0, 0),
-        Vector3(-1, 0, 0),
-        Vector3(0, +1, 0),
-        Vector3(0, -1, 0),
-        Vector3(0, 0, +1),
-        Vector3(0, 0, -1)
-    };
 
-    constexpr Vector3 rhtAxis[] =
+    const Vector3& GetFaceForward(const CubeFace face)
     {
-        Vector3(0, 0, -1),
-        Vector3(0, 0, +1),
-        Vector3(+1, 0, 0),
-        Vector3(+1, 0, 0),
-        Vector3(+1, 0, 0),
-        Vector3(-1, 0, 0)
-    };
-
-    constexpr Vector3 btmAxis[] =
-    {
-        Vector3(0, -1, 0),
-        Vector3(0, -1, 0),
-        Vector3(0, 0, +1),
-        Vector3(0, 0, -1),
-        Vector3(0, -1, 0),
-        Vector3(0, -1, 0)
-    };
-
-    Vector3 GetCubeVertex(CubeFace face, float u, float v)
-    {
-        // switch (face)
-        // {
-        // case POSITIVE_X:
-        //     vertex.position = Vector3(1.0f, 1.0f - 2.0f * v, 1.0f - 2.0f * u);
-        //     break;
-        // case NEGATIVE_X:
-        //     vertex.position = Vector3(-1.0f, 1.0f - 2.0f * v, -1.0f + 2.0f * u);
-        //     break;
-        // case POSITIVE_Y:
-        //     vertex.position = Vector3(-1.0f + 2.0f * u, 1.0f, -1.0f + 2.0f * v);
-        //     break;
-        // case NEGATIVE_Y:
-        //     vertex.position = Vector3(-1.0f + 2.0f * u, -1.0f, 1.0f - 2.0f * v);
-        //     break;
-        // case POSITIVE_Z:
-        //     vertex.position = Vector3(-1.0f + 2.0f * u, 1.0f - 2.0f * v, 1.0f);
-        //     break;
-        // case NEGATIVE_Z:
-        //     vertex.position = Vector3(1.0f - 2.0f * u, 1.0f - 2.0f * v, -1.0f);
-        //     break;
-        // }
-
-        return upAxis[face] + rhtAxis[face] * (u * 2.0f - 1.0f) + btmAxis[face] * (v * 2.0f - 1.0f);
+        switch (face)
+        {
+        case POSITIVE_X:
+            return Vector3::Right;
+        case NEGATIVE_X:
+            return Vector3::Left;
+        case POSITIVE_Y:
+            return Vector3::Up;
+        case NEGATIVE_Y:
+            return Vector3::Down;
+        case POSITIVE_Z:
+            return Vector3::Backward;
+        case NEGATIVE_Z:
+            return Vector3::Forward;
+        }
+        return Vector3::Zero;
     }
+
+    const Vector3& GetFaceRight(const CubeFace face)
+    {
+        switch (face)
+        {
+        case POSITIVE_X:
+            return Vector3::Forward;
+        case NEGATIVE_X:
+            return Vector3::Backward;
+        case POSITIVE_Y:
+            return Vector3::Right;
+        case NEGATIVE_Y:
+            return Vector3::Right;
+        case POSITIVE_Z:
+            return Vector3::Right;
+        case NEGATIVE_Z:
+            return Vector3::Left;
+        }
+        return Vector3::Zero;
+    }
+
+    const Vector3& GetFaceUp(const CubeFace face)
+    {
+        switch (face)
+        {
+        case POSITIVE_X:
+            return Vector3::Up;
+        case NEGATIVE_X:
+            return Vector3::Up;
+        case POSITIVE_Y:
+            return Vector3::Forward;
+        case NEGATIVE_Y:
+            return Vector3::Backward;
+        case POSITIVE_Z:
+            return Vector3::Up;
+        case NEGATIVE_Z:
+            return Vector3::Up;
+        }
+        return Vector3::Zero;
+    }
+
+    const Quaternion& GetFaceOrientation(const CubeFace face)
+    {
+        static const Quaternion ORIENTATIONS[] =
+        {
+            Quaternion::CreateFromYawPitchRoll(XM_PIDIV2, 0, 0),
+            Quaternion::CreateFromYawPitchRoll(-XM_PIDIV2, 0, 0),
+            Quaternion::CreateFromYawPitchRoll(0, -XM_PIDIV2, 0),
+            Quaternion::CreateFromYawPitchRoll(0, XM_PIDIV2, 0),
+            Quaternion::CreateFromYawPitchRoll(0, 0, 0),
+            Quaternion::CreateFromYawPitchRoll(0, XM_PI, 0)
+        };
+        return ORIENTATIONS[face];
+    }
+
+    Vector3 GetCubeVertex(CubeFace face, const double x, const double y)
+    {
+        return GetFaceForward(face) +
+            GetFaceRight(face) * static_cast<float>(x) +
+            GetFaceUp(face) * static_cast<float>(y);
+    }
+
+    constexpr int cubeResolution     = 255;
+    constexpr double maxCubeLength   = 2.0;
+    constexpr double maxCubeGridSize = maxCubeLength / (cubeResolution - 1);
+    constexpr float angleThreshold   = -0.05f;
+
+    constexpr double interiorCubeLength = 0.70710678118654752440084436210485; // sqrt(0.5)
+
+    struct SphericalCubeQuadTreeNode
+    {
+        int depth;
+        double gridSize;
+        double length;
+        double halfLength;
+        Vector2 offset;
+        CubeFace face;
+
+        SphericalCubeQuadTreeNode()                                            = default;
+        SphericalCubeQuadTreeNode(const SphericalCubeQuadTreeNode&)            = default;
+        SphericalCubeQuadTreeNode(SphericalCubeQuadTreeNode&&)                 = default;
+        SphericalCubeQuadTreeNode& operator=(const SphericalCubeQuadTreeNode&) = default;
+        SphericalCubeQuadTreeNode& operator=(SphericalCubeQuadTreeNode&&)      = default;
+
+        SphericalCubeQuadTreeNode(const CubeFace face, const int depth, const Vector2& offset) :
+            depth(depth), gridSize(maxCubeGridSize / (1 << depth)),
+            length(maxCubeLength / (1 << depth)), halfLength(length * 0.5), offset(offset), face(face) {}
+
+        std::array<SphericalCubeQuadTreeNode, 4> GetChildren() const
+        {
+            return
+            {
+                SphericalCubeQuadTreeNode(face, depth + 1, offset),
+                SphericalCubeQuadTreeNode(face, depth + 1, offset + Vector2(halfLength, 0)),
+                SphericalCubeQuadTreeNode(face, depth + 1, offset + Vector2(0, halfLength)),
+                SphericalCubeQuadTreeNode(face, depth + 1, offset + Vector2(halfLength, halfLength))
+            };
+        }
+
+        [[nodiscard]] BoundingFrustum GetBounding(const Matrix& wld) const
+        {
+            auto frustum = BoundingFrustum(
+                Vector3::Zero,
+                GetFaceOrientation(face),
+                offset.x + length,
+                offset.x,
+                offset.y + length,
+                offset.y,
+                interiorCubeLength,
+                1.0
+                );
+            frustum.Transform(frustum, wld);
+            return frustum;
+        }
+
+        [[nodiscard]] std::array<Vector3, 4> GetCornerNormals(const Matrix& rot) const
+        {
+            std::array<Vector3, 4> corners =
+            {
+                GetCubeVertex(face, offset.x, offset.y),
+                GetCubeVertex(face, offset.x + length, offset.y),
+                GetCubeVertex(face, offset.x, offset.y + length),
+                GetCubeVertex(face, offset.x + length, offset.y + length)
+            };
+            for (auto&& corner : corners)
+            {
+                corner = Vector3::TransformNormal(corner, rot);
+                corner.Normalize();
+            }
+
+            return std::move(corners);
+        }
+
+        static void Traverse(const SphericalCubeQuadTreeNode& node,
+                             const BoundingFrustum& frustum, const Matrix& wld,
+                             std::vector<SphericalCubeQuadTreeNode>& nodes)
+        {
+            auto camFront = Vector3::TransformNormal(Vector3::Forward,
+                Matrix::CreateFromQuaternion(frustum.Orientation));
+            camFront.Normalize();
+
+            if (auto ns = node.GetCornerNormals(wld); std::all_of(ns.begin(), ns.end(),
+                [&camFront](auto&& n) { return camFront.Dot(n) > angleThreshold; }))
+            {
+                return;
+            }
+
+            if (frustum.Contains(node.GetBounding(wld)) == DISJOINT)
+            {
+                return;
+            }
+
+            nodes.push_back(node);
+        }
+    };
 }
 
-void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir, int sphereTess)
+void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir)
 {
-    CreateSphere(sphereTess);
+    CreateSphere(cubeResolution);
     CreateTexture();
 
     Microsoft::WRL::ComPtr<ID3DBlob> blob;
@@ -150,12 +270,8 @@ void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir, int sphe
     m_Cb0.Create(m_Device);
 }
 
-void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, bool wireFrame)
+void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, const BoundingFrustum& frustum, const Matrix& worldWithScl, const bool wireFrame)
 {
-    uniforms.gridSize    = 2.0f / static_cast<float>(m_Tesselation - 1);
-    uniforms.gridOffsetU = -1.0f;
-    uniforms.gridOffsetV = -1.0f;
-
     const auto cb = m_Cb0.GetBuffer();
     context->VSSetConstantBuffers(0, 1, &cb);
     context->PSSetConstantBuffers(0, 1, &cb);
@@ -181,33 +297,62 @@ void PlanetRenderer::Render(ID3D11DeviceContext* context, Uniforms uniforms, boo
     context->OMSetDepthStencilState(s_CommonStates->DepthReverseZ(), 0);
     context->OMSetBlendState(s_CommonStates->Opaque(), nullptr, 0xFFFFFFFF);
 
+    std::vector<SphericalCubeQuadTreeNode> nodes;
     for (int i = 0; i < 6; ++i)
     {
-        uniforms.faceUp     = upAxis[i];
-        uniforms.faceRight  = rhtAxis[i];
-        uniforms.faceBottom = btmAxis[i];
-
-        m_Cb0.SetData(context, uniforms);
-        context->DrawIndexed(m_IndicesPerFace, 0, 0);
+        SphericalCubeQuadTreeNode::Traverse(
+            SphericalCubeQuadTreeNode(static_cast<CubeFace>(i), 0, Vector2(-1, -1)),
+            frustum, worldWithScl, nodes);
     }
+
+    // std::sort(nodes.begin(), nodes.end(), [camPos = uniforms.camPos](auto&& a, auto&& b)
+    // {
+    //     return Vector3::DistanceSquared(a.GetCubeVertex(a.face, a.offset.x, a.offset.y), camPos) <
+    //         Vector3::DistanceSquared(b.GetCubeVertex(b.face, b.offset.x, b.offset.y), camPos);
+    // });
+
+    for (int i = 0; i < nodes.size(); ++i)
+    {
+        auto& [fwd, sz, rht, x, up, y] = uniforms.instances[i];
+
+        const auto& node = nodes[i];
+
+        fwd = GetFaceForward(node.face);
+        up  = GetFaceUp(node.face);
+        rht = GetFaceRight(node.face);
+        sz  = node.gridSize;
+        x   = node.offset.x;
+        y   = node.offset.y;
+    }
+
+    m_Cb0.SetData(context, uniforms);
+    context->DrawIndexedInstanced(m_IndicesPerFace, nodes.size(), 0, 0, 0);
 
     if (wireFrame || uniforms.oceanLevel <= -0.1f) return;
 
-    uniforms.geometryOctaves = 0;
+    // ocean
     uniforms.radius += uniforms.elevation * uniforms.oceanLevel - 1.0f;
     context->VSSetShader(m_OceanVs.Get(), nullptr, 0);
     context->PSSetShader(m_OceanPs.Get(), nullptr, 0);
     context->OMSetDepthStencilState(s_CommonStates->DepthReadReverseZ(), 0);
     context->OMSetBlendState(s_CommonStates->AlphaBlend(), nullptr, 0xFFFFFFFF);
+
     for (int i = 0; i < 6; ++i)
     {
-        uniforms.faceUp     = upAxis[i];
-        uniforms.faceRight  = rhtAxis[i];
-        uniforms.faceBottom = btmAxis[i];
+        auto& [fwd, sz, rht, x, up, y] = uniforms.instances[i];
 
-        m_Cb0.SetData(context, uniforms);
-        context->DrawIndexed(m_IndicesPerFace, 0, 0);
+        const auto node = SphericalCubeQuadTreeNode(static_cast<CubeFace>(i), 0, Vector2(-1, -1));
+
+        fwd = GetFaceForward(node.face);
+        up  = GetFaceUp(node.face);
+        rht = GetFaceRight(node.face);
+        sz  = node.gridSize;
+        x   = node.offset.x;
+        y   = node.offset.y;
     }
+
+    m_Cb0.SetData(context, uniforms);
+    context->DrawIndexedInstanced(m_IndicesPerFace, 6, 0, 0, 0);
 }
 
 void PlanetRenderer::CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms)
@@ -229,7 +374,7 @@ void PlanetRenderer::CreateWorldMap(ID3D11DeviceContext* context, const Uniforms
     context->CSSetUnorderedAccessViews(0, 1, &uav, nullptr);
 }
 
-void PlanetRenderer::CreateSphere(uint16_t tesselation)
+void PlanetRenderer::CreateSphere(const uint16_t tesselation)
 {
     std::vector<uint16_t> indices;
     const uint16_t grids = tesselation - 1;
@@ -245,12 +390,12 @@ void PlanetRenderer::CreateSphere(uint16_t tesselation)
             const uint16_t i3 = (j + 1) * tesselation + k + 1;
 
             indices.emplace_back(i0);
-            indices.emplace_back(i1);
             indices.emplace_back(i2);
+            indices.emplace_back(i1);
 
             indices.emplace_back(i2);
-            indices.emplace_back(i1);
             indices.emplace_back(i3);
+            indices.emplace_back(i1);
         }
     }
 

@@ -15,16 +15,10 @@ public:
     static constexpr float kElevation    = kRadius * 0.03f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
+    static constexpr int maxInstance     = 32;
 
     struct Uniforms
     {
-        DirectX::SimpleMath::Vector3 faceUp {};
-        float gridSize = 0.0f;
-        DirectX::SimpleMath::Vector3 faceRight {};
-        float gridOffsetU = 0.0f;
-        DirectX::SimpleMath::Vector3 faceBottom {};
-        float gridOffsetV = 0.0f;
-
         DirectX::SimpleMath::Matrix worldViewProj = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix world         = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix worldInvTrans = DirectX::SimpleMath::Matrix::Identity;
@@ -67,16 +61,24 @@ public:
         DirectX::SimpleMath::Vector3 camPos {};
         float oceanLevel = -3.0f;
 
-        DirectX::SimpleMath::Vector4 debugColor {};
+        struct Instance
+        {
+            DirectX::SimpleMath::Vector3 faceForward {};
+            float gridSize = 0.0f;
+            DirectX::SimpleMath::Vector3 faceRight {};
+            float gridOffsetX = 0.0f;
+            DirectX::SimpleMath::Vector3 faceUp {};
+            float gridOffsetY = 0.0f;
+        } instances[maxInstance];
     };
 
     explicit PlanetRenderer(ID3D11Device* device) : Renderer(device) {}
 
     ~PlanetRenderer() override = default;
 
-    void Initialize(const std::filesystem::path& shaderDir, int sphereTess);
+    void Initialize(const std::filesystem::path& shaderDir);
 
-    void Render(ID3D11DeviceContext* context, Uniforms uniforms, bool wireFrame = false);
+    void Render(ID3D11DeviceContext* context, Uniforms uniforms, const DirectX::BoundingFrustum& frustum, const DirectX::SimpleMath::Matrix& worldWithScl, bool wireFrame = false);
 
     void CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms);
 

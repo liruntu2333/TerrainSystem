@@ -46,6 +46,7 @@ float4 main(VertexOut pin) : SV_TARGET
     // }
     // float4 f0metal = f0Metallic.SampleLevel(pointClamp, u, 0.0);
     float3 alb     = albRough.rgb;
+
     // float3 alb = 1;
     // float3 alb = debugCol.xyz;
     // float3 alb = (N * 0.5 + 0.5);

@@ -11,15 +11,18 @@ struct VertexOut
     float4 NormalDist : TEXCOORD0;
 };
 
-cbuffer cb0 : register(b0)
+struct Instance
 {
-    float3 faceUp;
+    float3 faceForward;
     float gridSize;
     float3 faceRight;
-    float gridOffsetU;
-    float3 faceBottom;
-    float gridOffsetV;
+    float gridOffsetX;
+    float3 faceUp;
+    float gridOffsetY;
+};
 
+cbuffer cb0 : register(b0)
+{
     float4x4 worldViewProj;
     float4x4 world;
     float4x4 worldInvTrans;
@@ -62,7 +65,7 @@ cbuffer cb0 : register(b0)
     float3 camPos;
     float oceanLevel;
 
-    float4 debugCol;
+    Instance instances[32];
 }
 
 float3 mod289(float3 x)
@@ -437,7 +440,7 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
             SimplexNoise01(sharpnessSph * sharpnessFreq, sharpnessNoiseSeed));
         currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
             SimplexNoise01(slopeErosionSph * slopeErosionFreq, slopeErosionNoiseSeed));
-		currPerturb.xyz = SimplexGradNoise(perturbSph * perturbFreq, perturbNoiseSeed).xyz;
+        currPerturb.xyz = SimplexGradNoise(perturbSph * perturbFreq, perturbNoiseSeed).xyz;
         currPerturb.xyz *= lerp(perturb.x, perturb.y, SimplexNoise01(perturbSph * perturbFreq, float4(0.0, 0.0, 0.0, 0.0)));
 
         sharpnessFreq *= sharpnessLacunarity;
@@ -457,8 +460,8 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
         gradNoise = gradNoise * 0.5 + float4(0.0, 0.0, 0.0, 0.5);
         slopeErosionGrad += gradNoise.xyz * currSlopeErosion;
         currSharpness = i == 0 ? 0.0 : currSharpness;
-        gradNoise = lerp(gradNoise, ridge, max(0.0, currSharpness));
-        gradNoise = lerp(gradNoise, billow, abs(min(0.0, currSharpness)));
+        gradNoise     = lerp(gradNoise, ridge, max(0.0, currSharpness));
+        gradNoise     = lerp(gradNoise, billow, abs(min(0.0, currSharpness)));
 
         dampAmp *= 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
 

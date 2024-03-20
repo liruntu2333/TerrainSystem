@@ -297,14 +297,15 @@ int main(int, char**)
             g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
         }
 
-        g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, wireFrame);
+        g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, frustum, Matrix::CreateScale(uniforms.radius) * world,
+            wireFrame);
 
         // g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-        g_pSwapChain->Present(1, 0); // Present with vsync
-        // g_pSwapChain->Present(0, 0); // Present without vsync
+        // g_pSwapChain->Present(1, 0); // Present with vsync
+        g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
     // Cleanup
@@ -414,7 +415,7 @@ void CreateSystem()
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 
     g_PlanetRenderer = std::make_unique<PlanetRenderer>(g_pd3dDevice);
-    g_PlanetRenderer->Initialize("./shader", 255);
+    g_PlanetRenderer->Initialize("./shader");
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

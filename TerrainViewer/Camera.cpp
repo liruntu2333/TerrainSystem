@@ -61,7 +61,14 @@ Matrix Camera::GetProjection() const
 
 BoundingFrustum Camera::GetFrustum() const
 {
-    BoundingFrustum f(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane), true);
+    BoundingFrustum f2(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane), true);
+    float topSlope = -std::tanf(m_Fov * 0.5f);
+    float btmSlope = -topSlope;
+    float rhtSlope = topSlope * m_AspectRatio;
+    float lftSlope = -rhtSlope;
+    float nearZ    = -m_FarPlane;
+    float farZ     = -m_NearPlane;
+    BoundingFrustum f(Vector3::Zero, Quaternion::Identity, rhtSlope, lftSlope, topSlope, btmSlope, nearZ, farZ);
     f.Transform(f, Matrix::CreateFromYawPitchRoll(m_Rotation) * Matrix::CreateTranslation(m_Position));
     return f;
 }

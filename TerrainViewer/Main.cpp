@@ -220,10 +220,10 @@ int main(int, char**)
         planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
 
-        planetChanged |= ImGui::DragFloatRange2("perturb", &uniforms.perturb[0], &uniforms.perturb[1],
-            0.001f, -1.0f, 1.0f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
+        // planetChanged |= ImGui::DragFloatRange2("perturb", &uniforms.perturb[0], &uniforms.perturb[1],
+        //     0.001f, -1.0f, 1.0f);
+        // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
+        // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
         const auto windowSize = ImGui::GetWindowSize();
@@ -254,12 +254,7 @@ int main(int, char**)
         }
         if (io.MouseDown[ImGuiMouseButton_Left] && !io.WantCaptureMouse)
         {
-            auto ray = g_Camera->GetRay(Vector2(io.MousePos.x, io.MousePos.y));
-            float dist;
-            // if (ray.Intersects(DirectX::BoundingSphere(Vector3::Zero, uniforms.radius), dist))
-            {
-                yaw -= io.MouseDelta.x * 0.01f;
-            }
+            yaw -= io.MouseDelta.x * 0.01f;
         }
         if (rotate)
         {
@@ -272,6 +267,7 @@ int main(int, char**)
         uniforms.worldInvTrans = world.Invert().Transpose().Transpose();
         uniforms.world         = world.Transpose();
         uniforms.worldViewProj = (world * g_Camera->GetViewProjection()).Transpose();
+        uniforms.viewProj      = g_Camera->GetViewProjection().Transpose();
         uniforms.camPos        = g_Camera->GetPosition();
 
         time += io.DeltaTime;
@@ -287,8 +283,8 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 0.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
-        g_DebugRenderer->DrawSphere(Matrix::CreateScale(1) * Matrix::CreateTranslation(g_Camera->GetPosition() + g_Camera->GetForward() * 5.0f),
-            g_Camera->GetView(), g_Camera->GetProjection());
+        // g_DebugRenderer->DrawSphere(Matrix::CreateScale(1) * Matrix::CreateTranslation(g_Camera->GetPosition() + g_Camera->GetForward() * 5.0f),
+        //     g_Camera->GetView(), g_Camera->GetProjection());
 
         ID3D11ShaderResourceView* srv = nullptr;
         g_pd3dDeviceContext->PSSetShaderResources(0, 1, &srv);
@@ -297,8 +293,8 @@ int main(int, char**)
             g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
         }
 
-        g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, frustum, Matrix::CreateScale(uniforms.radius) * world,
-            wireFrame);
+        g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, frustum, Quaternion::CreateFromRotationMatrix(world),
+            Vector3::Zero, wireFrame, freezeFrustum);
 
         // g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 

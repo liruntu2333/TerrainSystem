@@ -10,18 +10,18 @@
 class PlanetRenderer : public Renderer
 {
 public:
-    using Vertex = DirectX::VertexPosition;
     static constexpr float kRadius       = 173710.0;
     static constexpr float kElevation    = kRadius * 0.03f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
-    static constexpr int maxInstance     = 32;
+    static constexpr int maxInstance     = 64;
 
     struct Uniforms
     {
         DirectX::SimpleMath::Matrix worldViewProj = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix world         = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix worldInvTrans = DirectX::SimpleMath::Matrix::Identity;
+        DirectX::SimpleMath::Matrix viewProj      = DirectX::SimpleMath::Matrix::Identity;
 
         DirectX::SimpleMath::Vector4 featureNoiseSeed { 0.0f };
         DirectX::SimpleMath::Vector4 sharpnessNoiseSeed { 0.5f };
@@ -72,13 +72,25 @@ public:
         } instances[maxInstance];
     };
 
+    struct BoundingUniforms
+    {
+        DirectX::SimpleMath::Vector4 corners[maxInstance + 1][8];
+    };
+
     explicit PlanetRenderer(ID3D11Device* device) : Renderer(device) {}
 
     ~PlanetRenderer() override = default;
 
     void Initialize(const std::filesystem::path& shaderDir);
 
-    void Render(ID3D11DeviceContext* context, Uniforms uniforms, const DirectX::BoundingFrustum& frustum, const DirectX::SimpleMath::Matrix& worldWithScl, bool wireFrame = false);
+    void Render(
+        ID3D11DeviceContext* context,
+        Uniforms uniforms,
+        const DirectX::BoundingFrustum& frustum,
+        const DirectX::SimpleMath::Quaternion& rot,
+        const DirectX::SimpleMath::Vector3& trans,
+        bool wireFrame = false,
+        bool freeze    = false);
 
     void CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms);
 
@@ -91,21 +103,27 @@ private:
     int m_Tesselation    = 0;
     int m_IndicesPerFace = 0;
 
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_IndexBuffer;
-    Microsoft::WRL::ComPtr<ID3D11InputLayout> m_VertexLayout;
+    DirectX::ConstantBuffer<Uniforms> m_Cb0;
+    DirectX::ConstantBuffer<BoundingUniforms> m_Cb1;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_TileIb;
+    // Microsoft::WRL::ComPtr<ID3D11InputLayout> m_VertexLayout;
     Microsoft::WRL::ComPtr<ID3D11VertexShader> m_PlanetVs;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> m_PlanetPs;
-    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_OceanVs;
-    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_OceanPs;
-    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_WorldMapCs;
-
     Microsoft::WRL::ComPtr<ID3D11Texture1D> m_AlbedoRoughness;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_AlbedoRoughnessSrv;
-
     Microsoft::WRL::ComPtr<ID3D11Texture1D> m_F0Metallic;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_F0MetallicSrv;
 
-    DirectX::ConstantBuffer<Uniforms> m_Cb0;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_OceanVs;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_OceanPs;
 
+    Microsoft::WRL::ComPtr<ID3D11ComputeShader> m_WorldMapCs;
     std::unique_ptr<DirectX::Texture2D> m_WorldMap;
+
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_BoundVb;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_BoundIb;
+    Microsoft::WRL::ComPtr<ID3D11VertexShader> m_BoundVs;
+    Microsoft::WRL::ComPtr<ID3D11PixelShader> m_BoundPs;
+    Microsoft::WRL::ComPtr<ID3D11InputLayout> m_VertPosLayout;
 };

@@ -26,6 +26,7 @@ cbuffer cb0 : register(b0)
     float4x4 worldViewProj;
     float4x4 world;
     float4x4 worldInvTrans;
+    float4x4 viewProj;
 
     float4 featureNoiseSeed;
     float4 sharpnessNoiseSeed;
@@ -65,7 +66,7 @@ cbuffer cb0 : register(b0)
     float3 camPos;
     float oceanLevel;
 
-    Instance instances[32];
+    Instance instances[64];
 }
 
 float3 mod289(float3 x)
@@ -405,7 +406,7 @@ float4 Ridged(float4 dNoise)
     return dNoise;
 }
 
-float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
+float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 16)
 {
     float noise   = 0.0;
     float3 grad   = 0.0;

@@ -12,7 +12,7 @@ float4 main(VertexOut pin) : SV_TARGET
     // clip(pixDist + 0.01);
     float3 unitSphere = normalize(pin.NormalDist.xyz);
 
-    float4 uberNoise = UberNoiseFbm(unitSphere, 16);
+    float4 uberNoise = UberNoiseFbm(unitSphere);
     float sum        = uberNoise.w;
     float3 dSum      = uberNoise.xyz;
 

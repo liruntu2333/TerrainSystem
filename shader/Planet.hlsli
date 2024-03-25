@@ -8,7 +8,8 @@
 struct VertexOut
 {
     float4 Position : SV_Position;
-    float4 NormalDist : TEXCOORD0;
+    float4 WorldPosSum : TEXCOORD0;
+    float3 Normal : TEXCOORD1;
 };
 
 struct Instance
@@ -387,7 +388,7 @@ float4 Billowy(float4 dNoise)
 
     // dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
     // dNoise.w   = dNoise.w * dNoise.w;
-    // dNoise = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
+    dNoise = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
     return dNoise;
 }
 
@@ -402,11 +403,11 @@ float4 Ridged(float4 dNoise)
 
     // dNoise.xyz = -2.0 * dNoise.w * dNoise.xyz;
     // dNoise.w   = 1.0 - dNoise.w * dNoise.w;
-    // dNoise = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
+    dNoise = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
     return dNoise;
 }
 
-float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 16)
+float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
 {
     float noise   = 0.0;
     float3 grad   = 0.0;
@@ -449,25 +450,22 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 16)
         perturbFreq *= perturbLacunarity;
 
         float3 v = featureSph * featureFreq;
-        if (amp < 1e-5)
-        {
-            break;
-        }
+        // if (amp < 1e-5)
+        // {
+        //     break;
+        // }
 
         float4 gradNoise = SimplexGradNoise(v, featureNoiseSeed);
-        float4 billow    = Billowy(gradNoise);
-        float4 ridge     = Ridged(gradNoise);
 
-        gradNoise = gradNoise * 0.5 + float4(0.0, 0.0, 0.0, 0.5);
+        // gradNoise = gradNoise * 0.5 + float4(0.0, 0.0, 0.0, 0.5);
         slopeErosionGrad += gradNoise.xyz * currSlopeErosion;
-        currSharpness = i == 0 ? 0.0 : currSharpness;
-        gradNoise     = lerp(gradNoise, ridge, max(0.0, currSharpness));
-        gradNoise     = lerp(gradNoise, billow, abs(min(0.0, currSharpness)));
-
         dampAmp *= 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
+        currSharpness = i < 2 ? 0.0 : currSharpness;
+        gradNoise     = lerp(gradNoise, Ridged(gradNoise), max(0.0, currSharpness));
+        gradNoise     = lerp(gradNoise, Billowy(gradNoise), abs(min(0.0, currSharpness)));
 
         noise += dampAmp * gradNoise.w;
-        grad += dampAmp * gradNoise.xyz;
+        grad += dampAmp * gradNoise.xyz * featureFreq;
         featureFreq *= lacunarity;
         amp *= gain;
         // amp *= lerp(1.0, smoothstep(0.0, 1.0, sum), altitudeErosion);

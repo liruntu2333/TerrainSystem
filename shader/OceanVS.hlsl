@@ -10,7 +10,8 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     float3 position = unitSphere * radius;
 
     VertexOut vout;
-    vout.Position   = mul(float4(position, 1.0f), worldViewProj);
-    vout.NormalDist = float4(unitSphere, 0.0);
+    vout.Position    = mul(float4(position, 1.0f), worldViewProj);
+    vout.WorldPosSum = float4(unitSphere, 0.0);
+    vout.Normal      = unitSphere;
     return vout;
 }

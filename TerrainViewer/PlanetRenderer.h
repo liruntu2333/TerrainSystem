@@ -10,11 +10,12 @@
 class PlanetRenderer : public Renderer
 {
 public:
-    static constexpr float kRadius       = 173710.0;
+    static constexpr float kRadius       = 17371.0;
     static constexpr float kElevation    = kRadius * 0.03f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
     static constexpr int maxInstance     = 64;
+    static constexpr int maxBound        = 8;
 
     struct Uniforms
     {
@@ -35,27 +36,27 @@ public:
 
         int geometryOctaves = 5;
         float lacunarity    = 2.01f;
-        float gain          = std::sqrt(0.5f);
+        float gain          = 0.6;
         float radius        = kRadius;
 
         float elevation       = kElevation;
         float altitudeErosion = 0.0f;
         float ridgeErosion    = 0.0f;
-        float baseFrequency   = 0.25f;
+        float baseFrequency   = 1.0f;
 
         float baseAmplitude = 1.0f;
         float pad[3];
 
         float sharpness[2]           = { -1.0f, 1.0f };
-        float sharpnessBaseFrequency = 0.25f;
+        float sharpnessBaseFrequency = 1.0f;
         float sharpnessLacunarity    = 2.01f;
 
         float slopeErosion[2]           = { 0.0f, 1.0f };
-        float slopeErosionBaseFrequency = 0.25f;
+        float slopeErosionBaseFrequency = 1.0f;
         float slopeErosionLacunarity    = 2.01f;
 
         float perturb[2]           = { 0.0f, 0.0f };
-        float perturbBaseFrequency = 0.25f;
+        float perturbBaseFrequency = 1.0f;
         float perturbLacunarity    = 2.01f;
 
         DirectX::SimpleMath::Vector3 camPos {};
@@ -74,7 +75,7 @@ public:
 
     struct BoundingUniforms
     {
-        DirectX::SimpleMath::Vector4 corners[maxInstance + 1][8];
+        DirectX::SimpleMath::Vector4 corners[maxBound + 1][8];
     };
 
     explicit PlanetRenderer(ID3D11Device* device) : Renderer(device) {}
@@ -90,7 +91,8 @@ public:
         const DirectX::SimpleMath::Quaternion& rot,
         const DirectX::SimpleMath::Vector3& trans,
         bool wireFrame = false,
-        bool freeze    = false);
+        bool freeze    = false,
+        bool debug     = false);
 
     void CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms);
 

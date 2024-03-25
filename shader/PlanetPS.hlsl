@@ -8,21 +8,21 @@ SamplerState pointClamp : register(s0);
 
 float4 main(VertexOut pin) : SV_TARGET
 {
-    float pixDist = pin.NormalDist.w;
+    float pixDist = pin.WorldPosSum.w;
     // clip(pixDist + 0.01);
-    float3 unitSphere = normalize(pin.NormalDist.xyz);
+    float3 unitSphere = normalize(pin.Normal);
 
     float4 uberNoise = UberNoiseFbm(unitSphere);
     float sum        = uberNoise.w;
-    float3 dSum      = uberNoise.xyz;
+    float3 grad      = uberNoise.xyz;
 
 #ifdef LERP_ALTITUDE
-    sum = pixDist;
+	sum = pixDist;
 #endif
     float dist = sum * elevation + radius;
 
     // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
-    float3 g = dSum / dist;
+    float3 g = grad / dist;
     float3 h = g - dot(g, unitSphere) * unitSphere;
     float3 N = normalize(unitSphere - elevation * h);
 
@@ -32,11 +32,13 @@ float4 main(VertexOut pin) : SV_TARGET
     float3 Li = float3(0.9568627, 0.9137255, 0.6078431);
     // float3 li = 0.0;
 
-    float altitude  = sum * elevation;
-    float3 worldPos = mul(float4(dist * unitSphere, 1.0f), world).xyz;
+    // float sum       = pin.WorldPosSum.w;
+    // float3 worldPos = pin.WorldPosSum.xyz;
+    // float3 N        = normalize(pin.Normal);
+    float3 worldPos = unitSphere * dist;
     float3 V        = normalize(camPos - worldPos);
 
-	float u = sum * 0.5;
+    float u = sum * 0.5 + 0.5;
     // float u = sum;
 
     float4 albRough = albedoRoughness.SampleLevel(pointClamp, u, 0.0);
@@ -45,11 +47,11 @@ float4 main(VertexOut pin) : SV_TARGET
     //     albRough = float4(1, 0, 0, 1);
     // }
     // float4 f0metal = f0Metallic.SampleLevel(pointClamp, u, 0.0);
-    float3 alb     = albRough.rgb;
+    float3 alb = albRough.rgb;
 
     // float3 alb = 1;
     // float3 alb = debugCol.xyz;
-    // float3 alb = (N * 0.5 + 0.5);
+    // alb = (N * 0.5 + 0.5);
     // float3 f0 = f0metal.rgb;
     float3 f0 = 0.0;
     // float metallic = f0metal.a;

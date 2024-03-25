@@ -24,7 +24,7 @@ void main(uint3 dtId : SV_DispatchThreadID)
 
 	// float u = sum * 0.5;
     // float3 alb = albedoRoughness.SampleLevel(pointClamp, u, 0.0).rgb;
-    float3 alb = sum * 0.5;
+	float3 alb = sum * 0.5 + 0.5;
     if (sum < oceanLevel)
     {
         alb = lerp(DEEP_OCEAN_COLOR, alb, OCEAN_ALPHA);

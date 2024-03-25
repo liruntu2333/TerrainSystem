@@ -4,7 +4,7 @@
 
 float4 main(VertexOut pin) : SV_TARGET
 {
-    float3 unitSphere = normalize(pin.NormalDist.xyz);
+    float3 unitSphere = normalize(pin.Normal.xyz);
 
 #ifdef OCEAN_FOAM
     float sum  = UberNoiseFbm(unitSphere).w;

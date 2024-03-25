@@ -118,7 +118,7 @@ namespace
         return Plane(Vector3::Zero, 0.0f);
     }
 
-    Vector3 GetCubeVertex(CubeFace face, const double x, const double y)
+    Vector3 GetCubeVertex(const CubeFace face, const double x, const double y)
     {
         return GetFaceForward(face) +
             GetFaceRight(face) * static_cast<float>(x) +
@@ -155,7 +155,7 @@ namespace
     constexpr int cubeResolution     = 255;
     constexpr double maxCubeLength   = 2.0;
     constexpr double maxCubeGridSize = maxCubeLength / (cubeResolution - 1);
-    constexpr double ratio           = 0.5;
+    constexpr double ratio           = 0.4;
 
     constexpr double interiorCubeLength = 0.57735026918962576450914878050196; // std::sqrt(1.0 / 3.0)
 
@@ -216,13 +216,13 @@ namespace
             return corners;
         }
 
-        [[nodiscard]] BoundingFrustum GetBounding(const Matrix& wld, float elevationRatio) const
+        [[nodiscard]] BoundingFrustum GetBounding(const Matrix& wld, const float elevationRatio) const
         {
             float n = 1.0, f = 0.0f;
             if (depth == 0) // 1 / 6 of the sphere, near far lie on a cosine curve
             {
-                n = interiorCubeLength;
-                f = elevationRatio;
+                n = interiorCubeLength - elevationRatio;
+                f = 1.0f + elevationRatio;
             }
             else // otherwise near far lie on a monotonic curve
             {
@@ -231,8 +231,8 @@ namespace
                 {
                     const float vDotFwd = corner.Dot(fwd);
 
-                    n = std::min(n, vDotFwd);
-                    f = std::max(f, vDotFwd * elevationRatio);
+                    n = std::min(n, vDotFwd * (1.0f - elevationRatio));
+                    f = std::max(f, vDotFwd * (1.0f + elevationRatio));
                 }
             }
 
@@ -258,7 +258,7 @@ namespace
             return Vector3::Transform(v, wld);
         }
 
-        [[nodiscard]] float GetSphericalGridLength(float scl) const
+        [[nodiscard]] float GetSphericalTileLength(const float scl) const
         {
             return length * XM_PIDIV2 * scl;
         }
@@ -279,11 +279,12 @@ namespace
         static void TraverseTree(
             SphericalCubeQuadTreeNode* node,
             const BoundingFrustum& frustum,
-            float planetScl,
-            float elevationRatio,
+            const float planetScl,
+            const float elevationRatio,
             const Quaternion& planetRot,
             const Vector3& planetTrans,
             const Matrix& planetWld,
+            const float horizonSqr,
             std::map<float, SphericalCubeQuadTreeNode*>& visibleNodes,
             bool contain)
         {
@@ -311,6 +312,23 @@ namespace
             //     }
             //     if (back) return;
             // }
+
+            // auto corners = node->GetSphericalCorners(planetWld);
+            // bd.GetPlanes(&planes[0], &planes[1], &planes[2], &planes[3], &planes[4], &planes[5]);
+            // if (std::all_of(corners.begin(), corners.end(),
+            //     [horizonSqr, &camPos](const auto& corner)
+            //     {
+            //         return (camPos - corner).LengthSquared() > horizonSqr;
+            //     }))
+            // {
+            //     // __debugbreak();
+            //     return;
+            // }
+            auto center = node->GetCenter(planetWld);
+            // if ((camPos - center).LengthSquared() > horizonSqr)
+            // {
+            //     return;
+            // }
             auto bd = node->GetBounding(planetWld, elevationRatio);
             if (!contain)
             {
@@ -325,16 +343,15 @@ namespace
                 }
             }
 
-            auto center      = node->GetCenter(planetWld);
             const float dist = (center - Vector3(frustum.Origin)).Length();
-            float gridSize   = node->GetSphericalGridLength(planetScl);
-            if (gridSize * ratio > dist && node->depth < maxTreeDepth)
+            float tileLen    = node->GetSphericalTileLength(planetScl);
+            if (tileLen * ratio > dist && node->depth < maxTreeDepth)
             {
                 // TraverseTree(node->children[1].get(), frustum, planetScl, elevationRatio, planetRot, planetTrans, planetWld, camXy, visibleNodes, bs);
                 for (auto&& child : node->children)
                 {
                     TraverseTree(child.get(), frustum, planetScl, elevationRatio, planetRot, planetTrans, planetWld,
-                        visibleNodes, contain);
+                        horizonSqr, visibleNodes, contain);
                 }
             }
             else
@@ -467,7 +484,7 @@ void PlanetRenderer::Render(
     const BoundingFrustum& frustum,
     const Quaternion& rot,
     const Vector3& trans,
-    const bool wireFrame, const bool freeze)
+    const bool wireFrame, const bool freeze, const bool debug)
 {
     std::map<float, SphericalCubeQuadTreeNode*> nodes;
 
@@ -486,13 +503,15 @@ void PlanetRenderer::Render(
         Matrix::CreateFromQuaternion(rot) *
         Matrix::CreateTranslation(trans);
 
-    const double elevationRatio = uniforms.elevation / uniforms.radius * uniforms.baseAmplitude * 2.0 + 1.0;
+    const double elevationRatio = uniforms.elevation / uniforms.radius * uniforms.baseAmplitude * 1.2f;
+    float horizon2              = (camPos - trans).LengthSquared() - uniforms.radius * uniforms.radius;
+    horizon2 *= 1.5;
     for (int i = 0; i < 6; ++i)
     {
         SphericalCubeQuadTreeNode::TraverseTree(
             roots[i].get(),
             frustum, uniforms.radius, elevationRatio,
-            rot, trans, wld, nodes, false);
+            rot, trans, wld, horizon2, nodes, false);
     }
 
     ID3D11Buffer* cbs[]       = { m_Cb0.GetBuffer(), m_Cb1.GetBuffer() };
@@ -544,7 +563,7 @@ void PlanetRenderer::Render(
     }
 
     /// Rendering Ocean
-    if (!wireFrame && uniforms.oceanLevel > -0.1f)
+    if (!wireFrame && uniforms.oceanLevel > -1.5f)
     {
         uniforms.radius += uniforms.elevation * uniforms.oceanLevel - 1.0f;
         context->VSSetShader(m_OceanVs.Get(), nullptr, 0);
@@ -569,13 +588,17 @@ void PlanetRenderer::Render(
         context->DrawIndexedInstanced(m_IndicesPerFace, 6, 0, 0, 0);
     }
 
+    if (!debug)
+    {
+        return;
+    }
     /// Render boundings
     {
         BoundingUniforms u1;
         int ii = 0;
         for (auto&& [dist, node] : nodes)
         {
-            if (ii >= maxInstance) break;
+            if (ii >= maxBound) break;
             Vector3 cs[8];
             node->GetBounding(wld, elevationRatio).GetCorners(cs);
             for (int j = 0; j < 8; ++j)
@@ -609,7 +632,7 @@ void PlanetRenderer::Render(
         context->OMSetDepthStencilState(s_CommonStates->DepthReverseZ(), 0);
         ID3D11Buffer* vb = nullptr;
         context->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
-        context->DrawIndexedInstanced(36, std::min(maxInstance, static_cast<int>(nodes.size())) + static_cast<int>(freeze), 0, 0, 0);
+        context->DrawIndexedInstanced(36, std::min(maxBound, static_cast<int>(nodes.size())) + static_cast<int>(freeze), 0, 0, 0);
     }
 }
 

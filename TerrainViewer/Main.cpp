@@ -234,7 +234,7 @@ int main(int, char**)
         // ImGui::SliderInt(UNIFORM(geometryOctaves), 0, 16);
         ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
         ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f, 0.0, PlanetRenderer::kRadius * 0.5f);
-        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -0.1f, 2.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(oceanLevel), -2.0f, 2.0f);
         ImGui::Checkbox("Rotate", &rotate);
         ImGui::End();
 #undef UNIFORM
@@ -242,8 +242,7 @@ int main(int, char**)
         ImGui::DragFloat("Speed", &spd, PlanetRenderer::kRadius * 0.0001f);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
-
-        // ImGui::Checkbox("Debug", &debug);
+        ImGui::Checkbox("Debug", &debug);
         ImGui::End();
         // Updating
         std::vector<DirectX::BoundingBox> bbs;
@@ -294,7 +293,7 @@ int main(int, char**)
         }
 
         g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, frustum, Quaternion::CreateFromRotationMatrix(world),
-            Vector3::Zero, wireFrame, freezeFrustum);
+            Vector3::Zero, wireFrame, freezeFrustum, debug);
 
         // g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 

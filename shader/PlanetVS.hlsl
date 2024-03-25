@@ -21,24 +21,21 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     // 	amp *= gain;
     // }
     // noised = sum;
-    float4 gradNoise = UberNoiseFbm(unitSphere);
+	float4 gradNoise = UberNoiseFbm(unitSphere);
 
     float dist = radius + gradNoise.w * elevation;
-    // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
-    float3 g = gradNoise.xyz / dist;
-    float3 h = g - dot(g, unitSphere) * unitSphere;
-    float3 N = normalize(unitSphere - elevation * h);
-
-    N = normalize(mul(N, (float3x3)worldInvTrans));
+    // // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
+    // float3 g = gradNoise.xyz / dist;
+    // float3 h = g - dot(g, unitSphere) * unitSphere;
+    // float3 N = normalize(unitSphere - elevation  * h);
+    //
+    // N = normalize(mul(N, (float3x3)worldInvTrans));
 
     float3 position = unitSphere * dist;
 
-    // float3 g = noiD.yzw / dist;
-    // float3 h = g - dot(g, unitSphere) * unitSphere;
-    // float3 n = normalize(unitSphere - elevation * h);
-
     VertexOut vout;
-    vout.Position   = mul(float4(position, 1.0f), worldViewProj);
-    vout.NormalDist = float4(unitSphere, gradNoise.w);
+    vout.Position    = mul(float4(position, 1.0f), worldViewProj);
+    vout.WorldPosSum = float4(mul(float4(position, 1.0f), world).xyz, gradNoise.w);
+    vout.Normal      = unitSphere;
     return vout;
 }

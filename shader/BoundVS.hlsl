@@ -2,7 +2,7 @@
 
 cbuffer cb1 : register(b1)
 {
-    float4 vertex[64 + 1][8];
+    float4 vertex[8 + 1][8];
 }
 
 float4 main(uint vi : SV_VertexID, uint ii : SV_InstanceID) : SV_POSITION

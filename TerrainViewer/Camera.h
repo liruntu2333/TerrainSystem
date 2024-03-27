@@ -46,8 +46,8 @@ private:
     D3D11_VIEWPORT m_Viewport {};
     float m_Fov         = DirectX::XM_PIDIV4;
     float m_AspectRatio = 0;
-    float m_NearPlane   = 0.1f;
-    float m_FarPlane    = 100000.0f;
+    float m_NearPlane   = 1.0f;
+    float m_FarPlane    = 150000.0f;
 
     std::vector<DirectX::SimpleMath::Vector3> m_RcdPositions;
     std::vector<DirectX::SimpleMath::Vector3> m_RcdRotations;

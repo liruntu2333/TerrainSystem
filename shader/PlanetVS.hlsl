@@ -3,8 +3,10 @@
 VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
 {
     Instance ins      = instances[instanceId];
-    float2 gridOffset = float2(ins.gridOffsetX, ins.gridOffsetY) + float2(vertexId % 255, vertexId / 255) * ins.gridSize;
-    float3 cubeVertex = ins.faceForward + gridOffset.x * ins.faceRight + gridOffset.y * ins.faceUp;
+    uint face         = ins.faceOctaves & 0xff;
+    uint octaves      = (ins.faceOctaves >> 8) & 0xff;
+	float2 gridOffset = ins.faceOffset + float2(vertexId % 129, vertexId / 129) * ins.gridSize;
+    float3 cubeVertex = GetCubeVertex(face, gridOffset);
     float3 unitSphere = normalize(cubeVertex);
 
     // float4 noised;
@@ -21,7 +23,7 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     // 	amp *= gain;
     // }
     // noised = sum;
-	float4 gradNoise = UberNoiseFbm(unitSphere);
+    float4 gradNoise = UberNoiseFbm(unitSphere, octaves);
 
     float dist = radius + gradNoise.w * elevation;
     // // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
@@ -37,5 +39,6 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     vout.Position    = mul(float4(position, 1.0f), worldViewProj);
     vout.WorldPosSum = float4(mul(float4(position, 1.0f), world).xyz, gradNoise.w);
     vout.Normal      = unitSphere;
+    vout.Octaves     = octaves;
     return vout;
 }

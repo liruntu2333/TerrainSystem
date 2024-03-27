@@ -220,10 +220,10 @@ int main(int, char**)
         planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
         planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
 
-        // planetChanged |= ImGui::DragFloatRange2("perturb", &uniforms.perturb[0], &uniforms.perturb[1],
-        //     0.001f, -1.0f, 1.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
+        planetChanged |= ImGui::DragFloatRange2("perturb", &uniforms.perturb[0], &uniforms.perturb[1],
+            0.001f, -1.0f, 1.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
+        planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
         const auto windowSize = ImGui::GetWindowSize();

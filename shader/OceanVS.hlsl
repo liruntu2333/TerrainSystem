@@ -3,8 +3,10 @@
 VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
 {
     Instance ins      = instances[instanceId];
-    float2 gridOffset = float2(ins.gridOffsetX, ins.gridOffsetY) + float2(vertexId % 255, vertexId / 255) * ins.gridSize;
-    float3 cubeVertex = ins.faceForward + gridOffset.x * ins.faceRight + gridOffset.y * ins.faceUp;
+    uint face         = ins.faceOctaves & 0xff;
+    uint octaves      = (ins.faceOctaves >> 8) & 0xff;
+	float2 gridOffset = ins.faceOffset + float2(vertexId % 129, vertexId / 129) * ins.gridSize;
+    float3 cubeVertex = GetCubeVertex(face, gridOffset);
     float3 unitSphere = normalize(cubeVertex);
 
     float3 position = unitSphere * radius;
@@ -13,5 +15,6 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     vout.Position    = mul(float4(position, 1.0f), worldViewProj);
     vout.WorldPosSum = float4(unitSphere, 0.0);
     vout.Normal      = unitSphere;
+    vout.Octaves     = octaves;
     return vout;
 }

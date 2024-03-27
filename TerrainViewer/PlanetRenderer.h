@@ -10,12 +10,12 @@
 class PlanetRenderer : public Renderer
 {
 public:
-    static constexpr float kRadius       = 17371.0;
+    static constexpr float kRadius       = 50000.0f;
     static constexpr float kElevation    = kRadius * 0.03f;
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
-    static constexpr int maxInstance     = 64;
-    static constexpr int maxBound        = 8;
+    static constexpr int maxInstance     = 128;
+    static constexpr int maxBound        = 16;
 
     struct Uniforms
     {
@@ -36,7 +36,7 @@ public:
 
         int geometryOctaves = 5;
         float lacunarity    = 2.01f;
-        float gain          = 0.6;
+        float gain          = 0.5f;
         float radius        = kRadius;
 
         float elevation       = kElevation;
@@ -64,13 +64,12 @@ public:
 
         struct Instance
         {
-            DirectX::SimpleMath::Vector3 faceForward {};
-            float gridSize = 0.0f;
-            DirectX::SimpleMath::Vector3 faceRight {};
-            float gridOffsetX = 0.0f;
-            DirectX::SimpleMath::Vector3 faceUp {};
-            float gridOffsetY = 0.0f;
-        } instances[maxInstance];
+            DirectX::SimpleMath::Vector2 faceOffset {};
+            float gridSize       = 0.0f;
+            uint32_t faceOctaves = 0;
+        };
+
+        Instance instances[maxInstance];
     };
 
     struct BoundingUniforms

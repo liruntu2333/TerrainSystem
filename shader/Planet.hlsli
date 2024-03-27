@@ -10,16 +10,14 @@ struct VertexOut
     float4 Position : SV_Position;
     float4 WorldPosSum : TEXCOORD0;
     float3 Normal : TEXCOORD1;
+    nointerpolation uint Octaves : TEXCOORD2;
 };
 
 struct Instance
 {
-    float3 faceForward;
+    float2 faceOffset;
     float gridSize;
-    float3 faceRight;
-    float gridOffsetX;
-    float3 faceUp;
-    float gridOffsetY;
+    uint faceOctaves;
 };
 
 cbuffer cb0 : register(b0)
@@ -67,7 +65,87 @@ cbuffer cb0 : register(b0)
     float3 camPos;
     float oceanLevel;
 
-    Instance instances[64];
+    Instance instances[128];
+}
+
+static const float3 faceForward[6] =
+{
+    // switch (face)
+    // {
+    // case POSITIVE_X:
+    //     return Vector3::Right;
+    // case NEGATIVE_X:
+    //     return Vector3::Left;
+    // case POSITIVE_Y:
+    //     return Vector3::Up;
+    // case NEGATIVE_Y:
+    //     return Vector3::Down;
+    // case POSITIVE_Z:
+    //     return Vector3::Backward;
+    // case NEGATIVE_Z:
+    //     return Vector3::Forward;
+    // }
+    float3(1.0, 0.0, 0.0),
+    float3(-1.0, 0.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, -1.0, 0.0),
+    float3(0.0, 0.0, 1.0),
+    float3(0.0, 0.0, -1.0),
+};
+
+static const float3 faceRight[6] =
+{
+    // switch (face)
+    // {
+    // case POSITIVE_X:
+    //     return Vector3::Forward;
+    // case NEGATIVE_X:
+    //     return Vector3::Backward;
+    // case POSITIVE_Y:
+    //     return Vector3::Right;
+    // case NEGATIVE_Y:
+    //     return Vector3::Right;
+    // case POSITIVE_Z:
+    //     return Vector3::Right;
+    // case NEGATIVE_Z:
+    //     return Vector3::Left;
+    // }
+    float3(0.0, 0.0, -1.0),
+    float3(0.0, 0.0, 1.0),
+    float3(1.0, 0.0, 0.0),
+    float3(1.0, 0.0, 0.0),
+    float3(1.0, 0.0, 0.0),
+    float3(-1.0, 0.0, 0.0),
+};
+
+static const float3 faceUp[6] =
+{
+    // switch (face)
+    // {
+    // case POSITIVE_X:
+    //     return Vector3::Up;
+    // case NEGATIVE_X:
+    //     return Vector3::Up;
+    // case POSITIVE_Y:
+    //     return Vector3::Forward;
+    // case NEGATIVE_Y:
+    //     return Vector3::Backward;
+    // case POSITIVE_Z:
+    //     return Vector3::Up;
+    // case NEGATIVE_Z:
+    //     return Vector3::Up;
+    // }
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 0.0, -1.0),
+    float3(0.0, 0.0, 1.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+};
+
+float3 GetCubeVertex(uint face, float2 xy)
+{
+    return faceForward[face] + xy.x * faceRight[face] + xy.y * faceUp[face];
 }
 
 float3 mod289(float3 x)
@@ -388,7 +466,7 @@ float4 Billowy(float4 dNoise)
 
     // dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
     // dNoise.w   = dNoise.w * dNoise.w;
-    dNoise = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
+    // dNoise     = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
     return dNoise;
 }
 
@@ -429,11 +507,11 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
 
     float currSharpness    = 0.0;
     float currSlopeErosion = 0.0;
-    float4 currPerturb     = 0.0;
+    float3 currPerturbDir  = 0.0;
 
     for (int i = 0; i < numOctaves; i++)
     {
-        featureSph      = mul(featureSph, (float3x3)featureNoiseRotation);
+        // featureSph      = mul(featureSph, (float3x3)featureNoiseRotation);
         sharpnessSph    = mul(sharpnessSph, (float3x3)sharpnessNoiseRotation);
         slopeErosionSph = mul(slopeErosionSph, (float3x3)slopeErosionNoiseRotation);
         perturbSph      = mul(perturbSph, (float3x3)perturbNoiseRotation);
@@ -442,14 +520,15 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
             SimplexNoise01(sharpnessSph * sharpnessFreq, sharpnessNoiseSeed));
         currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
             SimplexNoise01(slopeErosionSph * slopeErosionFreq, slopeErosionNoiseSeed));
-        currPerturb.xyz = SimplexGradNoise(perturbSph * perturbFreq, perturbNoiseSeed).xyz;
-        currPerturb.xyz *= lerp(perturb.x, perturb.y, SimplexNoise01(perturbSph * perturbFreq, float4(0.0, 0.0, 0.0, 0.0)));
+        currPerturbDir    = SimplexGradNoise(perturbSph * perturbFreq, perturbNoiseSeed).xyz;
+        float currPerturb = lerp(perturb.x, perturb.y, SimplexNoise01(perturbSph * perturbFreq, float4(0.0, 0.0, 0.0, 0.0)));
 
         sharpnessFreq *= sharpnessLacunarity;
         slopeErosionFreq *= slopeErosionLacunarity;
         perturbFreq *= perturbLacunarity;
 
         float3 v = featureSph * featureFreq;
+		v += currPerturb * currPerturbDir;
         // if (amp < 1e-5)
         // {
         //     break;
@@ -458,11 +537,10 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
         float4 gradNoise = SimplexGradNoise(v, featureNoiseSeed);
 
         // gradNoise = gradNoise * 0.5 + float4(0.0, 0.0, 0.0, 0.5);
-        slopeErosionGrad += gradNoise.xyz * currSlopeErosion;
+        slopeErosionGrad = gradNoise.xyz * currSlopeErosion;
         dampAmp *= 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
-        currSharpness = i < 2 ? 0.0 : currSharpness;
-        gradNoise     = lerp(gradNoise, Ridged(gradNoise), max(0.0, currSharpness));
-        gradNoise     = lerp(gradNoise, Billowy(gradNoise), abs(min(0.0, currSharpness)));
+        gradNoise = lerp(gradNoise, Ridged(gradNoise), max(0.0, currSharpness));
+        gradNoise = lerp(gradNoise, Billowy(gradNoise), abs(min(0.0, currSharpness)));
 
         noise += dampAmp * gradNoise.w;
         grad += dampAmp * gradNoise.xyz * featureFreq;

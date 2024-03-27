@@ -7,7 +7,7 @@ float4 main(VertexOut pin) : SV_TARGET
     float3 unitSphere = normalize(pin.Normal.xyz);
 
 #ifdef OCEAN_FOAM
-    float sum  = UberNoiseFbm(unitSphere).w;
+    float sum  = UberNoiseFbm(unitSphere, pin.Octaves).w;
     float3 alb = lerp(SHALLOW_OCEAN_COLOR, DEEP_OCEAN_COLOR, smoothstep(0.0, 1.0, saturate((oceanLevel - sum) * 30.0)));
 #else
     float3 alb = DEEP_OCEAN_COLOR;

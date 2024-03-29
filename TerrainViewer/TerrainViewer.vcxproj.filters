@@ -74,6 +74,9 @@
     <ClInclude Include="PlanetRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="psrdnoise2D.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shader\PlanetVS.hlsl">

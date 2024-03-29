@@ -176,6 +176,7 @@
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />
     <ClInclude Include="PlanetRenderer.h" />
+    <ClInclude Include="psrdnoise2D.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="StructuredBuffer.h" />
     <ClInclude Include="Vertex.h" />

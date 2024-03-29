@@ -25,6 +25,8 @@ DebugRenderer::DebugRenderer(ID3D11DeviceContext* context, ID3D11Device* device)
             CD3D11_TEXTURE2D_DESC(DXGI_FORMAT_BC3_UNORM, 256, 256));
         m_Bc3Tex[i]->CreateViews(device);
     }
+    s_Cube->SetDepthBufferMode(true);
+    s_Sphere->SetDepthBufferMode(true);
 }
 
 void DebugRenderer::DrawBounding(

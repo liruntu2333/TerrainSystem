@@ -7,6 +7,9 @@
 class Camera
 {
 public:
+    static constexpr float kMaxFar = 250000.0f;
+    static constexpr float kMinFar = 1000.0f;
+
     Camera(const DirectX::SimpleMath::Vector3& pos) : m_Position(pos) {}
     ~Camera() = default;
 
@@ -18,13 +21,17 @@ public:
     // [[nodiscard]] DirectX::SimpleMath::Matrix GetViewProjectionLocal() const;
     [[nodiscard]] DirectX::SimpleMath::Vector3 GetPosition() const { return m_Position; }
     // [[nodiscard]] DirectX::SimpleMath::Vector3 GetPositionLocal() const { return m_LocalPosition; }
-    [[nodiscard]] DirectX::BoundingFrustum GetFrustum() const;
+    [[nodiscard]] DirectX::BoundingFrustum GetFrustum(float farPlane = kMaxFar) const;
     // [[nodiscard]] DirectX::BoundingFrustum GetFrustumLocal() const;
     // [[nodiscard]] DirectX::XMINT2 GetPatch() const { return { m_PatchX, m_PatchY }; }
     [[nodiscard]] DirectX::SimpleMath::Vector3 GetDeltaPosition() const { return m_DeltaPosition; }
     [[nodiscard]] float GetNear() const { return m_NearPlane; }
     [[nodiscard]] float GetFar() const { return m_FarPlane; }
     auto GetForward() const { return m_Forward; }
+    auto GetRight() const { return m_Right; }
+    auto GetUp() const { return m_Up; }
+    auto GetOrientation() const { return m_Orientation; }
+    void SetFar(float _far);
     void SetViewPort(ID3D11DeviceContext* context) const;
     void Update(const ImGuiIO& io, float spd);
     void StartRecord();
@@ -47,7 +54,7 @@ private:
     float m_Fov         = DirectX::XM_PIDIV4;
     float m_AspectRatio = 0;
     float m_NearPlane   = 1.0f;
-    float m_FarPlane    = 150000.0f;
+    float m_FarPlane    = kMaxFar;
 
     std::vector<DirectX::SimpleMath::Vector3> m_RcdPositions;
     std::vector<DirectX::SimpleMath::Vector3> m_RcdRotations;

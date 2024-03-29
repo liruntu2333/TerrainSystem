@@ -7,7 +7,7 @@
 #include "Renderer.h"
 #include "Texture2D.h"
 
-class PlanetRenderer : public Renderer
+class PlanetRenderer final : public Renderer
 {
 public:
     static constexpr float kRadius       = 50000.0f;
@@ -15,7 +15,7 @@ public:
     static constexpr int kWorldMapWidth  = 512;
     static constexpr int kWorldMapHeight = 256;
     static constexpr int maxInstance     = 128;
-    static constexpr int maxBound        = 16;
+    static constexpr int maxBound        = 8;
 
     struct Uniforms
     {
@@ -45,22 +45,28 @@ public:
         float baseFrequency   = 1.0f;
 
         float baseAmplitude = 1.0f;
-        float pad[3];
+        int debug           = 0;
+        int baseOctaves     = 8u;
+
+        float pad;
 
         float sharpness[2]           = { -1.0f, 1.0f };
-        float sharpnessBaseFrequency = 1.0f;
+        float sharpnessBaseFrequency = 0.3f;
         float sharpnessLacunarity    = 2.01f;
 
-        float slopeErosion[2]           = { 0.0f, 1.0f };
+        float slopeErosion[2]           = { 0.0f, 0.5f };
         float slopeErosionBaseFrequency = 1.0f;
         float slopeErosionLacunarity    = 2.01f;
 
-        float perturb[2]           = { 0.0f, 0.0f };
+        float perturb[2]           = { -0.05f, 0.05f };
         float perturbBaseFrequency = 1.0f;
         float perturbLacunarity    = 2.01f;
 
         DirectX::SimpleMath::Vector3 camPos {};
         float oceanLevel = -3.0f;
+
+        DirectX::SimpleMath::Vector3 camDir {};
+        float pad2;
 
         struct Instance
         {
@@ -74,7 +80,7 @@ public:
 
     struct BoundingUniforms
     {
-        DirectX::SimpleMath::Vector4 corners[maxBound + 1][8];
+        DirectX::SimpleMath::Vector4 corners[maxBound + 2][8];
     };
 
     explicit PlanetRenderer(ID3D11Device* device) : Renderer(device) {}
@@ -91,7 +97,7 @@ public:
         const DirectX::SimpleMath::Vector3& trans,
         bool wireFrame = false,
         bool freeze    = false,
-        bool debug     = false);
+        bool bound     = false);
 
     void CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms);
 
@@ -100,6 +106,7 @@ public:
 private:
     void CreateSphere(uint16_t tesselation);
     void CreateTexture();
+    void RenderOcean(ID3D11DeviceContext* context, Uniforms& uniforms);
 
     int m_Tesselation    = 0;
     int m_IndicesPerFace = 0;

@@ -5,7 +5,7 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     Instance ins      = instances[instanceId];
     uint face         = ins.faceOctaves & 0xff;
     uint octaves      = (ins.faceOctaves >> 8) & 0xff;
-	float2 gridOffset = ins.faceOffset + float2(vertexId % 129, vertexId / 129) * ins.gridSize;
+	float2 gridOffset = ins.faceOffset + float2(vertexId % 255, vertexId / 255) * ins.gridSize;
     float3 cubeVertex = GetCubeVertex(face, gridOffset);
     float3 unitSphere = normalize(cubeVertex);
 

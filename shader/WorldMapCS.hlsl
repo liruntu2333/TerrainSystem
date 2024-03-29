@@ -20,11 +20,13 @@ void main(uint3 dtId : SV_DispatchThreadID)
             sin(latitude),
             cos(longitude) * cos(latitude)));
 
-    float sum = UberNoiseFbm(unitSphere).w;
+    float sum = UberNoiseFbm(unitSphere, baseOctaves).w;
 
-	// float u = sum * 0.5;
+    // float u = sum * 0.5;
     // float3 alb = albedoRoughness.SampleLevel(pointClamp, u, 0.0).rgb;
-	float3 alb = sum * 0.5 + 0.5;
+
+    float3 alb = sum * 0.5 + 0.5;
+    alb        = lerp(alb, alb * float3(1.0, 0.0, 0.0), step(0.999, dot(unitSphere, camDir)));
     if (sum < oceanLevel)
     {
         alb = lerp(DEEP_OCEAN_COLOR, alb, OCEAN_ALPHA);

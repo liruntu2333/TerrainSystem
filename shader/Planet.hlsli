@@ -4,6 +4,7 @@
 #define DEEP_OCEAN_COLOR float3(0.0, 0.2, 1.0)
 #define SHALLOW_OCEAN_COLOR float3(0.5, 0.5, 0.5)
 #define OCEAN_ALPHA 0.5
+#define PIXEL_FBM
 
 struct VertexOut
 {
@@ -48,7 +49,9 @@ cbuffer cb0 : register(b0)
     float baseFrequency;
 
     float baseAmplitude;
-    float3 pad;
+    int debug;
+    int baseOctaves;
+    float pad;
 
     float2 sharpness;
     float sharpnessBaseFrequency;
@@ -64,6 +67,9 @@ cbuffer cb0 : register(b0)
 
     float3 camPos;
     float oceanLevel;
+
+    float3 camDir;
+    float pad2;
 
     Instance instances[128];
 }
@@ -466,7 +472,7 @@ float4 Billowy(float4 dNoise)
 
     // dNoise.xyz = 2.0 * dNoise.w * dNoise.xyz;
     // dNoise.w   = dNoise.w * dNoise.w;
-    // dNoise     = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
+    dNoise = dNoise * 2.0 + float4(0.0, 0.0, 0.0, -1.0);
     return dNoise;
 }
 
@@ -508,43 +514,53 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
     float currSharpness    = 0.0;
     float currSlopeErosion = 0.0;
     float3 currPerturbDir  = 0.0;
+    float currPerturb      = 0.0;
+
+    float3x3 featureRot = float3x3(
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0);
+
+    currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
+        SimplexNoise01(slopeErosionSph * slopeErosionFreq, slopeErosionNoiseSeed));
+    currSharpness = lerp(sharpness.x, sharpness.y,
+        SimplexNoise01(sharpnessSph * sharpnessFreq, sharpnessNoiseSeed));
+
+    currPerturb = lerp(perturb.x, perturb.y, SimplexNoise01(perturbSph * perturbFreq, perturbNoiseSeed));
 
     for (int i = 0; i < numOctaves; i++)
     {
-        // featureSph      = mul(featureSph, (float3x3)featureNoiseRotation);
+        featureSph = mul(unitSphere, featureRot);
+
         sharpnessSph    = mul(sharpnessSph, (float3x3)sharpnessNoiseRotation);
         slopeErosionSph = mul(slopeErosionSph, (float3x3)slopeErosionNoiseRotation);
         perturbSph      = mul(perturbSph, (float3x3)perturbNoiseRotation);
-
-        currSharpness = lerp(sharpness.x, sharpness.y,
-            SimplexNoise01(sharpnessSph * sharpnessFreq, sharpnessNoiseSeed));
-        currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
-            SimplexNoise01(slopeErosionSph * slopeErosionFreq, slopeErosionNoiseSeed));
-        currPerturbDir    = SimplexGradNoise(perturbSph * perturbFreq, perturbNoiseSeed).xyz;
-        float currPerturb = lerp(perturb.x, perturb.y, SimplexNoise01(perturbSph * perturbFreq, float4(0.0, 0.0, 0.0, 0.0)));
 
         sharpnessFreq *= sharpnessLacunarity;
         slopeErosionFreq *= slopeErosionLacunarity;
         perturbFreq *= perturbLacunarity;
 
         float3 v = featureSph * featureFreq;
-		v += currPerturb * currPerturbDir;
-        // if (amp < 1e-5)
-        // {
-        //     break;
-        // }
+        v += currPerturbDir;
 
         float4 gradNoise = SimplexGradNoise(v, featureNoiseSeed);
+        float4 ridged    = Ridged(gradNoise);
+        float4 billowy   = Billowy(gradNoise);
 
-        // gradNoise = gradNoise * 0.5 + float4(0.0, 0.0, 0.0, 0.5);
-        slopeErosionGrad = gradNoise.xyz * currSlopeErosion;
+        currPerturbDir += dampAmp * gradNoise.xyz * currPerturb;
+
+        slopeErosionGrad += dampAmp * gradNoise.xyz * currSlopeErosion;
         dampAmp *= 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
-        gradNoise = lerp(gradNoise, Ridged(gradNoise), max(0.0, currSharpness));
-        gradNoise = lerp(gradNoise, Billowy(gradNoise), abs(min(0.0, currSharpness)));
+
+        gradNoise = lerp(gradNoise, ridged, max(0.0, currSharpness));
+        gradNoise = lerp(gradNoise, billowy, abs(min(0.0, currSharpness)));
 
         noise += dampAmp * gradNoise.w;
-        grad += dampAmp * gradNoise.xyz * featureFreq;
+        grad += dampAmp * mul(gradNoise.xyz, featureRot) * featureFreq;
+
         featureFreq *= lacunarity;
+        featureRot = mul(featureRot, (float3x3)featureNoiseRotation);
+
         amp *= gain;
         // amp *= lerp(1.0, smoothstep(0.0, 1.0, sum), altitudeErosion);
         dampAmp = amp;

@@ -31,6 +31,11 @@ Matrix Camera::GetView() const
     return XMMatrixLookToRH(m_Position, m_Forward, m_Up);
 }
 
+void Camera::SetFar(float farPlane)
+{
+    m_FarPlane = std::clamp(farPlane, kMinFar, kMaxFar);
+}
+
 // Matrix Camera::GetViewLocal() const
 // {
 //     return XMMatrixLookToLH(m_LocalPosition, m_Forward, Vector3::Up);
@@ -59,16 +64,16 @@ Matrix Camera::GetProjection() const
 //         XMMatrixPerspectiveFovLH(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane);
 // }
 
-BoundingFrustum Camera::GetFrustum() const
+BoundingFrustum Camera::GetFrustum(float farPlane) const
 {
-    BoundingFrustum f2(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, m_FarPlane), true);
-    float topSlope = -std::tanf(m_Fov * 0.5f);
-    float btmSlope = -topSlope;
-    float rhtSlope = topSlope * m_AspectRatio;
-    float lftSlope = -rhtSlope;
-    float nearZ    = -m_FarPlane;
-    float farZ     = -m_NearPlane;
-    BoundingFrustum f(Vector3::Zero, Quaternion::Identity, rhtSlope, lftSlope, topSlope, btmSlope, nearZ, farZ);
+    BoundingFrustum f(Matrix::CreatePerspectiveFieldOfView(m_Fov, m_AspectRatio, m_NearPlane, farPlane), true);
+    // float topSlope = -std::tanf(m_Fov * 0.5f);
+    // float btmSlope = -topSlope;
+    // float rhtSlope = topSlope * m_AspectRatio;
+    // float lftSlope = -rhtSlope;
+    // float nearZ    = -m_FarPlane;
+    // float farZ     = -m_NearPlane;
+    // BoundingFrustum f(Vector3::Zero, Quaternion::Identity, rhtSlope, lftSlope, topSlope, btmSlope, nearZ, farZ);
     f.Transform(f, Matrix::CreateFromQuaternion(m_Orientation) * Matrix::CreateTranslation(m_Position));
     return f;
 }

@@ -1,6 +1,16 @@
 #include "Planet.hlsli"
 #include "ShaderUtil.hlsli"
-// #define LERP_ALTITUDE
+
+const static float3 debugCol[7] =
+{
+    float3(1, 0, 0),
+    float3(0, 1, 0),
+    float3(0, 0, 1),
+    float3(1, 1, 0),
+    float3(1, 0, 1),
+    float3(0, 1, 1),
+    float3(1, 1, 1),
+};
 
 Texture1D albedoRoughness : register(t0);
 // Texture1D f0Metallic : register(t1);
@@ -8,35 +18,32 @@ SamplerState pointClamp : register(s0);
 
 float4 main(VertexOut pin) : SV_TARGET
 {
-    float pixDist = pin.WorldPosSum.w;
     // clip(pixDist + 0.01);
+#ifdef PIXEL_FBM
+    float sum       = pin.WorldPosSum.w;
+    float3 worldPos = pin.WorldPosSum.xyz;
+    float3 N        = normalize(pin.Normal);
+#else
     float3 unitSphere = normalize(pin.Normal);
 
     float4 uberNoise = UberNoiseFbm(unitSphere, pin.Octaves);
     float sum        = uberNoise.w;
     float3 grad      = uberNoise.xyz;
-
-#ifdef LERP_ALTITUDE
-	sum = pixDist;
-#endif
-    float dist = sum * elevation + radius;
-
+    float dist       = sum * elevation + radius;
+    float3 worldPos  = unitSphere * dist;
     // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
     float3 g = grad / dist;
     float3 h = g - dot(g, unitSphere) * unitSphere;
     float3 N = normalize(unitSphere - elevation * h);
 
     N = normalize(mul(N, (float3x3)worldInvTrans));
+#endif
 
     float3 L  = float3(0.0, 0.0, 1.0);
     float3 Li = float3(0.9568627, 0.9137255, 0.6078431);
     // float3 li = 0.0;
 
-    // float sum       = pin.WorldPosSum.w;
-    // float3 worldPos = pin.WorldPosSum.xyz;
-    // float3 N        = normalize(pin.Normal);
-    float3 worldPos = unitSphere * dist;
-    float3 V        = normalize(camPos - worldPos);
+    float3 V = normalize(camPos - worldPos);
 
     float u = sum * 0.5 + 0.5;
     // float u = sum;
@@ -49,16 +56,18 @@ float4 main(VertexOut pin) : SV_TARGET
     // float4 f0metal = f0Metallic.SampleLevel(pointClamp, u, 0.0);
     float3 alb = albRough.rgb;
 
-    // float3 alb = 1;
-    // float3 alb = debugCol.xyz;
+    // alb = 1;
     // alb = (N * 0.5 + 0.5);
+    alb = debug ? debugCol[(pin.Octaves - baseOctaves) % 7] : alb;
+
+
     // float3 f0 = f0metal.rgb;
     float3 f0 = 0.0;
     // float metallic = f0metal.a;
-    float metallic  = 0.0;
-    float roughness = albRough.a;
-    // float roughness = 1;
-    float3 ami = 0.0;
+    float metallic = 0.0;
+    // float roughness = albRough.a;
+    float roughness = 1;
+    float3 ami      = 0.0;
 
     float3 color = Brdf(L, Li, V, N, alb, f0, metallic, roughness, ami);
     // float3 color = alb * EvalSh(n);

@@ -7,6 +7,7 @@
 #include <DirectXColors.h>
 #include <map>
 #include <directxtk/BufferHelpers.h>
+#include <directxtk/VertexTypes.h>
 
 #include "D3DHelper.h"
 
@@ -484,7 +485,7 @@ void PlanetRenderer::Initialize(const std::filesystem::path& shaderDir)
     m_Cb1.Create(m_Device);
 }
 
-void PlanetRenderer::RenderOcean(ID3D11DeviceContext* context, PlanetRenderer::Uniforms& uniforms)
+void PlanetRenderer::RenderOcean(ID3D11DeviceContext* context, Uniforms& uniforms)
 {
     uniforms.radius += uniforms.elevation * uniforms.oceanLevel - 1.0f;
     context->VSSetShader(m_OceanVs.Get(), nullptr, 0);
@@ -512,6 +513,7 @@ void PlanetRenderer::Render(
     const BoundingFrustum& frustum,
     const Quaternion& rot,
     const Vector3& trans,
+    const Matrix& wld,
     const bool wireFrame,
     const bool freeze,
     const bool bound)
@@ -527,11 +529,6 @@ void PlanetRenderer::Render(
     oc.Normalize();
     oc = Vector3::Transform(oc, invRot);
     MapToCube(oc, camFace, camXy);
-
-    const Matrix wld =
-        Matrix::CreateScale(uniforms.radius) *
-        Matrix::CreateFromQuaternion(rot) *
-        Matrix::CreateTranslation(trans);
 
     const double elevationRatio = uniforms.elevation / uniforms.radius * uniforms.baseAmplitude * 1.2f;
     float cosAng                = uniforms.radius / (camPos - trans).Length();
@@ -676,13 +673,26 @@ void PlanetRenderer::CreateSphere(const uint16_t tesselation)
             const uint16_t i2 = j * tesselation + k + 1;
             const uint16_t i3 = (j + 1) * tesselation + k + 1;
 
-            indices.emplace_back(i0);
-            indices.emplace_back(i2);
-            indices.emplace_back(i1);
+            if ((k % 2 == 0 && j % 2 == 0) || (k % 2 == 1 && j % 2 == 1))
+            {
+                indices.emplace_back(i0);
+                indices.emplace_back(i3);
+                indices.emplace_back(i1);
 
-            indices.emplace_back(i2);
-            indices.emplace_back(i3);
-            indices.emplace_back(i1);
+                indices.emplace_back(i0);
+                indices.emplace_back(i2);
+                indices.emplace_back(i3);
+            }
+            if ((k % 2 == 0 && j % 2 == 1) || (k % 2 == 1 && j % 2 == 0))
+            {
+                indices.emplace_back(i0);
+                indices.emplace_back(i2);
+                indices.emplace_back(i1);
+
+                indices.emplace_back(i2);
+                indices.emplace_back(i3);
+                indices.emplace_back(i1);
+            }
         }
     }
 

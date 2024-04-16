@@ -21,8 +21,8 @@ float4 main(VertexOut pin) : SV_TARGET
     float f0        = 0.0;
     float roughness = 0.1;
     float3 ami      = 0.0;
-    float3 N        = mul(unitSphere, (float3x3)worldInvTrans).xyz;
-    float3 V        = normalize(camPos - mul(float4(N * radius, 1.0f), world).xyz);
+    float3 N        = normalize(mul(unitSphere, (float3x3)worldInvTrans).xyz);
+    float3 V        = normalize(camPos - pin.Position.xyz);
 
     float3 col = Brdf(L, Li, V, N, alb, f0, metallic, roughness, ami);
 

@@ -115,7 +115,7 @@ int main(int, char**)
 
     auto rndVec4 = [&randomEngine]() -> Vector4
     {
-        std::uniform_real_distribution distribution(-1.0, 1.0);
+        std::uniform_int_distribution distribution(-289, 289);
         return Vector4(
             distribution(randomEngine),
             distribution(randomEngine),
@@ -204,18 +204,14 @@ int main(int, char**)
         ImGui::SliderFloat(UNIFORM(lacunarity), 1.01f, 4.0f);
         ImGui::SliderFloat(UNIFORM(gain), 0.5f, 0.70710678118654752440084436210485f);
 
-        ImGui::DragFloatRange2("sharpness", &uniforms.sharpness[0], &uniforms.sharpness[1],
-            0.01f, -1.0f, 1.0f);
+        ImGui::DragFloat2("sharpness", uniforms.sharpness, 0.001f, -1.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(sharpnessBaseFrequency), 0.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessLacunarity), 1.01f, 4.0f);
 
-        ImGui::DragFloatRange2("slopeErosion", &uniforms.slopeErosion[0], &uniforms.slopeErosion[1],
-            0.01f, 0.0f, 1.0f);
+        ImGui::DragFloat2("slopeErosion", uniforms.slopeErosion, 0.001f, 0.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
-
-        ImGui::DragFloatRange2("perturb", &uniforms.perturb[0], &uniforms.perturb[1],
-            0.001f, -1.0f, 1.0f);
+        ImGui::DragFloat2("perturb", uniforms.perturb, 0.001f, -1.f, 1.0f);
         ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
@@ -232,6 +228,7 @@ int main(int, char**)
         ImGui::SliderFloat("Rotate Speed", &rotSpd, 0.0f, 0.1f);
         ImGui::End();
 #undef UNIFORM
+        uniforms.elevationRatio = uniforms.elevation / uniforms.radius;
         // Updating
         spd = std::max(30.0f, (g_Camera->GetPosition() - trans).Length() - uniforms.radius + uniforms.elevation * 0.5f);
         g_Camera->Update(io, spd);
@@ -270,8 +267,8 @@ int main(int, char**)
         yaw -= io.DeltaTime * rotSpd;
         yaw = std::fmod(yaw, -DirectX::XM_2PI);
 
-        Matrix world = tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
-        auto q       = Quaternion::CreateFromRotationMatrix(world);
+        Matrix world = Matrix::CreateScale(uniforms.radius) * tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
+        auto q       = Quaternion::CreateFromRotationMatrix(tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw));
 
         Quaternion invRot;
         q.Inverse(invRot);
@@ -309,7 +306,7 @@ int main(int, char**)
         }
 
         g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, frustum, q,
-            trans, wireFrame, freezeFrustum, renderBound);
+            trans, world, wireFrame, freezeFrustum, renderBound);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 

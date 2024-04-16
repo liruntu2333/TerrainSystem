@@ -51,7 +51,7 @@ cbuffer cb0 : register(b0)
     float baseAmplitude;
     int debug;
     int baseOctaves;
-    float pad;
+    float elevationRatio;
 
     float2 sharpness;
     float sharpnessBaseFrequency;
@@ -395,14 +395,12 @@ float4 SimplexGradNoise(float3 v, float4 seed)
     float3 x3 = x0 - D.yyy; // -1.0+3.0*C.x = -0.5 = -D.y
 
     // https://github.com/ashima/webgl-noise/issues/9
-    float3 seedInt = floor(float3(seed.xyz) + .5);
     // Permutations
     i        = mod289(i);
     float4 p = permute(permute(permute(
-                i.z + float4(0.0, i1.z, i2.z, 1.0) + seedInt.z) +
-            i.y + float4(0.0, i1.y, i2.y, 1.0) + seedInt.y) +
-        i.x + float4(0.0, i1.x, i2.x, 1.0) + seedInt.x);
-
+                i.z + float4(0.0, i1.z, i2.z, 1.0) + seed.z) +
+            i.y + float4(0.0, i1.y, i2.y, 1.0) + seed.y) +
+        i.x + float4(0.0, i1.x, i2.x, 1.0) + seed.x);
 
     // Gradients: 7x7 points over a square, mapped onto an octahedron.
     // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
@@ -503,43 +501,19 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
            slopeErosionSph = unitSphere,
            perturbSph      = unitSphere;
 
-    float featureFreq      = baseFrequency,
-          sharpnessFreq    = sharpnessBaseFrequency,
-          slopeErosionFreq = slopeErosionBaseFrequency,
-          perturbFreq      = perturbBaseFrequency;
-
+    float featureFreq       = baseFrequency;
     float3 slopeErosionGrad = 0.0;
-    float3 ridgeErosionGrad = 0.0;
+    float3 currPerturbDir   = 0.0;
 
-    float currSharpness    = 0.0;
-    float currSlopeErosion = 0.0;
-    float3 currPerturbDir  = 0.0;
-    float currPerturb      = 0.0;
-
-    float3x3 featureRot = float3x3(
-        1.0, 0.0, 0.0,
-        0.0, 1.0, 0.0,
-        0.0, 0.0, 1.0);
-
-    currSlopeErosion = lerp(slopeErosion.x, slopeErosion.y,
-        SimplexNoise01(slopeErosionSph * slopeErosionFreq, slopeErosionNoiseSeed));
-    currSharpness = lerp(sharpness.x, sharpness.y,
-        SimplexNoise01(sharpnessSph * sharpnessFreq, sharpnessNoiseSeed));
-
-    currPerturb = lerp(perturb.x, perturb.y, SimplexNoise01(perturbSph * perturbFreq, perturbNoiseSeed));
+    float currSlopeErosion = saturate(slopeErosion.x + slopeErosion.y *
+        SimplexNoise(slopeErosionSph * slopeErosionBaseFrequency, slopeErosionNoiseSeed));
+    float currSharpness = saturate(sharpness.x + sharpness.y *
+        SimplexNoise(sharpnessSph * sharpnessBaseFrequency, sharpnessNoiseSeed));
+    float currPerturb = saturate(perturb.x + perturb.y *
+        SimplexNoise(perturbSph * perturbBaseFrequency, perturbNoiseSeed));
 
     for (int i = 0; i < numOctaves; i++)
     {
-        featureSph = mul(unitSphere, featureRot);
-
-        sharpnessSph    = mul(sharpnessSph, (float3x3)sharpnessNoiseRotation);
-        slopeErosionSph = mul(slopeErosionSph, (float3x3)slopeErosionNoiseRotation);
-        perturbSph      = mul(perturbSph, (float3x3)perturbNoiseRotation);
-
-        sharpnessFreq *= sharpnessLacunarity;
-        slopeErosionFreq *= slopeErosionLacunarity;
-        perturbFreq *= perturbLacunarity;
-
         float3 v = featureSph * featureFreq;
         v += currPerturbDir;
 
@@ -547,26 +521,39 @@ float4 UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
         float4 ridged    = Ridged(gradNoise);
         float4 billowy   = Billowy(gradNoise);
 
-        currPerturbDir += dampAmp * gradNoise.xyz * currPerturb;
-
-        slopeErosionGrad += dampAmp * gradNoise.xyz * currSlopeErosion;
+		currPerturbDir += dampAmp * featureFreq * gradNoise.xyz * currPerturb;
+        slopeErosionGrad += dampAmp * featureFreq * gradNoise.xyz * currSlopeErosion;
         dampAmp *= 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
 
         gradNoise = lerp(gradNoise, ridged, max(0.0, currSharpness));
         gradNoise = lerp(gradNoise, billowy, abs(min(0.0, currSharpness)));
 
         noise += dampAmp * gradNoise.w;
-        grad += dampAmp * mul(gradNoise.xyz, featureRot) * featureFreq;
+        grad += dampAmp * gradNoise.xyz * featureFreq;
 
         featureFreq *= lacunarity;
-        featureRot = mul(featureRot, (float3x3)featureNoiseRotation);
 
         amp *= gain;
-        // amp *= lerp(1.0, smoothstep(0.0, 1.0, sum), altitudeErosion);
         dampAmp = amp;
     }
 
     return float4(grad, noise);
 }
 
+float3 UberNoiseNormal(float3 v, float ve)
+{
+    float2 eps = float2(0.5 / baseFrequency * pow(lacunarity, -baseOctaves), 0.0);
+
+    float3 grad = float3(
+        UberNoiseFbm(v + float3(eps.xyy), baseOctaves).w - ve,
+        UberNoiseFbm(v + float3(eps.yxy), baseOctaves).w - ve,
+        UberNoiseFbm(v + float3(eps.yyx), baseOctaves).w - ve) / eps.x;
+
+    // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
+    float3 g = grad / (1.0f + elevationRatio * ve);
+    float3 h = g - dot(g, v) * v;
+    float3 n = normalize(v - h * elevationRatio);
+
+    return n;
+}
 #endif

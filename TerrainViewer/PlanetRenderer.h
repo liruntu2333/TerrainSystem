@@ -1,7 +1,6 @@
 #pragma once
 
 #include <directxtk/BufferHelpers.h>
-#include <directxtk/VertexTypes.h>
 #include <filesystem>
 
 #include "Renderer.h"
@@ -25,9 +24,9 @@ public:
         DirectX::SimpleMath::Matrix viewProj      = DirectX::SimpleMath::Matrix::Identity;
 
         DirectX::SimpleMath::Vector4 featureNoiseSeed { 0.0f };
-        DirectX::SimpleMath::Vector4 sharpnessNoiseSeed { 0.5f };
-        DirectX::SimpleMath::Vector4 slopeErosionNoiseSeed { 0.75f };
-        DirectX::SimpleMath::Vector4 perturbNoiseSeed { -0.42f };
+        DirectX::SimpleMath::Vector4 sharpnessNoiseSeed { 1.0f };
+        DirectX::SimpleMath::Vector4 slopeErosionNoiseSeed { 2.0f };
+        DirectX::SimpleMath::Vector4 perturbNoiseSeed { 3.0f };
 
         DirectX::SimpleMath::Matrix featureNoiseRotation      = DirectX::SimpleMath::Matrix::Identity;
         DirectX::SimpleMath::Matrix sharpnessNoiseRotation    = DirectX::SimpleMath::Matrix::Identity;
@@ -47,18 +46,17 @@ public:
         float baseAmplitude = 1.0f;
         int debug           = 0;
         int baseOctaves     = 8u;
+        float elevationRatio = kElevation / kRadius;
 
-        float pad;
-
-        float sharpness[2]           = { -1.0f, 1.0f };
+        float sharpness[2]           = { 0.0f, 1.0f };
         float sharpnessBaseFrequency = 0.3f;
         float sharpnessLacunarity    = 2.01f;
 
-        float slopeErosion[2]           = { 0.0f, 0.5f };
+        float slopeErosion[2]           = { 0.0f, 1.0f };
         float slopeErosionBaseFrequency = 1.0f;
         float slopeErosionLacunarity    = 2.01f;
 
-        float perturb[2]           = { -0.05f, 0.05f };
+        float perturb[2]           = { 0.0f, 0.05f };
         float perturbBaseFrequency = 1.0f;
         float perturbLacunarity    = 2.01f;
 
@@ -95,9 +93,9 @@ public:
         const DirectX::BoundingFrustum& frustum,
         const DirectX::SimpleMath::Quaternion& rot,
         const DirectX::SimpleMath::Vector3& trans,
+        const DirectX::SimpleMath::Matrix& wld,
         bool wireFrame = false,
-        bool freeze    = false,
-        bool bound     = false);
+        bool freeze    = false, bool bound     = false);
 
     void CreateWorldMap(ID3D11DeviceContext* context, const Uniforms& uniforms);
 

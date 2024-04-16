@@ -9,7 +9,7 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     float3 cubeVertex = GetCubeVertex(face, gridOffset);
     float3 unitSphere = normalize(cubeVertex);
 
-    float3 position = unitSphere * radius;
+	float3 position = unitSphere * (1.0 + oceanLevel * elevationRatio);
 
     VertexOut vout;
     vout.Position    = mul(float4(position, 1.0f), worldViewProj);

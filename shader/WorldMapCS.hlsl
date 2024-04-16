@@ -26,12 +26,11 @@ void main(uint3 dtId : SV_DispatchThreadID)
     // float3 alb = albedoRoughness.SampleLevel(pointClamp, u, 0.0).rgb;
 
     float3 alb = sum * 0.5 + 0.5;
-    alb        = lerp(alb, alb * float3(1.0, 0.0, 0.0), step(0.999, dot(unitSphere, camDir)));
     if (sum < oceanLevel)
     {
         alb = lerp(DEEP_OCEAN_COLOR, alb, OCEAN_ALPHA);
     }
-
+	alb = lerp(alb, float3(1.0, 0.0, 0.0), step(0.999, dot(unitSphere, camDir)));
     // alb = GammaCorrect(alb);
 
     worldMap[dtId.xy] = float4(alb, 1.0);

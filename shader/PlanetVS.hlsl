@@ -25,12 +25,9 @@ VertexOut main(uint vertexId : SV_VertexID, uint instanceId : SV_InstanceID)
     // noised = sum;
     float4 gradNoise = UberNoiseFbm(unitSphere, octaves);
 
-    float dist = radius + gradNoise.w * elevation;
-    // // https://math.stackexchange.com/questions/1071662/surface-normal-to-point-on-displaced-sphere
-    float3 g = gradNoise.xyz / dist;
-    float3 h = g - dot(g, unitSphere) * unitSphere;
-    float3 N = normalize(unitSphere - elevation * h);
+	float dist = gradNoise.w * elevationRatio + 1.0;
 
+	float3 N = UberNoiseNormal(unitSphere, gradNoise.w);
     N = normalize(mul(N, (float3x3)worldInvTrans));
 
     float3 position = unitSphere * dist;

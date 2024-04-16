@@ -38,6 +38,10 @@ float4 main(VertexOut pin) : SV_TARGET
 
     N = normalize(mul(N, (float3x3)worldInvTrans));
 #endif
+	if (debug)
+	{
+		N = normalize(cross(ddy(worldPos), ddx(worldPos)));
+	}
 
     float3 L  = float3(0.0, 0.0, 1.0);
     float3 Li = float3(0.9568627, 0.9137255, 0.6078431);
@@ -58,8 +62,7 @@ float4 main(VertexOut pin) : SV_TARGET
 
     // alb = 1;
     // alb = (N * 0.5 + 0.5);
-    alb = debug ? debugCol[(pin.Octaves - baseOctaves) % 7] : alb;
-
+    // alb = debug ? debugCol[(pin.Octaves - baseOctaves) % 7] : alb;
 
     // float3 f0 = f0metal.rgb;
     float3 f0 = 0.0;

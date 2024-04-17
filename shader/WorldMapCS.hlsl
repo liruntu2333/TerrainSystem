@@ -20,7 +20,7 @@ void main(uint3 dtId : SV_DispatchThreadID)
             sin(latitude),
             cos(longitude) * cos(latitude)));
 
-    float sum = UberNoiseFbm(unitSphere, baseOctaves).w;
+    float sum = UberNoiseFbm(unitSphere, baseOctaves);
 
     // float u = sum * 0.5;
     // float3 alb = albedoRoughness.SampleLevel(pointClamp, u, 0.0).rgb;

@@ -487,16 +487,16 @@ float UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
     float3 slopeErosionGrad = 0.0;
     float3 currPerturbDir   = 0.0;
 
-    float currSlopeErosion = saturate(slopeErosion.x + slopeErosion.y *
-        SimplexNoise(unitSphere * slopeErosionBaseFrequency, slopeErosionNoiseSeed));
-    float currSharpness = saturate(sharpness.x + sharpness.y *
-        SimplexNoise(unitSphere * sharpnessBaseFrequency, sharpnessNoiseSeed));
-    float currPerturb = saturate(perturb.x + perturb.y *
-        SimplexNoise(unitSphere * perturbBaseFrequency, perturbNoiseSeed));
 
     for (int i = 0; i < numOctaves; i++)
     {
         float3 v = unitSphere * featureFreq;
+
+        float currSharpness = clamp(sharpness.x + sharpness.y *
+                                    SimplexNoise(v, sharpnessNoiseSeed), -1, 1);
+        float currSlopeErosion = saturate(slopeErosion.x + slopeErosion.y *
+            SimplexNoise(v, slopeErosionNoiseSeed));
+
         v += currPerturbDir;
 
         float4 gradNoise = SimplexGradNoise(v, featureNoiseSeed);
@@ -507,7 +507,10 @@ float UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
         float ridged  = Ridged(featureNoise);
         float billowy = Billowy(featureNoise);
 
+        float currPerturb = clamp(perturb.x + perturb.y *
+                                  SimplexNoise(v * perturbBaseFrequency, perturbNoiseSeed), -1, 1);
         currPerturbDir += featureNoiseGrad * currPerturb;
+
         slopeErosionGrad += featureNoiseGrad * currSlopeErosion;
         dampAmp *= 1.0 / (1.0 + dot(slopeErosionGrad, slopeErosionGrad));
 
@@ -526,7 +529,7 @@ float UberNoiseFbm(float3 unitSphere, int numOctaves = 8)
 float3 UberNoiseNormal(float3 v, float ve)
 {
     // float2 eps = float2(0.25 / (baseFrequency * float(1 << baseOctaves)), 0.0);
-    float2 eps = float2(1e-3, 0.0);
+    float2 eps = float2(1e-4, 0.0);
 
     float3 grad = float3(
         UberNoiseFbm(v + float3(eps.xyy), baseOctaves) - ve,

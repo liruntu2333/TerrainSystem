@@ -554,7 +554,7 @@ void PlanetRenderer::Render(
             {
                 node->offset,
                 static_cast<float>(node->gridSize),
-                static_cast<uint32_t>(node->face) | ((static_cast<uint32_t>(node->depth) + uniforms.baseOctaves) << 8)
+                static_cast<uint32_t>(node->face) | ((uniforms.baseOctaves) << 8)
             };
         }
 

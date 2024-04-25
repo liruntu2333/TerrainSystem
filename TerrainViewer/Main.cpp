@@ -204,14 +204,14 @@ int main(int, char**)
         ImGui::SliderFloat(UNIFORM(lacunarity), 1.01f, 4.0f);
         ImGui::SliderFloat(UNIFORM(gain), 0.5f, 0.70710678118654752440084436210485f);
 
-        ImGui::DragFloat2("sharpness", uniforms.sharpness, 0.001f, -1.0f, 1.0f);
+        ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(sharpnessBaseFrequency), 0.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessLacunarity), 1.01f, 4.0f);
 
-        ImGui::DragFloat2("slopeErosion", uniforms.slopeErosion, 0.001f, 0.0f, 1.0f);
+        ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
         ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
-        ImGui::DragFloat2("perturb", uniforms.perturb, 0.001f, -1.f, 1.0f);
+        ImGui::SliderFloat2("perturb", uniforms.perturb, -1.f, 1.0f);
         ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
         // planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);

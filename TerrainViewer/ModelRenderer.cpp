@@ -67,7 +67,7 @@ void ModelRenderer::Render(
     context->VSSetShaderResources(0, _countof(geoSrvs), geoSrvs);
     context->VSSetShader(m_Vs.Get(), nullptr, 0);
 
-    const auto ani = s_CommonStates->AnisotropicClamp();
+    const auto ani = s_CommonStates->AnisotropicWrap();
     context->PSSetSamplers(0, 1, &ani);
     ID3D11ShaderResourceView* const albSrv = albedo.GetSrv();
     context->PSSetShaderResources(0, 1, &albSrv);

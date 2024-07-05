@@ -42,6 +42,10 @@ namespace
 
     std::unique_ptr<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>> g_BaseVertices = nullptr;
     std::unique_ptr<DirectX::StructuredBuffer<uint32_t>> g_BaseIndices                              = nullptr;
+
+    std::unique_ptr<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>> g_ModelVertices = nullptr;
+    std::unique_ptr<DirectX::StructuredBuffer<uint32_t>> g_ModelIndices                              = nullptr;
+
     DirectX::BoundingBox g_Bound;
     float g_BaseArea                               = 0.0f;
     std::unique_ptr<DirectX::Texture2D> g_Albedo   = nullptr;
@@ -226,7 +230,7 @@ int main(int, char**)
         g_Camera->SetViewPort(g_pd3dDeviceContext);
         //g_Cb0->SetData(g_pd3dDeviceContext, *g_Constants);
 
-        g_ModelRenderer->Render(g_pd3dDeviceContext, statueWorld, g_Camera->GetViewProjection(), *g_BaseVertices, *g_BaseIndices,
+        g_ModelRenderer->Render(g_pd3dDeviceContext, statueWorld, g_Camera->GetViewProjection(), *g_ModelVertices, *g_ModelIndices,
             *g_Albedo, g_Camera->GetPosition(), wireFrame);
         g_DebugRenderer->DrawSphere(Matrix::CreateScale(10) * Matrix::CreateTranslation(0, 0, 20), g_Camera->GetView(), g_Camera->GetProjection());
 
@@ -265,10 +269,10 @@ int main(int, char**)
         uniforms.Debug            = showDebug;
         uniforms.FoldHeight       = foldHeight;
         //std::copy_n(planes.begin(), 6, uniforms.Planes);
-        g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(),
-            g_depthLookup->GetSrv(), uniforms, wireFrame);
-
-        g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
+        // g_GrassRenderer->Render(g_pd3dDeviceContext, *g_BaseVertices, *g_BaseIndices, g_GrassAlbedo->GetSrv(),
+        //     g_depthLookup->GetSrv(), uniforms, wireFrame);
+        //
+        // g_DebugRenderer->DrawBounding(bbs, g_Camera->GetView(), g_Camera->GetProjection());
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -397,15 +401,61 @@ void CreateSystem()
         bounding.Transform(g_Bound, Matrix::CreateScale(2));
         g_BaseArea = areaSum;
 
+        {
+            CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
+                0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
+            g_BaseVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
+                vertices.data(), vertices.size(), desc);
+            desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
+            desc.StructureByteStride = sizeof(uint32_t);
+            g_BaseIndices            = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
+                meshes[0].Indices.size(), desc);
+        }
+        g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, R"(asset\ub1gfbwew_4K_Albedo.dds)");
+
+        std::vector<ModelRenderer::Vertex> newVert;
+        newVert.reserve(meshes[0].Indices.size());
+        std::vector<uint32_t> newIdx;
+        newIdx.reserve(meshes[0].Indices.size());
+
+        for (size_t i = 0; i < meshes[0].Indices.size(); i += 3)
+        {
+            auto v0      = vertices[meshes[0].Indices[i]];
+            auto v1      = vertices[meshes[0].Indices[i + 1]];
+            auto v2      = vertices[meshes[0].Indices[i + 2]];
+            Vector3 p0   = v0.position;
+            Vector3 p1   = v1.position;
+            Vector3 p2   = v2.position;
+            auto faceNor = (v1.position - v0.position).Cross(v2.position - v0.position);
+            faceNor.Normalize();
+            Matrix rot = Matrix::CreateFromQuaternion(Quaternion::FromToRotation(Vector3(0, 1, 0), faceNor));
+            // rot = rot.Invert();
+            Vector3 p00, p11, p22;
+            Vector3::Transform(p0, rot, p00);
+            Vector3::Transform(p1, rot, p11);
+            Vector3::Transform(p2, rot, p22);
+            p00.Normalize();
+            p11.Normalize();
+            p22.Normalize();
+
+            v0.textureCoordinate = Vector2(p00.x, p00.z) * 20.0f;
+            v1.textureCoordinate = Vector2(p11.x, p11.z) * 20.0f;
+            v2.textureCoordinate = Vector2(p22.x, p22.z) * 20.0f;
+
+            newVert.emplace_back(v0);
+            newVert.emplace_back(v1);
+            newVert.emplace_back(v2);
+            newIdx.push_back(i);
+            newIdx.push_back(i + 1);
+            newIdx.push_back(i + 2);
+        }
         CD3D11_BUFFER_DESC desc(0, D3D11_BIND_SHADER_RESOURCE, D3D11_USAGE_IMMUTABLE,
             0, D3D11_RESOURCE_MISC_BUFFER_STRUCTURED, sizeof(ModelRenderer::Vertex));
-        g_BaseVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
-            vertices.data(), vertices.size(), desc);
+        g_ModelVertices = std::make_unique<DirectX::StructuredBuffer<DirectX::VertexPositionNormalTexture>>(g_pd3dDevice,
+            newVert.data(), newVert.size(), desc);
         desc.BindFlags           = D3D11_BIND_SHADER_RESOURCE;
         desc.StructureByteStride = sizeof(uint32_t);
-        g_BaseIndices            = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, meshes[0].Indices.data(),
-            meshes[0].Indices.size(), desc);
-        g_Albedo = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, mats[meshes[0].MaterialIndex].TexturePath);
+        g_ModelIndices = std::make_unique<DirectX::StructuredBuffer<uint32_t>>(g_pd3dDevice, newIdx.data(), newIdx.size(), desc);
     }
 
     g_ModelRenderer = std::make_unique<ModelRenderer>(g_pd3dDevice);

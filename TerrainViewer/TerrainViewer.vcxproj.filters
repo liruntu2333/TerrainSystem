@@ -103,6 +103,9 @@
     <FxCompile Include="..\shader\GrassPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shader\GenDepthMip3.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shader\Grass.hlsli">

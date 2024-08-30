@@ -6,7 +6,7 @@
 
 #include <chrono>
 #include <corecrt_math_defines.h>
-#include <random>
+#include <directxtk/WICTextureLoader.h>
 
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -15,7 +15,11 @@
 #include "../HeightMapSplitter/ThreadPool.h"
 
 #include "DebugRenderer.h"
-#include "PlanetRenderer.h"
+#include "CompressedTerrainRenderer.h"
+#include "DirectXTex.h"
+#include "WaveletTransform.h"
+#include "FiniteStateEntropy/huf.h"
+#include "FiniteStateEntropy/fse.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice                     = NULL;
@@ -31,11 +35,20 @@ namespace
 {
     std::unique_ptr<DirectX::Texture2D> g_depthStencil = nullptr;
 
-    std::unique_ptr<Camera> g_Camera                 = nullptr;
-    std::unique_ptr<DebugRenderer> g_DebugRenderer   = nullptr;
-    std::unique_ptr<PlanetRenderer> g_PlanetRenderer = nullptr;
+    std::unique_ptr<Camera> g_Camera                = nullptr;
+    std::unique_ptr<DebugRenderer> g_DebugRenderer  = nullptr;
+    std::unique_ptr<CompressedTerrainRenderer> g_TR = nullptr;
+    DirectX::ScratchImage g_OriginEle;
+    std::unique_ptr<DirectX::Texture2D> g_OriginEleTex     = nullptr;
+    std::unique_ptr<DirectX::Texture2D> g_CompressedEleTex = nullptr;
+    DirectX::ScratchImage g_Coefficients;
+    DirectX::ScratchImage g_Quantized;
+    std::unique_ptr<DirectX::Texture2D> g_CoefficientsTex = nullptr;
+    size_t g_OriginAvg                                    = 0;
 
-    constexpr Vector3 ViewInit = Vector3(-PlanetRenderer::kRadius * 0.75, 0.0f, (PlanetRenderer::kRadius + PlanetRenderer::kElevation) * 3.0f);
+    constexpr Vector3 ViewInit = Vector3(0, 80, 500.0f);
+    constexpr int IteInit      = 6;
+    constexpr int ThresInit    = 0;
 }
 
 // Forward declarations of helper functions
@@ -89,7 +102,7 @@ int main(int, char**)
     // Load Fonts
 
     // Our state
-    auto& darkSlateGray = DirectX::Colors::Black;
+    auto& darkSlateGray = DirectX::Colors::DarkGray;
     ImVec4 clear_color  = ImVec4(darkSlateGray.f[0], darkSlateGray.f[1],
         darkSlateGray.f[2], darkSlateGray.f[3]);
 
@@ -98,51 +111,16 @@ int main(int, char**)
     bool wireFrame     = false;
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
-    float yaw  = 0.0;
-    float spd  = PlanetRenderer::kRadius * 0.25f;
-    bool done  = false, debug = false, renderBound = false, sphereReference = false;
-    float time = 0.0f, rotSpd = 0.0f;
-    PlanetRenderer::Uniforms uniforms {};
-    float roll        = -23.4f * DirectX::XM_PI / 180.0f;
-    Matrix tilt       = Matrix::CreateRotationZ(roll);
-    Vector3 earthAxis = (Vector3(cos(roll), sin(roll), 0).Cross(Vector3::UnitZ));
-    earthAxis.Normalize();
-    const auto trans = Vector3::Zero;
-
-    // seeding
-    std::random_device randomDevice;
-    std::default_random_engine randomEngine(randomDevice());
-
-    auto rndVec4 = [&randomEngine]() -> Vector4
-    {
-        std::uniform_int_distribution distribution(-289, 289);
-        return Vector4(
-            distribution(randomEngine),
-            distribution(randomEngine),
-            distribution(randomEngine),
-            distribution(randomEngine));
-    };
-
-    // "Uniform Random Rotations", Ken Shoemake, Graphics Gems III, pg. 124-132.
-    auto rndQ = [&randomEngine]() -> Quaternion
-    {
-        std::uniform_real_distribution dist(0.0, 1.0);
-        const double u1           = dist(randomEngine);
-        const double u2           = dist(randomEngine);
-        const double u3           = dist(randomEngine);
-        const double sqrt1MinusU1 = std::sqrt(1 - u1);
-        const double sqrtU1       = std::sqrt(u1);
-
-        constexpr double pi = M_PI;
-        Quaternion q;
-        q.w = static_cast<float>(sqrt1MinusU1 * std::sin(2.0 * pi * u2));
-        q.x = static_cast<float>(sqrt1MinusU1 * std::cos(2.0 * pi * u2));
-        q.y = static_cast<float>(sqrtU1 * std::sin(2.0 * pi * u3));
-        q.z = static_cast<float>(sqrtU1 * std::cos(2.0 * pi * u3));
-        q.Normalize();
-        return q;
-    };
-    g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
+    float spd      = 20.0f;
+    bool done      = false, debug = false, renderBound = false, sphereReference = false, showOrigin = false, showCompressed = true;
+    float time     = 0.0f;
+    float ratio    = 50.0f;
+    int iteration  = IteInit;
+    int threshold  = ThresInit;
+    float error    = 4.0f;
+    float bitRate  = 4.0f;
+    int compresser = 0;
+    // float relative
 
     // Main loop
     while (!done)
@@ -167,121 +145,106 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Planet System");
-        ImGui::Text("Frame Rate : %f", io.Framerate);
-
-        const bool randAll = ImGui::Button("Rand");
-        if (ImGui::Button("Rand Feature") || randAll)
-        {
-            uniforms.featureNoiseSeed     = rndVec4();
-            uniforms.featureNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
-        }
-        if (ImGui::Button("Rand Sharpness") || randAll)
-        {
-            uniforms.sharpnessNoiseSeed     = rndVec4();
-            uniforms.sharpnessNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
-        }
-        if (ImGui::Button("Rand Slope Erosion") || randAll)
-        {
-            uniforms.slopeErosionNoiseSeed     = rndVec4();
-            uniforms.slopeErosionNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
-        }
-        if (ImGui::Button("Rand Perturb") || randAll)
-        {
-            uniforms.perturbNoiseSeed     = rndVec4();
-            uniforms.perturbNoiseRotation = Matrix::CreateFromQuaternion(rndQ());
-        }
-
-        // ImGui::Checkbox("interpolateNormal", reinterpret_cast<bool*>(&uniforms.interpolateNormal));
-        // if (!uniforms.interpolateNormal)
-        // {
-        //     ImGui::SliderInt(UNIFORM(normalOctaves), 0, 16);
-        // }
-        ImGui::Text("Uber Noise");
-#define UNIFORM(x) #x, &uniforms.x
-        ImGui::DragFloat(UNIFORM(baseFrequency), 0.001f, 0.01f, 4.0f);
-        ImGui::SliderFloat(UNIFORM(baseAmplitude), 0.0f, 2.0f);
-        ImGui::SliderFloat(UNIFORM(lacunarity), 1.01f, 4.0f);
-        ImGui::SliderFloat(UNIFORM(gain), 0.5f, 0.70710678118654752440084436210485f);
-
-        ImGui::SliderFloat2("sharpness", uniforms.sharpness, -1.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(sharpnessBaseFrequency), 0.01f, 4.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(sharpnessLacunarity), 1.01f, 4.0f);
-
-        ImGui::SliderFloat2("slopeErosion", uniforms.slopeErosion, 0.0f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(slopeErosionBaseFrequency), 0.01f, 4.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(slopeErosionLacunarity), 1.01f, 4.0f);
-        ImGui::SliderFloat2("perturb", uniforms.perturb, -1.f, 1.0f);
-        ImGui::SliderFloat(UNIFORM(perturbBaseFrequency), 0.01f, 4.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(perturbLacunarity), 1.01f, 4.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(altitudeErosion), 0.0f, 1.0f);
-        // planetChanged |= ImGui::SliderFloat(UNIFORM(ridgeErosion), -1.0f, 1.0f);
-        const auto windowSize = ImGui::GetWindowSize();
-        ImGui::Image(g_PlanetRenderer->GetWorldMapSrv(), ImVec2(windowSize.x, windowSize.x * 0.5f));
+        ImGui::Begin("Origin");
+        ImGui::Checkbox("Render Origin", &showOrigin);
+        ImGui::Image(g_OriginEleTex->GetSrv(), ImVec2(512, 512));
         ImGui::End();
 
-        ImGui::Begin("Planet Geometry");
-        ImGui::SliderInt(UNIFORM(baseOctaves), 0, 16);
-        ImGui::DragFloat(UNIFORM(radius), PlanetRenderer::kRadius * 0.0001f);
-        ImGui::DragFloat(UNIFORM(elevation), PlanetRenderer::kElevation * 0.001f, 0.0, PlanetRenderer::kRadius * 0.5f);
-        ImGui::SliderFloat(UNIFORM(oceanLevel), -2.0f, 2.0f);
-        ImGui::SliderFloat("Rotate Speed", &rotSpd, 0.0f, 0.1f);
+        ImGui::Begin("Wavelet Coefficients");
+        ImGui::Image(g_CoefficientsTex->GetSrv(), ImVec2(512, 512));
         ImGui::End();
-#undef UNIFORM
-        uniforms.elevationRatio = uniforms.elevation / uniforms.radius;
+
+        ImGui::Begin("Compressed");
+        ImGui::Checkbox("Render Compressed", &showCompressed);
+        bool transform = ImGui::SliderInt("Transform Iteration", &iteration, 0, 8);
+        bool quantize  = ImGui::SliderInt("Threshold", &threshold, 0, 64);
+        bool compress  = ImGui::RadioButton("Huffman", &compresser, 0);
+        compress |= ImGui::RadioButton("FSE", &compresser, 1);
+        ImGui::SliderFloat("Error", &error, 1e-6f, 20.0f);
+        ImGui::Text("Bit Rate : %f", bitRate);
+        ImGui::Image(g_CompressedEleTex->GetSrv(), ImVec2(512, 512));
+        ImGui::End();
+
+        if (transform)
+        {
+            WaveletTransform::LeGall53<uint8_t>(g_OriginEle.GetImages()[0], g_Coefficients, iteration, g_OriginAvg);
+            quantize = true;
+        }
+
+        if (quantize)
+        {
+            auto coefficients = g_Coefficients.GetImages()[0];
+            auto qPix         = reinterpret_cast<int16_t*>(g_Quantized.GetImages()[0].pixels);
+            WaveletTransform::FilterOut<int16_t>(reinterpret_cast<int16_t*>(coefficients.pixels),
+                qPix, coefficients.width * coefficients.height, threshold);
+
+            auto size = g_OriginEle.GetMetadata().width * g_OriginEle.GetMetadata().height;
+            std::vector<uint8_t> uCoff;
+            uCoff.reserve(size);
+            auto [pMin, pMax] = std::minmax_element(qPix, qPix + size);
+            int16_t m         = *pMin, M = *pMax;
+            // assert(M - m <= 255);
+            std::transform(qPix, qPix + size, std::back_inserter(uCoff),
+                [m](int16_t v) { return WaveletTransform::SaturatedCast<int16_t, uint8_t>(v - m); });
+
+            g_pd3dDeviceContext->UpdateSubresource(g_CoefficientsTex->GetTexture(), 0, nullptr,
+                uCoff.data(), g_OriginEle.GetMetadata().width * sizeof(int8_t), 0);
+
+            DirectX::ScratchImage reconstructed;
+            WaveletTransform::InvLeGall53<int16_t>(g_Quantized.GetImages()[0],
+                reconstructed, iteration, static_cast<int16_t>(g_OriginAvg));
+            g_pd3dDeviceContext->UpdateSubresource(g_CompressedEleTex->GetTexture(), 0, nullptr,
+                reconstructed.GetImages()[0].pixels, reconstructed.GetImages()[0].rowPitch, 0);
+
+            compress = true;
+        }
+
+        if (compress)
+        {
+            size_t width  = g_Quantized.GetMetadata().width;
+            size_t height = g_Quantized.GetMetadata().height;
+            size_t size   = width * height;
+
+            auto qPix        = reinterpret_cast<int16_t*>(g_Quantized.GetImages()[0].pixels);
+            auto subbands    = WaveletTransform::InterleaveSubBand(qPix, width, height, iteration);
+            size_t totalSize = 0;
+            for (const auto& subband : subbands)
+            {
+                size_t srcSize = subband.size() * sizeof(decltype(subbands)::value_type::value_type);
+                size_t dstSize = compresser == 0
+                                     ? HUF_compressBound(srcSize)
+                                     : FSE_compressBound(srcSize);
+                auto* const encoded = std::malloc(dstSize);
+                dstSize             = compresser == 0
+                                          ? HUF_compress(encoded, dstSize, subband.data(), srcSize)
+                                          : FSE_compress(encoded, dstSize, subband.data(), srcSize);
+                if (FSE_isError(dstSize))
+                {
+                    auto err = FSE_getErrorName(dstSize);
+                }
+                totalSize += dstSize;
+                std::free(encoded);
+            }
+            bitRate = 8.0 * static_cast<double>(totalSize) / size;
+        }
+
         // Updating
-        spd = std::max(30.0f, (g_Camera->GetPosition() - trans).Length() - uniforms.radius + uniforms.elevation * 0.5f);
         g_Camera->Update(io, spd);
-        float viewDist;
         if (!freezeFrustum)
         {
-            // Sphere of radius - eMax, radius, radius + eMax share the same center,
-            // Calculate the horizon distance for spherical terrain.
-            const float interiorR      = uniforms.radius - PlanetRenderer::kElevation;
-            const float exteriorR      = uniforms.radius + PlanetRenderer::kElevation;
-            const float ir2            = interiorR * interiorR;
-            const float elevationBoost = std::sqrt(exteriorR * exteriorR - ir2);
-
-            viewDist = elevationBoost + std::sqrt(std::max(0.0f,
-                (g_Camera->GetPosition() - trans).LengthSquared() - ir2));
-            viewDist = std::clamp(viewDist, Camera::kMinFar, Camera::kMaxFar);
-            frustum  = g_Camera->GetFrustum(viewDist);
+            frustum = g_Camera->GetFrustum();
         }
         ImGui::Begin("Camera");
         ImGui::Text("Position : %f %f %f", g_Camera->GetPosition().x, g_Camera->GetPosition().y, g_Camera->GetPosition().z);
         ImGui::Text("Forward : %f %f %f", g_Camera->GetForward().x, g_Camera->GetForward().y, g_Camera->GetForward().z);
-        ImGui::Text("View Distance : %f", viewDist);
-        ImGui::DragFloat("Speed", &spd, PlanetRenderer::kRadius * 0.0001f);
+        ImGui::DragFloat("Speed", &spd);
+        ImGui::SliderFloat("Ratio", &ratio, 0, 150);
         ImGui::Checkbox("Wire Frame", &wireFrame);
         ImGui::Checkbox("Freeze Frustum", &freezeFrustum);
         ImGui::Checkbox("Debug", &debug);
         ImGui::Checkbox("Bound", &renderBound);
         ImGui::Checkbox("1 m Sphere Reference", &sphereReference);
-        uniforms.debug = debug ? 1 : 0;
         ImGui::End();
-
-        if (io.MouseDown[ImGuiMouseButton_Left] && !io.WantCaptureMouse)
-        {
-            yaw -= io.MouseDelta.x * 0.01f;
-        }
-        yaw -= io.DeltaTime * rotSpd;
-        yaw = std::fmod(yaw, -DirectX::XM_2PI);
-
-        Matrix world = Matrix::CreateScale(uniforms.radius) * tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw);
-        auto q       = Quaternion::CreateFromRotationMatrix(tilt * Matrix::CreateFromAxisAngle(earthAxis, yaw));
-
-        Quaternion invRot;
-        q.Inverse(invRot);
-        Vector3 oc = g_Camera->GetPosition() - trans;
-        oc.Normalize();
-        oc = Vector3::Transform(oc, invRot);
-
-        uniforms.worldInvTrans = world.Invert().Transpose().Transpose();
-        uniforms.world         = world.Transpose();
-        uniforms.worldViewProj = (world * g_Camera->GetViewProjection()).Transpose();
-        uniforms.viewProj      = g_Camera->GetViewProjection().Transpose();
-        uniforms.camPos        = g_Camera->GetPosition();
-        uniforms.camDir        = oc;
 
         time += io.DeltaTime;
 
@@ -296,17 +259,19 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 0.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
 
-        ID3D11ShaderResourceView* srv = nullptr;
-        g_pd3dDeviceContext->PSSetShaderResources(0, 1, &srv);
-        g_PlanetRenderer->CreateWorldMap(g_pd3dDeviceContext, uniforms);
+        if (showCompressed)
+            g_TR->Render(g_pd3dDeviceContext, g_OriginEleTex->GetSrv(), g_CompressedEleTex->GetSrv(),
+                g_Camera->GetViewProjection(), ratio, error, wireFrame);
+
+        if (showOrigin)
+            g_TR->Render(g_pd3dDeviceContext, g_OriginEleTex->GetSrv(), g_OriginEleTex->GetSrv(),
+                g_Camera->GetViewProjection(), ratio, error, wireFrame);
+
         if (sphereReference)
         {
             g_DebugRenderer->DrawSphere(Matrix::CreateTranslation(g_Camera->GetPosition() + g_Camera->GetForward() * 10.0),
                 g_Camera->GetView(), g_Camera->GetProjection());
         }
-
-        g_PlanetRenderer->Render(g_pd3dDeviceContext, uniforms, frustum, q,
-            trans, world, wireFrame, freezeFrustum, renderBound);
 
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
@@ -417,8 +382,53 @@ void CreateSystem()
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 
-    g_PlanetRenderer = std::make_unique<PlanetRenderer>(g_pd3dDevice);
-    g_PlanetRenderer->Initialize("./shader");
+    LoadFromWICFile(L"./asset/beijing.png", DirectX::WIC_FLAGS_NONE, nullptr, g_OriginEle);
+
+    auto* image   = &g_OriginEle.GetImages()[0];
+    size_t sum    = 0;
+    size_t width  = image->width;
+    size_t height = image->height;
+    size_t size   = width * height;
+    for (int i = 0; i < size; ++i)
+    {
+        sum += image->pixels[i];
+    }
+    g_OriginAvg = static_cast<size_t>(std::round(static_cast<double>(sum) / size));
+
+    CD3D11_TEXTURE2D_DESC desc(DXGI_FORMAT_R8_UNORM, width, height, 1, 1);
+    g_OriginEleTex = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, desc, image->pixels, image->rowPitch);
+    g_OriginEleTex->CreateViews(g_pd3dDevice);
+
+    int iteration = IteInit;
+    WaveletTransform::LeGall53<uint8_t>(image[0], g_Coefficients, iteration, g_OriginAvg);
+    auto coe = g_Coefficients.GetImages()[0];
+    g_Quantized.Initialize2D(g_Coefficients.GetMetadata().format, width, height, 1, 1);
+
+    DirectX::ScratchImage quantized;
+    quantized.Initialize2D(coe.format, coe.width, coe.height, 1, 1);
+    auto qnt = reinterpret_cast<int16_t*>(quantized.GetImages()[0].pixels);
+    WaveletTransform::FilterOut<int16_t>(reinterpret_cast<int16_t*>(coe.pixels), qnt, size, ThresInit);
+
+    std::vector<uint8_t> uCoff;
+    uCoff.reserve(size);
+    auto bound = std::minmax_element(qnt, qnt + size);
+    int16_t m  = *bound.first;
+    std::transform(qnt, qnt + size, std::back_inserter(uCoff),
+        [m](int16_t v) { return WaveletTransform::SaturatedCast<int16_t, uint8_t>(v - m); });
+
+    g_CoefficientsTex = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, desc, uCoff.data(), image->rowPitch);
+    g_CoefficientsTex->CreateViews(g_pd3dDevice);
+
+    DirectX::ScratchImage reconstructed;
+    WaveletTransform::InvLeGall53<int16_t>(quantized.GetImages()[0],
+        reconstructed, iteration, static_cast<int16_t>(g_OriginAvg));
+
+    desc.Format        = reconstructed.GetImages()[0].format;
+    g_CompressedEleTex = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, desc, reconstructed.GetImages()[0].pixels, image->rowPitch);
+    g_CompressedEleTex->CreateViews(g_pd3dDevice);
+
+    g_TR = std::make_unique<CompressedTerrainRenderer>(g_pd3dDevice);
+    g_TR->Initialize(g_pd3dDeviceContext, L"./shader");
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

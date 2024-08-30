@@ -39,7 +39,31 @@
     <ClCompile Include="DebugRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PlanetRenderer.cpp">
+    <ClCompile Include="CompressedTerrainRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\debug.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\entropy_common.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\fse_compress.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\fse_decompress.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\fseU16.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\hist.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\huf_compress.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FiniteStateEntropy\huf_decompress.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -71,46 +95,61 @@
     <ClInclude Include="DebugRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PlanetRenderer.h">
+    <ClInclude Include="CompressedTerrainRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="psrdnoise2D.h">
+    <ClInclude Include="WaveletTransform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="compiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\bitstream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\compiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\debug.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\error_private.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\error_public.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\fse.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\fseU16.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\hist.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\huf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FiniteStateEntropy\mem.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="..\shader\PlanetVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\PlanetPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\OceanPS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\WorldMapCS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
-    <FxCompile Include="..\shader\OceanVS.hlsl">
-      <Filter>Shaders</Filter>
-    </FxCompile>
     <FxCompile Include="..\shader\BoundVS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="..\shader\BoundPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shader\TerrainWaveletPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="..\shader\TerrainCompressedVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\shader\Planet.hlsli">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\shader\FastNoiseLite.hlsli">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="..\shader\Simplex.hlsli">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="..\shader\ShaderUtil.hlsli">
       <Filter>Shaders</Filter>
     </None>

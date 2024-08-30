@@ -162,26 +162,45 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="CompressedTerrainRenderer.cpp" />
     <ClCompile Include="DebugRenderer.cpp" />
+    <ClCompile Include="FiniteStateEntropy\debug.c" />
+    <ClCompile Include="FiniteStateEntropy\entropy_common.c" />
+    <ClCompile Include="FiniteStateEntropy\fseU16.c" />
+    <ClCompile Include="FiniteStateEntropy\fse_compress.c" />
+    <ClCompile Include="FiniteStateEntropy\fse_decompress.c" />
+    <ClCompile Include="FiniteStateEntropy\hist.c" />
+    <ClCompile Include="FiniteStateEntropy\huf_compress.c" />
+    <ClCompile Include="FiniteStateEntropy\huf_decompress.c" />
     <ClCompile Include="imgui_impl_dx11.cpp" />
     <ClCompile Include="imgui_impl_win32.cpp" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="PlanetRenderer.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="compiler.h" />
+    <ClInclude Include="CompressedTerrainRenderer.h" />
     <ClInclude Include="D3DHelper.h" />
     <ClInclude Include="DebugRenderer.h" />
+    <ClInclude Include="FiniteStateEntropy\bitstream.h" />
+    <ClInclude Include="FiniteStateEntropy\compiler.h" />
+    <ClInclude Include="FiniteStateEntropy\debug.h" />
+    <ClInclude Include="FiniteStateEntropy\error_private.h" />
+    <ClInclude Include="FiniteStateEntropy\error_public.h" />
+    <ClInclude Include="FiniteStateEntropy\fse.h" />
+    <ClInclude Include="FiniteStateEntropy\fseU16.h" />
+    <ClInclude Include="FiniteStateEntropy\hist.h" />
+    <ClInclude Include="FiniteStateEntropy\huf.h" />
+    <ClInclude Include="FiniteStateEntropy\mem.h" />
     <ClInclude Include="imgui_impl_dx11.h" />
     <ClInclude Include="imgui_impl_win32.h" />
-    <ClInclude Include="PlanetRenderer.h" />
-    <ClInclude Include="psrdnoise2D.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="StructuredBuffer.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="VertexBuffer.h" />
+    <ClInclude Include="WaveletTransform.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shader\BoundPS.hlsl">
@@ -196,42 +215,19 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="..\shader\OceanVS.hlsl">
+    <FxCompile Include="..\shader\TerrainCompressedVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="..\shader\WorldMapCS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Compute</ShaderType>
-      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
-    </FxCompile>
-    <None Include="..\shader\FastNoiseLite.hlsli" />
-    <None Include="..\shader\Planet.hlsli" />
-    <FxCompile Include="..\shader\OceanPS.hlsl">
+    <FxCompile Include="..\shader\TerrainWaveletPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\PlanetPS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
-    </FxCompile>
-    <FxCompile Include="..\shader\PlanetVS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
     </FxCompile>
     <None Include="..\shader\ShaderUtil.hlsli" />
-    <None Include="..\shader\Simplex.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

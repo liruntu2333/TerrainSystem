@@ -100,6 +100,7 @@ void Camera::Update(const ImGuiIO& io, float spd)
         0.0f, 1.0f
     };
 
+    m_Orientation = Quaternion::CreateFromYawPitchRoll(m_Rotation.y, m_Rotation.x, m_Rotation.z);
     const float dt = io.DeltaTime;
     m_Orientation.Normalize();
     auto forward = Vector3::Transform(Vector3::Forward, m_Orientation);
@@ -156,12 +157,13 @@ void Camera::Update(const ImGuiIO& io, float spd)
             const auto dx = io.MouseDelta.x;
             const auto dy = io.MouseDelta.y;
 
-            m_Orientation *= Quaternion::CreateFromAxisAngle(m_Up, dx * -0.001f);
-            m_Orientation *= Quaternion::CreateFromAxisAngle(m_Right, dy * -0.001f);
-            //m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
+            m_Rotation.x -= dy * 0.001f;
+            m_Rotation.y -= dx * 0.001f;
+            // m_Orientation *= Quaternion::CreateFromYawPitchRoll(dx, dy, 0);
+            m_Rotation.x = std::clamp(m_Rotation.x, -XM_PIDIV2 + 0.0001f, XM_PIDIV2 - 0.0001f);
         }
-        m_Orientation *= Quaternion::CreateFromAxisAngle(m_Forward, dt *
-            (io.KeysDown[ImGuiKey_E] ? 1.0f : io.KeysDown[ImGuiKey_Q] ? -1.0f : 0.0f));
+        // m_Orientation *= Quaternion::CreateFromAxisAngle(m_Forward, dt *
+        //     (io.KeysDown[ImGuiKey_E] ? 1.0f : io.KeysDown[ImGuiKey_Q] ? -1.0f : 0.0f));
     }
 
     if (m_IsRecording)

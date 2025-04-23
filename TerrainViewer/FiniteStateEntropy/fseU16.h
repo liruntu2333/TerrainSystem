@@ -47,7 +47,7 @@ extern "C" {
 *  Maximum nb of symbol values authorized.
 *  Required for allocation purposes */
 #ifndef FSEU16_MAX_SYMBOL_VALUE
-#  define FSEU16_MAX_SYMBOL_VALUE 286   /* This is just an example, typical value for zlib */
+#  define FSEU16_MAX_SYMBOL_VALUE 0x1ff   /* This is just an example, typical value for zlib */
 #endif
 #ifdef FSE_MAX_SYMBOL_VALUE
 #  undef FSE_MAX_SYMBOL_VALUE

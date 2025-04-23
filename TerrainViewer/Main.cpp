@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <corecrt_math_defines.h>
+#include <string>
 #include <directxtk/WICTextureLoader.h>
 
 #include "imgui_impl_dx11.h"
@@ -20,6 +21,9 @@
 #include "WaveletTransform.h"
 #include "FiniteStateEntropy/huf.h"
 #include "FiniteStateEntropy/fse.h"
+#include "FiniteStateEntropy/fseU16.h"
+
+#include "zlib.h"
 
 // Data
 static ID3D11Device* g_pd3dDevice                     = NULL;
@@ -39,6 +43,7 @@ namespace
     std::unique_ptr<DebugRenderer> g_DebugRenderer  = nullptr;
     std::unique_ptr<CompressedTerrainRenderer> g_TR = nullptr;
     DirectX::ScratchImage g_OriginEle;
+    std::unique_ptr<DirectX::Texture2D> g_fOriginEleTex    = nullptr;
     std::unique_ptr<DirectX::Texture2D> g_OriginEleTex     = nullptr;
     std::unique_ptr<DirectX::Texture2D> g_CompressedEleTex = nullptr;
     DirectX::ScratchImage g_Coefficients;
@@ -57,6 +62,7 @@ void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 void CreateSystem();
+void ProcessChinaMap();
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -112,14 +118,15 @@ int main(int, char**)
     bool freezeFrustum = false;
     DirectX::BoundingFrustum frustum;
     float spd      = 20.0f;
-    bool done      = false, debug = false, renderBound = false, sphereReference = false, showOrigin = false, showCompressed = true;
+    bool done      = false, debug = false, renderBound = false, sphereReference = false, showOrigin = false, floatOri = false;
     float time     = 0.0f;
     float ratio    = 50.0f;
     int iteration  = IteInit;
     int threshold  = ThresInit;
     float error    = 4.0f;
     float bitRate  = 4.0f;
-    int compresser = 0;
+    int map        = 0;
+    bool showError = true;
     // float relative
 
     // Main loop
@@ -146,7 +153,20 @@ int main(int, char**)
         ImGui::NewFrame();
 
         ImGui::Begin("Origin");
-        ImGui::Checkbox("Render Origin", &showOrigin);
+        static const char* maps[] =
+        {
+            "guanzhong",
+            "beijing",
+            "shanxi",
+            "sichuan",
+            "shanghai",
+            "xinjiang",
+            "tianjin",
+            "mountains512",
+        };
+        bool reload = ImGui::Combo("Map", &map, maps, std::size(maps));
+        if (ImGui::RadioButton("Render Origin", showOrigin)) { showOrigin = !showOrigin; }
+        ImGui::Checkbox("Float Origin", &floatOri);
         ImGui::Image(g_OriginEleTex->GetSrv(), ImVec2(512, 512));
         ImGui::End();
 
@@ -155,15 +175,48 @@ int main(int, char**)
         ImGui::End();
 
         ImGui::Begin("Compressed");
-        ImGui::Checkbox("Render Compressed", &showCompressed);
         bool transform = ImGui::SliderInt("Transform Iteration", &iteration, 0, 8);
         bool quantize  = ImGui::SliderInt("Threshold", &threshold, 0, 64);
-        bool compress  = ImGui::RadioButton("Huffman", &compresser, 0);
-        compress |= ImGui::RadioButton("FSE", &compresser, 1);
-        ImGui::SliderFloat("Error", &error, 1e-6f, 20.0f);
+        bool compress  = false;
+        ImGui::Checkbox(showError ? "##Show Error" : "Show Error", &showError);
+        if (showError)
+        {
+            ImGui::SameLine();
+            error = std::clamp(error, 1e-6f, 20.0f);
+            ImGui::SliderFloat("Error", &error, 1e-6f, 20.0f);
+        }
+        else
+        {
+            error = std::numeric_limits<float>::infinity();
+        }
         ImGui::Text("Bit Rate : %f", bitRate);
+        ImGui::Text("Compression Ratio : %f", sizeof(uint8_t) * 8.0f / bitRate);
         ImGui::Image(g_CompressedEleTex->GetSrv(), ImVec2(512, 512));
         ImGui::End();
+
+        if (reload)
+        {
+            std::wstring path(L"./asset/");
+            std::string str(maps[map]);
+            path += std::wstring(str.begin(), str.end());
+            path += L".png";
+            LoadFromWICFile(path.c_str(), DirectX::WIC_FLAGS_NONE, nullptr, g_OriginEle);
+
+            auto* image   = &g_OriginEle.GetImages()[0];
+            size_t width  = image->width;
+            size_t height = image->height;
+            size_t size   = width * height;
+            std::vector<uint8_t> ele(size);
+            std::memcpy(ele.data(), image->pixels, size);
+            std::nth_element(ele.begin(), ele.begin() + size / 2, ele.end());
+
+            g_OriginAvg = ele[ele.size() / 2];
+
+            g_pd3dDeviceContext->UpdateSubresource(g_OriginEleTex->GetTexture(), 0, nullptr,
+                image->pixels, g_OriginEle.GetMetadata().width * sizeof(uint8_t), 0);
+
+            transform = true;
+        }
 
         if (transform)
         {
@@ -205,26 +258,43 @@ int main(int, char**)
             size_t height = g_Quantized.GetMetadata().height;
             size_t size   = width * height;
 
-            auto qPix        = reinterpret_cast<int16_t*>(g_Quantized.GetImages()[0].pixels);
+            auto qPix = reinterpret_cast<int16_t*>(g_Quantized.GetImages()[0].pixels);
+            // auto subbands    = WaveletTransform::InterleaveSubBand(qPix, width, height, iteration);
             auto subbands    = WaveletTransform::InterleaveSubBand(qPix, width, height, iteration);
             size_t totalSize = 0;
-            for (const auto& subband : subbands)
+
+            std::string file;
+            file = maps[map];
+            file += "_coefficients.bin";
+            std::ofstream out(file, std::ios::binary | std::ios::out);
+            for (auto& subband : subbands)
             {
-                size_t srcSize = subband.size() * sizeof(decltype(subbands)::value_type::value_type);
-                size_t dstSize = compresser == 0
-                                     ? HUF_compressBound(srcSize)
-                                     : FSE_compressBound(srcSize);
+                size_t srcSize      = subband.size();
+                size_t dstSize      = FSE_compressBound(srcSize);
                 auto* const encoded = std::malloc(dstSize);
-                dstSize             = compresser == 0
-                                          ? HUF_compress(encoded, dstSize, subband.data(), srcSize)
-                                          : FSE_compress(encoded, dstSize, subband.data(), srcSize);
+                dstSize             = FSE_compressU16(encoded, dstSize, reinterpret_cast<const unsigned short*>(subband.data()), srcSize, 511, 0);
                 if (FSE_isError(dstSize))
                 {
                     auto err = FSE_getErrorName(dstSize);
+                    std::printf("Compression error : %s\n", err);
                 }
                 totalSize += dstSize;
+
+                std::vector<int16_t> decompressed(srcSize);
+
+                auto srcSize2 = FSE_decompressU16(reinterpret_cast<unsigned short*>(decompressed.data()), srcSize, encoded, dstSize);
+                if (FSE_isError(srcSize2))
+                {
+                    auto err = FSE_getErrorName(srcSize2);
+                    std::printf("Compression error : %s\n", err);
+                }
+                assert(srcSize == srcSize2);
+                assert(subband == decompressed);
+
+                out.write(static_cast<const char*>(encoded), subband.size());
                 std::free(encoded);
             }
+            out.close();
             bitRate = 8.0 * static_cast<double>(totalSize) / size;
         }
 
@@ -259,13 +329,20 @@ int main(int, char**)
         g_pd3dDeviceContext->ClearDepthStencilView(g_depthStencil->GetDsv(), D3D11_CLEAR_DEPTH, 0.0f, 0);
         g_Camera->SetViewPort(g_pd3dDeviceContext);
 
-        if (showCompressed)
-            g_TR->Render(g_pd3dDeviceContext, g_OriginEleTex->GetSrv(), g_CompressedEleTex->GetSrv(),
-                g_Camera->GetViewProjection(), ratio, error, wireFrame);
+        auto originEle = floatOri ? g_fOriginEleTex->GetSrv() : g_OriginEleTex->GetSrv();
 
         if (showOrigin)
-            g_TR->Render(g_pd3dDeviceContext, g_OriginEleTex->GetSrv(), g_OriginEleTex->GetSrv(),
+        {
+            g_TR->Render(g_pd3dDeviceContext, originEle, originEle,
                 g_Camera->GetViewProjection(), ratio, error, wireFrame);
+        }
+        else
+        {
+            g_TR->Render(g_pd3dDeviceContext,
+                originEle,
+                g_CompressedEleTex->GetSrv(),
+                g_Camera->GetViewProjection(), ratio, error, wireFrame);
+        }
 
         if (sphereReference)
         {
@@ -382,7 +459,7 @@ void CreateSystem()
 
     g_DebugRenderer = std::make_unique<DebugRenderer>(g_pd3dDeviceContext, g_pd3dDevice);
 
-    LoadFromWICFile(L"./asset/beijing.png", DirectX::WIC_FLAGS_NONE, nullptr, g_OriginEle);
+    LoadFromWICFile(L"./asset/guanzhong.png", DirectX::WIC_FLAGS_NONE, nullptr, g_OriginEle);
 
     auto* image   = &g_OriginEle.GetImages()[0];
     size_t sum    = 0;
@@ -398,6 +475,9 @@ void CreateSystem()
     CD3D11_TEXTURE2D_DESC desc(DXGI_FORMAT_R8_UNORM, width, height, 1, 1);
     g_OriginEleTex = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, desc, image->pixels, image->rowPitch);
     g_OriginEleTex->CreateViews(g_pd3dDevice);
+
+    g_fOriginEleTex = std::make_unique<DirectX::Texture2D>(g_pd3dDevice, L"./asset/guanzhong.tif");
+    g_fOriginEleTex->CreateViews(g_pd3dDevice);
 
     int iteration = IteInit;
     WaveletTransform::LeGall53<uint8_t>(image[0], g_Coefficients, iteration, g_OriginAvg);
@@ -429,6 +509,95 @@ void CreateSystem()
 
     g_TR = std::make_unique<CompressedTerrainRenderer>(g_pd3dDevice);
     g_TR->Initialize(g_pd3dDeviceContext, L"./shader");
+
+    // ProcessChinaMap();
+}
+
+void ProcessChinaMap()
+{
+    DirectX::ScratchImage chinaMap;
+    LoadFromWICFile(L"C:/Users/lizizhen/Desktop/china30.tif", DirectX::WIC_FLAGS_NONE, nullptr, chinaMap);
+    auto w   = chinaMap.GetMetadata().width;
+    auto h   = chinaMap.GetMetadata().height;
+    auto src = chinaMap.GetImages()[0].pixels;
+
+    constexpr int res = 512;
+    for (int i = 0; res * (i + 1) < h; ++i)
+    {
+        for (int j = 0; res * (j + 1) < w; ++j)
+        {
+            std::vector<float> data;
+            data.resize(res * res);
+            for (int y = 0; y < res; ++y)
+            {
+                for (int x = 0; x < res; ++x)
+                {
+                    float val = reinterpret_cast<float*>(src)[(i * res + y) * w + j * res + x];
+                    if (std::isnan(val)) val = 0.0f;
+                    data[y * res + x] = val;
+                }
+            }
+
+            auto minMax   = std::minmax_element(data.begin(), data.end());
+            auto m        = *minMax.first, M = *minMax.second;
+            auto invRange = 1.0f / (M - m);
+            DirectX::ScratchImage r8uImage;
+            r8uImage.Initialize2D(DXGI_FORMAT_R8_UNORM, res, res, 1, 1);
+            auto uPix = reinterpret_cast<uint8_t*>(r8uImage.GetImages()[0].pixels);
+            for (int idx = 0; idx < res * res; ++idx)
+            {
+                float val     = data[idx];
+                float rounded = std::clamp(std::round(255.0f * (val - m) * invRange), 0.0f, 255.0f);
+                uPix[idx]     = static_cast<uint8_t>(rounded);
+            }
+            {
+                std::wstring file(L"./asset/r8e/china");
+                file += std::to_wstring(i) + L"_" + std::to_wstring(j) + L".dds";
+                SaveToDDSFile(r8uImage.GetImages()[0], DirectX::DDS_FLAGS_NONE, file.c_str());
+            }
+
+            std::vector q2(uPix, uPix + res * res);
+            std::nth_element(q2.begin(), q2.begin() + res * res / 2, q2.end());
+            auto median = q2[q2.size() / 2];
+            DirectX::ScratchImage coeImage;
+            int iteration = IteInit;
+            WaveletTransform::LeGall53<uint8_t>(r8uImage.GetImages()[0], coeImage, iteration, median);
+
+            auto coefficients = reinterpret_cast<int16_t*>(coeImage.GetImages()[0].pixels);
+            WaveletTransform::FilterOut<int16_t>(coefficients, coefficients, res * res, 16);
+
+            auto subbands = WaveletTransform::InterleaveSubBand(coefficients, res, res, iteration);
+
+            std::string file("./asset/wti/china");
+            file += std::to_string(i) + "_" + std::to_string(j) + "_coefficients.bin";
+            std::ofstream out(file, std::ios::binary | std::ios::out);
+            for (auto& subband : subbands)
+            {
+                //uLongf srcSize      = subband.size() * sizeof(decltype(subbands)::value_type::value_type);
+                //uLongf dstSize      = compressBound(srcSize);
+                //auto* const encoded = std::malloc(dstSize);
+                //if (Z_OK != compress2(static_cast<Bytef*>(encoded), &dstSize, reinterpret_cast<const Bytef*>(subband.data()), srcSize, Z_BEST_COMPRESSION))
+                //{
+                //    std::printf("Compression error\n");
+                //}
+                size_t srcSize      = subband.size() * sizeof(decltype(subbands)::value_type::value_type);
+                size_t dstSize      = FSE_compressBound(srcSize);
+                auto* const encoded = std::malloc(dstSize);
+                dstSize             = FSE_compressU16(encoded, dstSize, reinterpret_cast<const unsigned short*>(subband.data()), srcSize / sizeof(uint16_t), 511, 0);
+                if (FSE_isError(dstSize))
+                {
+                    auto err = FSE_getErrorName(dstSize);
+                    std::printf("Compression error : %s\n", err);
+                    continue;
+                }
+                out.write(static_cast<const char*>(encoded), dstSize);
+                std::free(encoded);
+            }
+            out.close();
+
+            std::printf("%d, %d Out\n", i, j);
+        }
+    }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp

@@ -121,7 +121,13 @@ std::vector<std::vector<T>> WaveletTransform::InterleaveSubBand(const T* src, si
         {
             for (int x = 0; x < width >> iteration; ++x)
             {
-                subband.emplace_back(src[y * width + x]);
+                auto val = src[y * width + x];
+                assert(val < 256);
+                if (val < 0)
+                {
+                    val = std::abs(val) | 0x100;
+                }
+                subband.emplace_back(val);
             }
         }
     }
@@ -138,7 +144,13 @@ std::vector<std::vector<T>> WaveletTransform::InterleaveSubBand(const T* src, si
             {
                 for (int x = currWidth; x < currWidth + currWidth; ++x)
                 {
-                    subband.emplace_back(src[y * width + x]);
+                    auto val = src[y * width + x];
+                    assert(val < 256);
+                    if (val < 0)
+                    {
+                        val = std::abs(val) | 0x100;
+                    }
+                    subband.emplace_back(val);
                 }
             }
         }
@@ -150,7 +162,13 @@ std::vector<std::vector<T>> WaveletTransform::InterleaveSubBand(const T* src, si
             {
                 for (int x = 0; x < currWidth; ++x)
                 {
-                    subband.emplace_back(reinterpret_cast<const T*>(src)[y * width + x]);
+                    auto val = src[y * width + x];
+                    assert(val < 256);
+                    if (val < 0)
+                    {
+                        val = std::abs(val) | 0x100;
+                    }
+                    subband.emplace_back(val);
                 }
             }
         }
@@ -162,7 +180,13 @@ std::vector<std::vector<T>> WaveletTransform::InterleaveSubBand(const T* src, si
             {
                 for (int x = currWidth; x < currWidth + currWidth; ++x)
                 {
-                    subband.emplace_back(src[y * width + x]);
+                    auto val = src[y * width + x];
+                    assert(val < 256);
+                    if (val < 0)
+                    {
+                        val = std::abs(val) | 0x100;
+                    }
+                    subband.emplace_back(val);
                 }
             }
         }

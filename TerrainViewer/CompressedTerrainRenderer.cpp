@@ -60,12 +60,11 @@ void CompressedTerrainRenderer::Render(ID3D11DeviceContext* context,
                                        const SimpleMath::Matrix& viewProj,
                                        float ratio, float maxError, bool wireFrame)
 {
-    bool isOrigin = origin == compressed;
     const Constants constants
     {
         viewProj.Transpose(),
         ratio,
-        isOrigin ? SimpleMath::Vector3(0, 0, 1) : SimpleMath::Vector3(0, 1, 0),
+        SimpleMath::Vector3(1, 1, 1),
         1.0f / maxError,
         {}
     };
@@ -91,7 +90,7 @@ void CompressedTerrainRenderer::Render(ID3D11DeviceContext* context,
     {
         context->RSSetState(s_CommonStates->CullCounterClockwise());
     }
-    context->OMSetBlendState(isOrigin ? s_CommonStates->AlphaBlend() : s_CommonStates->Opaque(), nullptr, 0xffffffff);
-    context->OMSetDepthStencilState(isOrigin ? s_CommonStates->DepthReadReverseZ() : s_CommonStates->DepthReverseZ(), 0);
+    context->OMSetBlendState(s_CommonStates->Opaque(), nullptr, 0xffffffff);
+    context->OMSetDepthStencilState(s_CommonStates->DepthReverseZ(), 0);
     context->DrawIndexed((Res - 1) * (Res - 1) * 6, 0, 0);
 }

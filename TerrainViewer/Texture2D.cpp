@@ -90,7 +90,7 @@ HRESULT Texture2D::CreateTextureFromFile(
     ID3D11ShaderResourceView** srv)
 {
     HRESULT hr = 0;
-    if (const auto ext = path.extension(); ext == ".bmp" || ext == ".png" || ext == ".jpg")
+    if (const auto ext = path.extension(); ext == ".bmp" || ext == ".png" || ext == ".jpg" || ext == ".tif")
         hr = CreateWICTextureFromFile(device, path.wstring().c_str(),
             reinterpret_cast<ID3D11Resource**>(texture), srv);
     else if (ext == ".dds")
